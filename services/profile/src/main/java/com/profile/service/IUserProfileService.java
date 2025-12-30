@@ -1,6 +1,5 @@
 package com.profile.service;
 
-import com.profile.dtos.request.CreateUserRequest;
 import com.profile.dtos.request.InitProfileRequest;
 import com.profile.dtos.request.UpdateProfileRequest;
 import com.profile.dtos.response.UserProfileResponse;
