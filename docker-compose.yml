@@ -34,8 +34,8 @@ services:
   database: # chứa User DB và Room DB
     image: postgres:15
     environment:
-      - POSTGRES_DB=werewolf_db
-      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=profile_service_db
+      - POSTGRES_PASSWORD=postgres
     ports:
       - "5432:5432"
     # Vai trò: Lưu trữ dữ liệu lâu dài (User Profile, Lịch sử trận đấu).
@@ -70,9 +70,11 @@ services:
       - database
     environment:
       - PORT=8081
-      - DATABASE_URL=postgresql://postgres:admin@database:5432/werewolf_db?schema=public
+      - DATABASE_URL=postgresql://postgres:postgres@database:5432/profile_service_db?schema=public
       - JWT_SECRET=ww_s3cr3t_k3y_pr0d_2025_g4m3_4uth_t0k3n_s1gn1ng
       - JWT_EXPIRES_IN=24h
+      - NODE_ENV=production
+      - PROFILE_SERVICE_URL=http://profile-service:8086
       - NODE_ENV=production
     # Vai trò: Xử lý đăng ký, đăng nhập người dùng và phát hành JWT token.
 
@@ -130,6 +132,11 @@ services:
       - database
     environment:
       - PORT=8086
+      - DB_HOST=database
+      - DB_PORT=5432
+      - DB_NAME=profile_service_db
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
     # Vai trò: Xử lý REST request cho Ranking, Stats, Avatar. Không cần Kafka cho các tác vụ Read.
 
 # --- QUẢN LÝ VOLUME & NETWORK ---

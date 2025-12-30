@@ -2,9 +2,9 @@ spring:
   application:
     name: profile-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/profile_service_db
-    username: postgres
-    password: postgres
+    url: jdbc:postgresql://${DB_HOST:database}:${DB_PORT:5432}/${DB_NAME:werewolf_db}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:admin}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -15,4 +15,4 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 server:
-  port: 8082
+  port: 8086
