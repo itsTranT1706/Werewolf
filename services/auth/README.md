@@ -1,6 +1,6 @@
 # 🔐 Werewolf Auth Service
 
-A secure authentication microservice for the Werewolf game platform. Handles user registration, login, and JWT token management.
+A secure authentication microservice for the Werewolf game platform. Handles userProfile registration, login, and JWT token management.
 
 ## 🚀 Features
 
@@ -84,7 +84,7 @@ The service will start on `http://localhost:3000` (or your configured PORT).
 ```
 
 **Error Responses:**
-- `400`: Validation error or user already exists
+- `400`: Validation error or userProfile already exists
 - `500`: Server error
 
 ---
@@ -104,7 +104,7 @@ The service will start on `http://localhost:3000` (or your configured PORT).
 ```json
 {
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "user": {
+  "userProfile": {
     "id": "uuid-here",
     "username": "johndoe"
   }
