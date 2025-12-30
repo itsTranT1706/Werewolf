@@ -2,6 +2,7 @@ package com.profile.controller;
 
 import com.profile.dtos.ApiResponse;
 import com.profile.dtos.request.CreateUserRequest;
+import com.profile.dtos.request.UpdateProfileRequest;
 import com.profile.dtos.response.UserResponse;
 import com.profile.service.IUserService;
 import jakarta.validation.Valid;
@@ -34,5 +35,15 @@ public class UserController {
                 .build();
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<UserResponse> updateProfile(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateProfileRequest request) {
+
+        UserResponse result = userService.updateProfile(id, request);
+
+        return ApiResponse.success(result);
     }
 }
