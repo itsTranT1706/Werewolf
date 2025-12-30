@@ -27,6 +27,4 @@ public class CreateUserRequest {
     @Size(max = 100, message = "Full name must not exceed 100 characters")
     private String fullName;
 
-    @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$", message = "Phone number should be valid")
-    private String phoneNumber;
 }

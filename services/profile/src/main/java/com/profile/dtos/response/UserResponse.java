@@ -7,7 +7,12 @@ public record UserResponse(
         String username,
         String email,
         String fullName,
-        String phoneNumber,
+        String avatarUrl,
+        String displayName,
+        Integer totalPoint,
+        Integer totalMatch,
+        Integer winMatch,
+        Integer loseMatch,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
