@@ -5,6 +5,7 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 RUN npm install --production
 
+COPY config ./config
 COPY src ./src
 COPY readme.md ./README.md
 

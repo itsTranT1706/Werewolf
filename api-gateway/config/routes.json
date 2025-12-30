@@ -1,0 +1,27 @@
+{
+  "proxy": {
+    "auth-service": {
+      "target": "http://auth-service:8081",
+      "routes": [
+        {
+          "path": "/register",
+          "method": "POST",
+          "targetPath": "/api/auth/register",
+          "public": true
+        },
+        {
+          "path": "/login",
+          "method": "POST",
+          "targetPath": "/api/auth/login",
+          "public": true
+        },
+        {
+          "path": "/api/auth/*",
+          "method": "ALL",
+          "targetPath": "/api/auth/*",
+          "public": true
+        }
+      ]
+    }
+  }
+}
