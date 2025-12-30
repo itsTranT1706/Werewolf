@@ -1,6 +1,5 @@
 package com.profile.service.impl;
 
-import com.profile.dtos.request.CreateUserRequest;
 import com.profile.dtos.request.InitProfileRequest;
 import com.profile.dtos.request.UpdateProfileRequest;
 import com.profile.dtos.response.UserProfileResponse;
@@ -11,7 +10,6 @@ import com.profile.repository.UserProfileRepository;
 import com.profile.service.IUserProfileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-//import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
