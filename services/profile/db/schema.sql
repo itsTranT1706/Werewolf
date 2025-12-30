@@ -1,7 +1,6 @@
 CREATE TABLE users (
                        id BIGSERIAL PRIMARY KEY,
 
-                       user_id UUID NOT NULL UNIQUE,     -- id từ auth/user-service
                        username VARCHAR(50) NOT NULL UNIQUE,
                        display_name VARCHAR(100),
                        avatar_url TEXT,
