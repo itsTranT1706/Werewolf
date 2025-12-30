@@ -1,10 +1,10 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const appConfig = require('./config/app');
 const authRoutes = require('./routes/authRoutes');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors()); // Enable CORS for all routes
@@ -46,10 +46,10 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-    console.log(`🚀 Auth Service running on port ${PORT}`);
-    console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🔗 Base URL: http://localhost:${PORT}`);
+const server = app.listen(appConfig.port, () => {
+    console.log(`🚀 Auth Service running on port ${appConfig.port}`);
+    console.log(`📍 Environment: ${appConfig.nodeEnv}`);
+    console.log(`🔗 Base URL: http://localhost:${appConfig.port}`);
 });
 
 // Graceful shutdown

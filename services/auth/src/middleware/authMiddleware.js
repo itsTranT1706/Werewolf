@@ -1,4 +1,6 @@
 const { verifyToken } = require('../utils/jwt');
+const HTTP_STATUS = require('../constants/httpStatus');
+const ERROR_MESSAGES = require('../constants/errorMessages');
 
 /**
  * Middleware to authenticate JWT tokens
@@ -11,8 +13,8 @@ const authenticateToken = (req, res, next) => {
         const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
         if (!token) {
-            return res.status(401).json({
-                error: 'Access denied. No token provided.',
+            return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+                error: ERROR_MESSAGES.ACCESS_DENIED_NO_TOKEN,
             });
         }
 
@@ -25,20 +27,20 @@ const authenticateToken = (req, res, next) => {
         next();
     } catch (error) {
         if (error.name === 'JsonWebTokenError') {
-            return res.status(401).json({
-                error: 'Invalid token',
+            return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+                error: ERROR_MESSAGES.INVALID_TOKEN,
             });
         }
 
         if (error.name === 'TokenExpiredError') {
-            return res.status(401).json({
-                error: 'Token expired',
+            return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+                error: ERROR_MESSAGES.TOKEN_EXPIRED,
             });
         }
 
         console.error('Auth middleware error:', error);
-        return res.status(500).json({
-            error: 'Internal server error during authentication',
+        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+            error: ERROR_MESSAGES.AUTH_ERROR,
         });
     }
 };

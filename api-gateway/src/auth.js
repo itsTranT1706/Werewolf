@@ -24,7 +24,7 @@ function verifyToken(token) {
 function authMiddleware(req, res, next) {
   // Get public paths from route configuration
   const publicPaths = getPublicPaths();
-  
+
   // Check if current path is public or starts with public prefix
   const isPublicPath = publicPaths.some(publicPath => {
     if (publicPath.includes('*')) {
@@ -33,11 +33,11 @@ function authMiddleware(req, res, next) {
     }
     return req.path === publicPath;
   });
-  
+
   if (isPublicPath) {
     return next();
   }
-  
+
   const token = extractBearerToken(req.headers.authorization || req.headers.Authorization);
   const payload = verifyToken(token);
   if (!payload?.id) {  // Changed from userId to id (match auth-service JWT payload)
