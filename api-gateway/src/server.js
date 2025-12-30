@@ -1,49 +1,23 @@
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const axios = require('axios');
 const { authMiddleware } = require('./auth');
 const { createKafkaClient, createProducer, createBroadcastConsumer, disconnectKafka } = require('./kafka');
 const { setupSocket } = require('./socket');
+const { setupRoutes } = require('./routeLoader');
 
 async function createApp() {
   const app = express();
-  
+
+  // ===== PUBLIC ROUTES (NO AUTH) =====
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' });
   });
 
-  // Simple proxy for auth routes using axios
-  const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://auth-service:8081';
-  
-  app.all('/api/auth/*', express.json(), async (req, res) => {
-    try {
-      const path = req.url;
-      const url = `${AUTH_SERVICE_URL}${path}`;
-      console.log(`[PROXY] ${req.method} ${path} -> ${url}`);
-      
-      const response = await axios({
-        method: req.method,
-        url,
-        data: req.body,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        timeout: 30000,
-      });
-      
-      console.log(`[PROXY RESPONSE] ${response.status}`);
-      res.status(response.status).json(response.data);
-    } catch (error) {
-      console.error('[PROXY ERROR]', error.message);
-      if (error.response) {
-        res.status(error.response.status).json(error.response.data);
-      } else {
-        res.status(502).json({ error: 'Bad Gateway - Auth service unavailable', details: error.message });
-      }
-    }
-  });
+  // Setup all routes from configuration
+  setupRoutes(app);
 
+  // ===== PROTECTED ROUTES (REQUIRE AUTH) =====
   // JSON parser for other routes
   app.use(express.json());
 
