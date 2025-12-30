@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { getPublicPaths } = require('./routeLoader');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change_me';
 
@@ -21,12 +22,25 @@ function verifyToken(token) {
 }
 
 function authMiddleware(req, res, next) {
-  if (req.path === '/health') {
+  // Get public paths from route configuration
+  const publicPaths = getPublicPaths();
+  
+  // Check if current path is public or starts with public prefix
+  const isPublicPath = publicPaths.some(publicPath => {
+    if (publicPath.includes('*')) {
+      const prefix = publicPath.replace('*', '');
+      return req.path.startsWith(prefix);
+    }
+    return req.path === publicPath;
+  });
+  
+  if (isPublicPath) {
     return next();
   }
+  
   const token = extractBearerToken(req.headers.authorization || req.headers.Authorization);
   const payload = verifyToken(token);
-  if (!payload?.userId) {
+  if (!payload?.id) {  // Changed from userId to id (match auth-service JWT payload)
     return res.status(401).json({ error: 'Unauthorized' });
   }
   req.user = payload;
@@ -39,10 +53,11 @@ function socketAuthMiddleware(socket, next) {
   const tokenFromHeader = handshake.headers && handshake.headers.authorization;
   const token = extractBearerToken(tokenFromAuth || tokenFromHeader);
   const payload = verifyToken(token);
-  if (!payload?.userId) {
+  if (!payload?.id) {  // Changed from userId to id (match auth-service JWT payload)
     return next(new Error('Unauthorized'));
   }
-  socket.data.userId = payload.userId;
+  socket.data.userId = payload.id;  // Map id to userId for backward compatibility
+  socket.data.username = payload.username;
   socket.data.tokenPayload = payload;
   return next();
 }

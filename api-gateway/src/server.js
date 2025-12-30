@@ -4,15 +4,24 @@ const { Server } = require('socket.io');
 const { authMiddleware } = require('./auth');
 const { createKafkaClient, createProducer, createBroadcastConsumer, disconnectKafka } = require('./kafka');
 const { setupSocket } = require('./socket');
+const { setupRoutes } = require('./routeLoader');
 
 async function createApp() {
   const app = express();
-  app.use(express.json());
 
+  // ===== PUBLIC ROUTES (NO AUTH) =====
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' });
   });
 
+  // Setup all routes from configuration
+  setupRoutes(app);
+
+  // ===== PROTECTED ROUTES (REQUIRE AUTH) =====
+  // JSON parser for other routes
+  app.use(express.json());
+
+  // All other routes require authentication
   app.use(authMiddleware);
 
   app.use((_req, res) => {
