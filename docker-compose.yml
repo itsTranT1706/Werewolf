@@ -3,7 +3,6 @@ services:
     build: ./frontend/
     ports:
       - "3000:3000"
-    ...
 
   kafka:
     image: bitnami/kafka:latest
@@ -48,48 +47,78 @@ services:
       - kafka
     environment:
       - KAFKA_BROKERS=kafka:9092
-      - JWT_SECRET=your_secret_key
+      - JWT_SECRET=ww_s3cr3t_k3y_pr0d_2025_g4m3_4uth_t0k3n_s1gn1ng
     # Vai trò: Quản lý WebSocket (Socket.io) và REST. Chuyển đổi Client Action sang Kafka Message.
 
   # --- DỊCH VỤ LOGIC (MICROSERVICES) ---
+  auth-service:
+    build: ./services/auth
+    ports:
+      - "8081:8081"
+    depends_on:
+      - database
+    environment:
+      - PORT=8081
+      - DATABASE_URL=postgresql://postgres:admin@database:5432/werewolf_db?schema=public
+      - JWT_SECRET=ww_s3cr3t_k3y_pr0d_2025_g4m3_4uth_t0k3n_s1gn1ng
+      - JWT_EXPIRES_IN=24h
+      - NODE_ENV=production
+    # Vai trò: Xử lý đăng ký, đăng nhập người dùng và phát hành JWT token.
+
   room-service:
     build: ./services/room
+    ports:
+      - "8082:8082"
     depends_on:
       - kafka
       - database
     environment:
+      - PORT=8082
       - KAFKA_BROKERS=kafka:9092
     # Vai trò: Quản lý tạo/tham gia phòng, danh sách người chơi chờ.
 
   gameplay-service:
     build: ./services/gameplay
+    ports:
+      - "8083:8083"
     depends_on:
       - kafka
       - redis
     environment:
       - KAFKA_BROKERS=kafka:9092
+      - PORT=8083
     # Vai trò: State Machine chính (Điều phối Ngày/Đêm, kỹ năng nhân vật, tính toán người chết).
 
   vote-service:
     build: ./services/vote
+    ports:
+      - "8084:8084"
     depends_on:
       - kafka
     environment:
       - KAFKA_BROKERS=kafka:9092
+      - PORT=8084
     # Vai trò: Xử lý đếm phiếu biểu quyết thời gian thực và trả kết quả cho Gameplay.
 
   chat-service:
     build: ./services/chat
+    ports:
+      - "8085:8085"
     depends_on:
       - kafka
     environment:
       - KAFKA_BROKERS=kafka:9092
+      - PORT=8085
     # Vai trò: Kiểm duyệt nội dung chat và lọc quyền chat (Sói chat đêm, Dân chat ngày).
 
   profile-service:
     build: ./services/profile
+    ports:
+      - "8086:8086"
     depends_on:
       - database
+    environment:
+      - PORT=8086
     # Vai trò: Xử lý REST request cho Ranking, Stats, Avatar. Không cần Kafka cho các tác vụ Read.
 
 # --- QUẢN LÝ VOLUME & NETWORK ---
