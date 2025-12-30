@@ -1,10 +1,10 @@
 package com.profile.controller;
 
 import com.profile.dtos.ApiResponse;
-import com.profile.dtos.request.CreateUserRequest;
+import com.profile.dtos.request.InitProfileRequest;
 import com.profile.dtos.request.UpdateProfileRequest;
-import com.profile.dtos.response.UserResponse;
-import com.profile.service.IUserService;
+import com.profile.dtos.response.UserProfileResponse;
+import com.profile.service.IUserProfileService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,36 +13,26 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/users")
+@RequestMapping("/api/user-profile")
 @RequiredArgsConstructor
 @Slf4j
 public class UserController {
 
-    private final IUserService userService;
+    private final IUserProfileService userService;
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<UserResponse>> createUser(
-            @Valid @RequestBody CreateUserRequest request) {
-
-        log.info("Received request to create user: {}", request.getUsername());
-
-        UserResponse userResponse = userService.createUser(request);
-
-        ApiResponse<UserResponse> response = ApiResponse.<UserResponse>builder()
-                .code(HttpStatus.CREATED.value())
-                .message("User created successfully")
-                .result(userResponse)
-                .build();
-
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    // API này dành cho Node.js gọi sang
+    @PostMapping("/internal/init")
+    public ResponseEntity<ApiResponse<UserProfileResponse>> initProfile(@RequestBody InitProfileRequest request) {
+        UserProfileResponse response = userService.initProfile(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<UserResponse> updateProfile(
-            @PathVariable Long id,
+    public ApiResponse<UserProfileResponse> updateProfile(
+            @PathVariable String id,
             @Valid @RequestBody UpdateProfileRequest request) {
 
-        UserResponse result = userService.updateProfile(id, request);
+        UserProfileResponse result = userService.updateProfile(id, request);
 
         return ApiResponse.success(result);
     }
