@@ -1,60 +1,59 @@
--- Table: public.users
 
--- DROP TABLE IF EXISTS public.users;
-
-CREATE TABLE IF NOT EXISTS public.users
+-- 2. Tạo bảng User Profile
+CREATE TABLE IF NOT EXISTS public.user_profile
 (
-    id bigint NOT NULL DEFAULT nextval('users_id_seq'::regclass),
-    username character varying(50) COLLATE pg_catalog."default" NOT NULL,
-    display_name character varying(100) COLLATE pg_catalog."default",
-    avatar_url text COLLATE pg_catalog."default",
+    -- id là Primary Key -> Tự động là UNIQUE và NOT NULL
+    id character varying(36) NOT NULL,
+
+    username character varying(50) NOT NULL,
+    email character varying(255) NOT NULL,
+
+    display_name character varying(100),
+    avatar_url text,
+
     total_point integer NOT NULL DEFAULT 0,
     total_match integer NOT NULL DEFAULT 0,
     win_match integer NOT NULL DEFAULT 0,
     lose_match integer NOT NULL DEFAULT 0,
+
     created_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at timestamp without time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    email character varying(255) COLLATE pg_catalog."default" NOT NULL,
-    full_name character varying(100) COLLATE pg_catalog."default",
-    password character varying(255) COLLATE pg_catalog."default" NOT NULL,
-    CONSTRAINT users_pkey PRIMARY KEY (id),
-    CONSTRAINT uk6dotkott2kjsp8vw4d0m25fb7 UNIQUE (email),
-    CONSTRAINT users_username_key UNIQUE (username)
-    )
 
-    TABLESPACE pg_default;
+    -- Định nghĩa Khóa Chính (Primary Key)
+    CONSTRAINT user_profile_pkey PRIMARY KEY (id),
 
-ALTER TABLE IF EXISTS public.users
-    OWNER to postgres;
--- Index: idx_users_total_point_desc
+    -- Các ràng buộc Unique khác (Đổi tên constraint cho khớp tên bảng)
+    CONSTRAINT user_profile_email_unique UNIQUE (email),
+    CONSTRAINT user_profile_username_unique UNIQUE (username)
+    );
 
--- DROP INDEX IF EXISTS public.idx_users_total_point_desc;
+-- 3. Tạo Index cho điểm số (Sửa target table thành user_profile)
+CREATE INDEX IF NOT EXISTS idx_user_profile_total_point_desc
+    ON public.user_profile USING btree
+    (total_point DESC NULLS FIRST);
 
-CREATE INDEX IF NOT EXISTS idx_users_total_point_desc
-    ON public.users USING btree
-    (total_point DESC NULLS FIRST)
-    WITH (fillfactor=100, deduplicate_items=True)
-    TABLESPACE pg_default;
+-- 4. Tạo bảng Game History
+CREATE TABLE IF NOT EXISTS public.game_history (
+                                                   id BIGSERIAL PRIMARY KEY,
 
+    -- user_id phải cùng kiểu dữ liệu với user_profile.id (varchar 36)
+                                                   user_id character varying(36) NOT NULL,
 
-CREATE TABLE game_history (
-                              id BIGSERIAL PRIMARY KEY,
+    room_id VARCHAR(50) NOT NULL,
+    match_id VARCHAR(50) NOT NULL,
 
-                              user_id BIGINT NOT NULL,
-                              room_id VARCHAR(50) NOT NULL,
-                              match_id VARCHAR(50) NOT NULL,
+    role VARCHAR(30) NOT NULL,
+    is_win BOOLEAN NOT NULL,
+    point_change INT NOT NULL,
 
-                              role VARCHAR(30) NOT NULL,
-                              is_win BOOLEAN NOT NULL,           -- TRUE = WIN, FALSE = LOSE
-                              point_change INT NOT NULL,
+    started_at TIMESTAMP,
+    ended_at TIMESTAMP,
 
-                              started_at TIMESTAMP,
-                              ended_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-                              created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-                              CONSTRAINT fk_game_history_user
-                                  FOREIGN KEY (user_id)
-                                      REFERENCES users(id)
-                                      ON DELETE CASCADE
-);
+    -- Khóa ngoại liên kết với bảng user_profile
+    CONSTRAINT fk_game_history_user_profile
+    FOREIGN KEY (user_id)
+    REFERENCES user_profile(id)
+    ON DELETE CASCADE
+    );

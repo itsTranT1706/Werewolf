@@ -18,7 +18,7 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use('/api/auth', authRoutes);
+app.use('/api/v1/auth', authRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

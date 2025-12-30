@@ -2,7 +2,7 @@
 CREATE INDEX idx_users_total_point_desc
     ON users (total_point DESC);
 
--- History theo user
+-- History theo userProfile
 CREATE INDEX idx_game_history_user_id
     ON game_history (user_id);
 
