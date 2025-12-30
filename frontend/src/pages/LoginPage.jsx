@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { MedievalPanel, MedievalInput, MedievalButton, Divider } from '@/components/ui'
+import { MedievalPanel, MedievalInput, MedievalButton, Divider, notify } from '@/components/ui'
 import { authApi } from '@/api'
 
 export default function LoginPage() {
@@ -48,10 +48,12 @@ export default function LoginPage() {
 
     try {
       await authApi.login(formData.identifier, formData.password)
-      navigate('/game') // Navigate to game lobby after login
+      notify.success('Welcome back, traveler!', 'Login Successful')
+      navigate('/game')
     } catch (error) {
       const message = error.message || 'Failed to enter the village. Try again.'
       setServerError(message)
+      notify.error(message, 'Login Failed')
     } finally {
       setLoading(false)
     }
