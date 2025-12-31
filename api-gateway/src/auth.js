@@ -51,7 +51,8 @@ function socketAuthMiddleware(socket, next) {
   const handshake = socket.handshake || {};
   const tokenFromAuth = handshake.auth && handshake.auth.token;
   const tokenFromHeader = handshake.headers && handshake.headers.authorization;
-  const token = extractBearerToken(tokenFromAuth || tokenFromHeader);
+  const tokenFromQuery = handshake.query && handshake.query.token;
+  const token = extractBearerToken(tokenFromAuth || tokenFromHeader || tokenFromQuery);
   const payload = verifyToken(token);
   if (!payload?.id) {  // Changed from userId to id (match auth-service JWT payload)
     return next(new Error('Unauthorized'));
