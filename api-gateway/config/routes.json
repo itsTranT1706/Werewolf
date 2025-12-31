@@ -1,0 +1,75 @@
+{
+    "proxy": {
+        "auth-service": {
+            "target": "http://auth-service:8081",
+            "routes": [
+                {
+                    "path": "/register",
+                    "method": "POST",
+                    "targetPath": "/api/v1/auth/register",
+                    "public": true
+                },
+                {
+                    "path": "/login",
+                    "method": "POST",
+                    "targetPath": "/api/v1/auth/login",
+                    "public": true
+                },
+                {
+                    "path": "/api/v1/auth/*",
+                    "method": "ALL",
+                    "targetPath": "/api/v1/auth/*",
+                    "public": true
+                },
+                {
+                    "path": "/api/auth/*",
+                    "method": "ALL",
+                    "targetPath": "/api/v1/auth/*",
+                    "public": true
+                }
+
+            ]
+        },
+        "profile-service": {
+            "target": "http://profile-service:8086",
+            "routes": [
+                {
+                    "path": "/api/user-profile/internal/init",
+                    "method": "POST",
+                    "targetPath": "/api/user-profile/internal/init",
+                    "public": false
+                },
+                {
+                    "path": "/api/user-profile/{id}",
+                    "method": "PUT",
+                    "targetPath": "/api/user-profile/{id}",
+                    "public": false
+                },
+                {
+                    "path": "/api/user-profile/{id}",
+                    "method": "GET",
+                    "targetPath": "/api/user-profile/{id}",
+                    "public": true
+                },
+                {
+                    "path": "/api/game-history/user/{userId}/stats",
+                    "method": "GET",
+                    "targetPath": "/api/game-history/user/{userId}/stats",
+                    "public": true
+                },
+                {
+                    "path": "/api/game-history/user/{userId}",
+                    "method": "GET",
+                    "targetPath": "/api/game-history/user/{userId}",
+                    "public": false
+                },
+                {
+                    "path": "/api/game-history/*",
+                    "method": "ALL",
+                    "targetPath": "/api/game-history/*",
+                    "public": false
+                }
+            ]
+        }  
+    }
+}
