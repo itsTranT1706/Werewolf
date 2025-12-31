@@ -47,8 +47,8 @@ async function handleChatSend(socket, producer, payload = {}) {
     socket.emit('ERROR', { message: 'roomId is required' });
     return;
   }
-  if (typeof text !== 'string' || !text.trim() || text.length > 200) {
-    socket.emit('ERROR', { message: 'text must be 1-200 characters' });
+  if (typeof text !== 'string' || !text.trim() || text.length > 500) {
+    socket.emit('ERROR', { message: 'text must be 1-500 characters' });
     return;
   }
 
@@ -67,6 +67,35 @@ async function handleChatSend(socket, producer, payload = {}) {
   }
 }
 
+async function handleChatSendDm(socket, producer, payload = {}) {
+  const { targetUserId, text } = payload;
+  if (!targetUserId) {
+    socket.emit('ERROR', { message: 'targetUserId is required' });
+    return;
+  }
+  if (typeof text !== 'string' || !text.trim() || text.length > 500) {
+    socket.emit('ERROR', { message: 'text must be 1-500 characters' });
+    return;
+  }
+
+  const message = buildCommandMessage({
+    userId: socket.data.userId,
+    roomId: null,
+    actionType: 'CHAT_SEND_DM',
+    payload: {
+      targetUserId,
+      text: text.trim()
+    }
+  });
+
+  try {
+    await produceCommand(producer, message);
+  } catch (err) {
+    console.error('Failed to publish CHAT_SEND_DM', err);
+    socket.emit('ERROR', { message: 'Failed to publish action' });
+  }
+}
+
 function setupSocket(io, producer) {
   const userSockets = new Map();
   io.use(socketAuthMiddleware);
@@ -74,9 +103,11 @@ function setupSocket(io, producer) {
   io.on('connection', (socket) => {
     const userId = socket.data.userId;
     addUserSocket(userSockets, userId, socket.id);
+    socket.join(`user:${userId}`);
 
     socket.on('ROOM_JOIN', (payload) => handleRoomJoin(socket, producer, payload));
     socket.on('CHAT_SEND', (payload) => handleChatSend(socket, producer, payload));
+    socket.on('CHAT_SEND_DM', (payload) => handleChatSendDm(socket, producer, payload));
 
     socket.on('disconnect', () => {
       removeUserSocket(userSockets, userId, socket.id);

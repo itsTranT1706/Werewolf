@@ -121,6 +121,10 @@ services:
       - kafka
     environment:
       - KAFKA_BROKERS=kafka:9092
+      - KAFKA_CLIENT_ID=chat-service
+      - KAFKA_GROUP_ID=chat-service-cmd
+      - CMD_TOPIC=cmd.ingest
+      - EVT_TOPIC=evt.broadcast
       - PORT=8085
     # Vai trò: Kiểm duyệt nội dung chat và lọc quyền chat (Sói chat đêm, Dân chat ngày).
 

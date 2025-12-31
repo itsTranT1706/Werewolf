@@ -40,6 +40,7 @@ async function createBroadcastConsumer(kafka, { io, userSockets }) {
         if (roomId) {
           io.to(roomId).emit(event.type, data);
         } else if (targetUserId) {
+          io.to(`user:${targetUserId}`).emit(event.type, data);
           const sockets = userSockets.get(targetUserId);
           if (sockets && sockets.size) {
             sockets.forEach((id) => io.to(id).emit(event.type, data));
