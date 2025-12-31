@@ -49,8 +49,8 @@ async function startServer() {
 
   const kafka = createKafkaClient();
   const producer = await createProducer(kafka);
-  const { userSockets } = setupSocket(io, producer);
-  const consumer = await createBroadcastConsumer(kafka, { io, userSockets });
+  const { userSockets, roomFactions } = setupSocket(io, producer);
+  const consumer = await createBroadcastConsumer(kafka, { io, userSockets, roomFactions });
 
   const port = process.env.PORT || 80;
   await new Promise((resolve) => httpServer.listen(port, resolve));
