@@ -75,7 +75,6 @@ services:
       - JWT_EXPIRES_IN=24h
       - NODE_ENV=production
       - PROFILE_SERVICE_URL=http://profile-service:8086
-      - NODE_ENV=production
     # Vai trò: Xử lý đăng ký, đăng nhập người dùng và phát hành JWT token.
 
   room-service:
@@ -121,6 +120,10 @@ services:
       - kafka
     environment:
       - KAFKA_BROKERS=kafka:9092
+      - KAFKA_CLIENT_ID=chat-service
+      - KAFKA_GROUP_ID=chat-service-cmd
+      - CMD_TOPIC=cmd.ingest
+      - EVT_TOPIC=evt.broadcast
       - PORT=8085
     # Vai trò: Kiểm duyệt nội dung chat và lọc quyền chat (Sói chat đêm, Dân chat ngày).
 
