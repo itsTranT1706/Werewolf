@@ -75,7 +75,6 @@ services:
       - JWT_EXPIRES_IN=24h
       - NODE_ENV=production
       - PROFILE_SERVICE_URL=http://profile-service:8086
-      - NODE_ENV=production
     # Vai trò: Xử lý đăng ký, đăng nhập người dùng và phát hành JWT token.
 
   room-service:

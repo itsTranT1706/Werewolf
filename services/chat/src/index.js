@@ -4,6 +4,7 @@ const { createProducer, disconnectProducer } = require('./kafka/producer');
 const { createConsumer, disconnectConsumer } = require('./kafka/consumer');
 const handleRoomChat = require('./handlers/roomChat');
 const handleDmChat = require('./handlers/dmChat');
+const handleFactionChat = require('./handlers/factionChat');
 const logger = require('./utils/logger')('chat-service');
 
 async function bootstrap() {
@@ -16,7 +17,8 @@ async function bootstrap() {
     handlers: {
       CHAT_SEND: handleRoomChat,
       CHAT_SEND_ROOM: handleRoomChat,
-      CHAT_SEND_DM: handleDmChat
+      CHAT_SEND_DM: handleDmChat,
+      CHAT_SEND_FACTION: handleFactionChat
     }
   });
 
