@@ -93,9 +93,9 @@ services:
     depends_on:
       database:
         condition: service_healthy
+      profile-service:
+        condition: service_started
     restart: unless-stopped
-      - database
-      - profile-service
     environment:
       - PORT=8081
       - DATABASE_URL=postgresql://postgres:postgres@database:5432/profile_service_db?schema=public
