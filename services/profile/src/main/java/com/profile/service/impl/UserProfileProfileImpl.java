@@ -57,6 +57,15 @@ public class UserProfileProfileImpl implements IUserProfileService {
         return userMapper.userProfileToUserProfileResponse(savedUserProfile);
     }
 
+    @Override
+    public UserProfileResponse getProfile(String userId) {
+        log.info("Getting profile for user id: {}", userId);
+
+        UserProfile userProfile = userProfileRepository.findById(userId)
+                .orElseThrow(() -> new AppException("User not found with id: " + userId));
+
+        return userMapper.userProfileToUserProfileResponse(userProfile);
+    }
 
     @Override
     @Transactional

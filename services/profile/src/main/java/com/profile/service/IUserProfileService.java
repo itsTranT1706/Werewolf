@@ -8,5 +8,7 @@ public interface IUserProfileService {
     UserProfileResponse initProfile(InitProfileRequest request);
 //    UserProfileResponse createUser(CreateUserRequest request);
 
+    UserProfileResponse getProfile(String userId);
+
     UserProfileResponse updateProfile(String userId, UpdateProfileRequest request);
 }
