@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { jwtConfig, validateJwtConfig } = require('../config/jwt');
 
 /**
  * Generate a JWT token for a user
@@ -8,14 +9,8 @@ const jwt = require('jsonwebtoken');
  * @returns {string} JWT token
  */
 const generateToken = (payload) => {
-    const secret = process.env.JWT_SECRET;
-    const expiresIn = process.env.JWT_EXPIRES_IN || '24h';
-
-    if (!secret) {
-        throw new Error('JWT_SECRET is not defined in environment variables');
-    }
-
-    return jwt.sign(payload, secret, { expiresIn });
+    validateJwtConfig();
+    return jwt.sign(payload, jwtConfig.secret, { expiresIn: jwtConfig.expiresIn });
 };
 
 /**
@@ -25,13 +20,8 @@ const generateToken = (payload) => {
  * @throws {Error} If token is invalid or expired
  */
 const verifyToken = (token) => {
-    const secret = process.env.JWT_SECRET;
-
-    if (!secret) {
-        throw new Error('JWT_SECRET is not defined in environment variables');
-    }
-
-    return jwt.verify(token, secret);
+    validateJwtConfig();
+    return jwt.verify(token, jwtConfig.secret);
 };
 
 module.exports = {

@@ -13,7 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/user-profile")
+@RequestMapping("/api/v1/user-profile")
 @RequiredArgsConstructor
 @Slf4j
 public class UserController {
@@ -25,6 +25,12 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserProfileResponse>> initProfile(@RequestBody InitProfileRequest request) {
         UserProfileResponse response = userService.initProfile(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+    }
+
+    @GetMapping("/{id}")
+    public ApiResponse<UserProfileResponse> getProfile(@PathVariable String id) {
+        UserProfileResponse response = userService.getProfile(id);
+        return ApiResponse.success(response);
     }
 
     @PutMapping("/{id}")

@@ -1,9 +1,12 @@
-const bcrypt = require('bcryptjs');
-const { PrismaClient } = require('@prisma/client');
-const { generateToken } = require('../utils/jwt');
+const authService = require('../services/authService');
 const { registerSchema, loginSchema } = require('../validators/authValidators');
+const HTTP_STATUS = require('../constants/httpStatus');
+const ERROR_MESSAGES = require('../constants/errorMessages');
 
-const prisma = new PrismaClient();
+/**
+ * Auth Controller
+ * Handles HTTP requests and responses for authentication
+ */
 
 /**
  * Register a new user
@@ -13,59 +16,19 @@ const register = async (req, res) => {
     try {
         // Validate input
         const validatedData = registerSchema.parse(req.body);
-        const { username, email, password } = validatedData;
 
-        // Check if user already exists
-        const existingUser = await prisma.user.findFirst({
-            where: {
-                OR: [
-                    { email },
-                    { username },
-                ],
-            },
-        });
+        // Call service layer
+        const result = await authService.register(validatedData);
 
-        if (existingUser) {
-            if (existingUser.email === email) {
-                return res.status(400).json({
-                    error: 'Email already exists',
-                });
-            }
-            if (existingUser.username === username) {
-                return res.status(400).json({
-                    error: 'Username already exists',
-                });
-            }
-        }
-
-        // Hash password
-        const saltRounds = 10;
-        const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-        // Create user
-        const user = await prisma.user.create({
-            data: {
-                username,
-                email,
-                password: hashedPassword,
-            },
-            select: {
-                id: true,
-                username: true,
-                email: true,
-                createdAt: true,
-            },
-        });
-
-        return res.status(201).json({
+        return res.status(HTTP_STATUS.CREATED).json({
             message: 'User created successfully',
-            userId: user.id,
+            ...result,
         });
     } catch (error) {
         // Validation error from Zod
         if (error.name === 'ZodError') {
-            return res.status(400).json({
-                error: 'Validation failed',
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                error: ERROR_MESSAGES.VALIDATION_FAILED,
                 details: error.errors.map((err) => ({
                     field: err.path.join('.'),
                     message: err.message,
@@ -73,9 +36,17 @@ const register = async (req, res) => {
             });
         }
 
+        // Business logic errors
+        if (error.message === ERROR_MESSAGES.EMAIL_ALREADY_EXISTS ||
+            error.message === ERROR_MESSAGES.USERNAME_ALREADY_EXISTS) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                error: error.message,
+            });
+        }
+
         console.error('Registration error:', error);
-        return res.status(500).json({
-            error: 'Internal server error during registration',
+        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+            error: ERROR_MESSAGES.REGISTRATION_ERROR,
         });
     }
 };
@@ -88,51 +59,16 @@ const login = async (req, res) => {
     try {
         // Validate input
         const validatedData = loginSchema.parse(req.body);
-        const { emailOrUsername, password } = validatedData;
 
-        // Find user by email or username
-        const user = await prisma.user.findFirst({
-            where: {
-                OR: [
-                    { email: emailOrUsername },
-                    { username: emailOrUsername },
-                ],
-            },
-        });
+        // Call service layer
+        const result = await authService.login(validatedData);
 
-        if (!user) {
-            return res.status(401).json({
-                error: 'Invalid credentials',
-            });
-        }
-
-        // Compare password
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-
-        if (!isPasswordValid) {
-            return res.status(401).json({
-                error: 'Invalid credentials',
-            });
-        }
-
-        // Generate JWT token
-        const token = generateToken({
-            id: user.id,
-            username: user.username,
-        });
-
-        return res.status(200).json({
-            token,
-            user: {
-                id: user.id,
-                username: user.username,
-            },
-        });
+        return res.status(HTTP_STATUS.OK).json(result);
     } catch (error) {
         // Validation error from Zod
         if (error.name === 'ZodError') {
-            return res.status(400).json({
-                error: 'Validation failed',
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                error: ERROR_MESSAGES.VALIDATION_FAILED,
                 details: error.errors.map((err) => ({
                     field: err.path.join('.'),
                     message: err.message,
@@ -140,9 +76,16 @@ const login = async (req, res) => {
             });
         }
 
+        // Invalid credentials
+        if (error.message === ERROR_MESSAGES.INVALID_CREDENTIALS) {
+            return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+                error: error.message,
+            });
+        }
+
         console.error('Login error:', error);
-        return res.status(500).json({
-            error: 'Internal server error during login',
+        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+            error: ERROR_MESSAGES.LOGIN_ERROR,
         });
     }
 };
@@ -152,7 +95,7 @@ const login = async (req, res) => {
  * @route GET /me
  */
 const healthCheck = async (req, res) => {
-    return res.status(200).json({
+    return res.status(HTTP_STATUS.OK).json({
         message: 'Auth service is healthy',
         timestamp: new Date().toISOString(),
     });

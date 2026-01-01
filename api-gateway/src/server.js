@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
 const { authMiddleware } = require('./auth');
@@ -8,6 +9,17 @@ const { setupRoutes } = require('./routeLoader');
 
 async function createApp() {
   const app = express();
+
+  // CORS must be FIRST middleware
+  app.use(cors({
+    origin: "http://localhost:3000",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }));
+
+  // JSON parser - must come before routes
+  app.use(express.json());
 
   // ===== PUBLIC ROUTES (NO AUTH) =====
   app.get('/health', (_req, res) => {
@@ -20,7 +32,6 @@ async function createApp() {
   // ===== PROTECTED ROUTES (REQUIRE AUTH) =====
   // JSON parser for other routes
   app.use(express.json());
-
   // All other routes require authentication
   app.use(authMiddleware);
 
@@ -38,8 +49,8 @@ async function startServer() {
 
   const kafka = createKafkaClient();
   const producer = await createProducer(kafka);
-  const { userSockets } = setupSocket(io, producer);
-  const consumer = await createBroadcastConsumer(kafka, { io, userSockets });
+  const { userSockets, roomFactions } = setupSocket(io, producer);
+  const consumer = await createBroadcastConsumer(kafka, { io, userSockets, roomFactions });
 
   const port = process.env.PORT || 80;
   await new Promise((resolve) => httpServer.listen(port, resolve));

@@ -1,0 +1,10 @@
+target/
+.idea/
+.git/
+.gitignore
+*.md
+.DS_Store
+*.log
+*.class
+*.jar
+!target/*.jar

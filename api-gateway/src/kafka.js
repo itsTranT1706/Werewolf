@@ -18,7 +18,7 @@ async function createProducer(kafka) {
   return producer;
 }
 
-async function createBroadcastConsumer(kafka, { io, userSockets }) {
+async function createBroadcastConsumer(kafka, { io, userSockets, roomFactions }) {
   const consumer = kafka.consumer({ groupId: 'api-gateway-broadcast' });
   await consumer.connect();
   await consumer.subscribe({ topic: 'evt.broadcast', fromBeginning: false });
@@ -37,9 +37,37 @@ async function createBroadcastConsumer(kafka, { io, userSockets }) {
       };
 
       try {
+        // Handle faction chat - only emit to users with matching faction
+        if (event.type === 'CHAT_MESSAGE_FACTION' && roomId) {
+          const faction = event.payload?.faction;
+          if (!faction) return;
+          
+          const factionMap = roomFactions?.get(roomId);
+          if (!factionMap) {
+            console.warn('No faction map found for room', { roomId, faction });
+            return;
+          }
+          
+          // Emit to all users in the room with matching faction
+          const socketsInRoom = await io.in(roomId).fetchSockets();
+          socketsInRoom.forEach((socket) => {
+            const socketUserId = socket.data.userId;
+            const userFaction = factionMap.get(socketUserId);
+            
+            if (userFaction === faction) {
+              socket.emit(event.type, data);
+            }
+          });
+          
+          console.log('Faction chat broadcast', { roomId, faction, recipientCount: socketsInRoom.length });
+          return;
+        }
+        
+        // Handle other event types
         if (roomId) {
           io.to(roomId).emit(event.type, data);
         } else if (targetUserId) {
+          io.to(`user:${targetUserId}`).emit(event.type, data);
           const sockets = userSockets.get(targetUserId);
           if (sockets && sockets.size) {
             sockets.forEach((id) => io.to(id).emit(event.type, data));
