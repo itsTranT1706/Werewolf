@@ -38,7 +38,7 @@ function ProfileButton({ username, avatar }) {
     <button
       onClick={() => navigate('/profile')}
       className="group relative flex items-center gap-3 transition-transform hover:scale-105 active:scale-95"
-      title="View Profile"
+      title="Xem Hồ Sơ"
     >
       {/* Username tag (shows on hover) */}
       <div className="absolute right-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -49,7 +49,7 @@ function ProfileButton({ username, avatar }) {
             borderRight: '2px solid rgba(201,162,39,0.5)',
           }}
         >
-          {username || 'Traveler'}
+          {username || 'Lữ Khách'}
         </div>
       </div>
 

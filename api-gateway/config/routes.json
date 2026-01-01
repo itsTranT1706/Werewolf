@@ -34,39 +34,39 @@
             "target": "http://profile-service:8086",
             "routes": [
                 {
-                    "path": "/api/user-profile/internal/init",
+                    "path": "/api/v1/user-profile/internal/init",
                     "method": "POST",
-                    "targetPath": "/api/user-profile/internal/init",
+                    "targetPath": "/api/v1/user-profile/internal/init",
                     "public": false
                 },
                 {
-                    "path": "/api/user-profile/{id}",
+                    "path": "/api/v1/user-profile/{id}",
                     "method": "PUT",
-                    "targetPath": "/api/user-profile/{id}",
+                    "targetPath": "/api/v1/user-profile/{id}",
                     "public": false
                 },
                 {
-                    "path": "/api/user-profile/{id}",
+                    "path": "/api/v1/user-profile/{id}",
                     "method": "GET",
-                    "targetPath": "/api/user-profile/{id}",
+                    "targetPath": "/api/v1/user-profile/{id}",
                     "public": true
                 },
                 {
-                    "path": "/api/game-history/user/{userId}/stats",
+                    "path": "/api/v1/game-history/user/{userId}/stats",
                     "method": "GET",
-                    "targetPath": "/api/game-history/user/{userId}/stats",
+                    "targetPath": "/api/v1/game-history/user/{userId}/stats",
                     "public": true
                 },
                 {
-                    "path": "/api/game-history/user/{userId}",
+                    "path": "/api/v1/game-history/user/{userId}",
                     "method": "GET",
-                    "targetPath": "/api/game-history/user/{userId}",
+                    "targetPath": "/api/v1/game-history/user/{userId}",
                     "public": false
                 },
                 {
-                    "path": "/api/game-history/*",
+                    "path": "/api/v1/game-history/*",
                     "method": "ALL",
-                    "targetPath": "/api/game-history/*",
+                    "targetPath": "/api/v1/game-history/*",
                     "public": false
                 }
             ]

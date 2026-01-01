@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react'
 import GameHUD from '@/components/game/GameHUD'
-import { authApi } from '@/api'
+import { profileApi, authApi } from '@/api'
 
 export default function GamePage() {
   const [user, setUser] = useState(null)
@@ -17,8 +17,8 @@ export default function GamePage() {
 
   const loadUser = async () => {
     try {
-      const data = await authApi.getCurrentUser()
-      setUser(data)
+      const data = await profileApi.getMe()
+      setUser(data.result)
     } catch {
       // Silently fail - HUD will show defaults
     }
@@ -80,7 +80,7 @@ export default function GamePage() {
             `
           }}
         >
-          Hello World
+          Ma Sói
         </h1>
 
         {/* Subtitle */}
@@ -90,7 +90,7 @@ export default function GamePage() {
             textShadow: '0 2px 4px rgba(0, 0, 0, 0.8)'
           }}
         >
-          The Hunt Begins
+          Cuộc Săn Bắt Đầu
         </p>
 
         {/* Decorative bottom flourish */}

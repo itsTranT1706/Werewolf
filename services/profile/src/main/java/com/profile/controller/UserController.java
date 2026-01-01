@@ -13,7 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/user-profile")
+@RequestMapping("/api/v1/user-profile")
 @RequiredArgsConstructor
 @Slf4j
 public class UserController {
