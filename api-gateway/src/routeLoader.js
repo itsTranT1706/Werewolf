@@ -48,13 +48,22 @@ function setupRoutes(app) {
     routes.forEach(route => {
       const { path, method, targetPath, public: isPublic } = route;
 
+      // Convert {param} to :param for Express routing
+      const expressPath = path.replace(/\{(\w+)\}/g, ':$1');
+
       // Determine Express method
       const expressMethod = method.toLowerCase() === 'all' ? 'all' : method.toLowerCase();
 
       // Create handler
       const handler = async (req, res) => {
-        // Build target URL
+        // Build target URL - replace {param} with actual values from req.params
         let finalTargetPath = targetPath;
+        
+        // Replace path parameters
+        Object.entries(req.params).forEach(([key, value]) => {
+          finalTargetPath = finalTargetPath.replace(`{${key}}`, value);
+        });
+
         if (targetPath.includes('*')) {
           // Handle wildcard routes
           const basePath = path.replace('*', '');
@@ -67,9 +76,9 @@ function setupRoutes(app) {
       };
 
       // Register route with Express
-      app[expressMethod](path, express.json(), handler);
+      app[expressMethod](expressPath, express.json(), handler);
 
-      console.log(`[ROUTE] Registered ${method} ${path} -> ${serviceName}${targetPath} (public: ${isPublic})`);
+      console.log(`[ROUTE] Registered ${method} ${expressPath} -> ${serviceName}${targetPath} (public: ${isPublic})`);
     });
   });
 }
