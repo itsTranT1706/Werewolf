@@ -20,8 +20,18 @@ FROM eclipse-temurin:17-jre-alpine
 
 WORKDIR /app
 
+# Install PostgreSQL client for database initialization
+RUN apk add --no-cache postgresql-client
+
 # Copy the built JAR from builder stage
 COPY --from=builder /app/target/*.jar app.jar
+
+# Copy database schema files
+COPY db ./db
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Expose the application port
 EXPOSE 8086
@@ -29,5 +39,5 @@ EXPOSE 8086
 # Set JVM options for containerized environment
 ENV JAVA_OPTS="-Xmx512m -Xms256m"
 
-# Run the application
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+# Use entrypoint script
+ENTRYPOINT ["docker-entrypoint.sh"]
