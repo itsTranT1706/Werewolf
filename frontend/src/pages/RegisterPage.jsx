@@ -28,27 +28,27 @@ export default function RegisterPage() {
     const newErrors = {}
     
     if (!formData.email) {
-      newErrors.email = 'Email is required'
+      newErrors.email = 'Vui lòng nhập email'
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Invalid email format'
+      newErrors.email = 'Email không hợp lệ'
     }
 
     if (!formData.username) {
-      newErrors.username = 'Username is required'
+      newErrors.username = 'Vui lòng nhập tên người dùng'
     } else if (formData.username.length < 3) {
-      newErrors.username = 'Username must be at least 3 characters'
+      newErrors.username = 'Tên người dùng phải có ít nhất 3 ký tự'
     } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
-      newErrors.username = 'Only letters, numbers, and underscores'
+      newErrors.username = 'Chỉ được dùng chữ cái, số và dấu gạch dưới'
     }
     
     if (!formData.password) {
-      newErrors.password = 'Password is required'
+      newErrors.password = 'Vui lòng nhập mật khẩu'
     } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters'
+      newErrors.password = 'Mật khẩu phải có ít nhất 6 ký tự'
     }
 
     if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match'
+      newErrors.confirmPassword = 'Mật khẩu không khớp'
     }
 
     setErrors(newErrors)
@@ -69,7 +69,7 @@ export default function RegisterPage() {
       navigate('/login', { state: { registered: true } })
     } catch (error) {
       console.log(error.original?.response?.data?.error)
-      const message = error.original?.response?.data?.error || 'Failed to join the village. Try again.'
+      const message = error.original?.response?.data?.error || 'Không thể gia nhập làng. Vui lòng thử lại.'
       setServerError(message)
     } finally {
       setLoading(false)
@@ -84,10 +84,10 @@ export default function RegisterPage() {
           <ScrollIcon className="w-16 h-16 text-gold opacity-80" />
         </div>
         <h2 className="font-medieval text-2xl text-gold-glow tracking-wide">
-          Join the Hunt
+          Tham Gia Cuộc Săn
         </h2>
         <p className="font-fantasy text-parchment/60 text-sm mt-1">
-          Sign the ancient scroll to enter
+          Ký vào cuộn giấy cổ để bước vào
         </p>
       </div>
 
@@ -103,7 +103,7 @@ export default function RegisterPage() {
         <MedievalInput
           type="email"
           name="email"
-          placeholder="Your Email"
+          placeholder="Email của bạn"
           value={formData.email}
           onChange={handleChange}
           error={errors.email}
@@ -114,7 +114,7 @@ export default function RegisterPage() {
         <MedievalInput
           type="text"
           name="username"
-          placeholder="Choose a Name"
+          placeholder="Chọn tên người dùng"
           value={formData.username}
           onChange={handleChange}
           error={errors.username}
@@ -125,7 +125,7 @@ export default function RegisterPage() {
         <MedievalInput
           type="password"
           name="password"
-          placeholder="Secret Password"
+          placeholder="Mật khẩu bí mật"
           value={formData.password}
           onChange={handleChange}
           error={errors.password}
@@ -136,7 +136,7 @@ export default function RegisterPage() {
         <MedievalInput
           type="password"
           name="confirmPassword"
-          placeholder="Confirm Password"
+          placeholder="Xác nhận mật khẩu"
           value={formData.confirmPassword}
           onChange={handleChange}
           error={errors.confirmPassword}
@@ -150,19 +150,19 @@ export default function RegisterPage() {
             loading={loading}
             className="w-full"
           >
-            Sign the Scroll
+            Ký Vào Cuộn Giấy
           </MedievalButton>
         </div>
       </form>
 
-      <Divider text="or" />
+      <Divider text="hoặc" />
 
       {/* Login link */}
       <div className="text-center">
         <p className="font-fantasy text-parchment/70 text-sm">
-          Already a villager?{' '}
+          Đã là dân làng?{' '}
           <Link to="/login" className="link-fantasy font-semibold">
-            Enter the Village
+            Bước Vào Làng
           </Link>
         </p>
       </div>

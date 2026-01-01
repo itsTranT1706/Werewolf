@@ -38,10 +38,10 @@ export default function AuthLayout() {
         {/* Game title */}
         <div className="mb-8 text-center">
           <h1 className="font-medieval text-5xl md:text-6xl text-gold-glow tracking-wider">
-            WEREWOLF
+            MA SÓI
           </h1>
           <p className="font-fantasy text-parchment/70 text-sm tracking-[0.3em] mt-2 uppercase">
-            The Village Awaits
+            Ngôi Làng Đang Chờ Đợi
           </p>
         </div>
 
@@ -51,7 +51,7 @@ export default function AuthLayout() {
         {/* Footer */}
         <div className="mt-8 text-center">
           <p className="font-fantasy text-parchment/40 text-xs tracking-wider">
-            © The Ancient Order of Wolves
+            © Hội Sói Cổ Đại
           </p>
         </div>
       </div>

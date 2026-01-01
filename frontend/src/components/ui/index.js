@@ -3,3 +3,7 @@ export { default as MedievalInput } from './MedievalInput'
 export { default as MedievalPanel } from './MedievalPanel'
 export { default as Divider } from './Divider'
 export { notify, NotificationProvider } from './Notification'
+export { default as BackButton, BackButtonCompact } from './BackButton'
+
+// Icons - Reusable SVG icons
+export * from './Icons'

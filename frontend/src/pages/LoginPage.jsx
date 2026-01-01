@@ -27,11 +27,11 @@ export default function LoginPage() {
     const newErrors = {}
     
     if (!formData.identifier) {
-      newErrors.identifier = 'Email or username is required'
+      newErrors.identifier = 'Vui lòng nhập email hoặc tên người dùng'
     }
     
     if (!formData.password) {
-      newErrors.password = 'Password is required'
+      newErrors.password = 'Vui lòng nhập mật khẩu'
     }
 
     setErrors(newErrors)
@@ -48,12 +48,12 @@ export default function LoginPage() {
 
     try {
       await authApi.login(formData.identifier, formData.password)
-      notify.success('Welcome back, traveler!', 'Login Successful')
+      notify.success('Chào mừng trở lại, lữ khách!', 'Đăng Nhập Thành Công')
       navigate('/game')
     } catch (error) {
-      const message = error.message || 'Failed to enter the village. Try again.'
+      const message = error.message || 'Không thể vào làng. Vui lòng thử lại.'
       setServerError(message)
-      notify.error(message, 'Login Failed')
+      notify.error(message, 'Đăng Nhập Thất Bại')
     } finally {
       setLoading(false)
     }
@@ -67,10 +67,10 @@ export default function LoginPage() {
           <WolfIcon className="w-16 h-16 text-gold opacity-80" />
         </div>
         <h2 className="font-medieval text-2xl text-gold-glow tracking-wide">
-          Enter the Village
+          Bước Vào Làng
         </h2>
         <p className="font-fantasy text-parchment/60 text-sm mt-1">
-          The night is dark and full of secrets
+          Đêm tối đầy những bí mật
         </p>
       </div>
 
@@ -86,7 +86,7 @@ export default function LoginPage() {
         <MedievalInput
           type="text"
           name="identifier"
-          placeholder="Email or Username"
+          placeholder="Email hoặc Tên người dùng"
           value={formData.identifier}
           onChange={handleChange}
           error={errors.identifier}
@@ -97,7 +97,7 @@ export default function LoginPage() {
         <MedievalInput
           type="password"
           name="password"
-          placeholder="Secret Password"
+          placeholder="Mật khẩu bí mật"
           value={formData.password}
           onChange={handleChange}
           error={errors.password}
@@ -111,19 +111,19 @@ export default function LoginPage() {
             loading={loading}
             className="w-full"
           >
-            Enter
+            Vào Làng
           </MedievalButton>
         </div>
       </form>
 
-      <Divider text="or" />
+      <Divider text="hoặc" />
 
       {/* Register link */}
       <div className="text-center">
         <p className="font-fantasy text-parchment/70 text-sm">
-          New to the village?{' '}
+          Mới đến làng?{' '}
           <Link to="/register" className="link-fantasy font-semibold">
-            Join the Hunt
+            Tham Gia Cuộc Săn
           </Link>
         </p>
       </div>

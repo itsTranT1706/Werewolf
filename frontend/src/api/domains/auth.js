@@ -5,6 +5,7 @@
  * - Login / Logout
  * - Registration
  * - Token management
+ * - JWT decode utilities
  * - Password reset (future)
  */
 
@@ -12,6 +13,51 @@ import client from '../client'
 
 const TOKEN_KEY = 'token'
 const REFRESH_TOKEN_KEY = 'refreshToken'
+
+// ============================================
+// Token Utilities (exported for reuse)
+// ============================================
+
+/**
+ * Decode JWT token to get payload
+ * @returns {object|null} Decoded token payload or null
+ */
+export function decodeToken() {
+  const token = localStorage.getItem(TOKEN_KEY)
+  if (!token) return null
+  
+  try {
+    const payload = token.split('.')[1]
+    const decoded = JSON.parse(atob(payload))
+    return decoded
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Get current user's ID from JWT token
+ * @returns {string|null} User ID or null
+ */
+export function getCurrentUserId() {
+  const decoded = decodeToken()
+  // Common JWT claims for user ID: sub, userId, id, user_id
+  return decoded?.sub || decoded?.userId || decoded?.id || decoded?.user_id || null
+}
+
+/**
+ * Check if token is expired
+ * @returns {boolean}
+ */
+export function isTokenExpired() {
+  const decoded = decodeToken()
+  if (!decoded?.exp) return true
+  return Date.now() >= decoded.exp * 1000
+}
+
+// ============================================
+// Auth API
+// ============================================
 
 export const authApi = {
   /**
@@ -21,7 +67,7 @@ export const authApi = {
    * @returns {Promise<{token: string, user: object}>}
    */
   login: async (emailOrUsername, password) => {
-    const { data } = await client.post('/auth/login', { emailOrUsername, password })
+    const { data } = await client.post('auth/login', { emailOrUsername, password })
     
     // Store token on successful login
     if (data.token) {
@@ -40,7 +86,7 @@ export const authApi = {
    * @returns {Promise<{message: string}>}
    */
   register: async ({ email, username, password }) => {
-    const { data } = await client.post('/auth/register', { 
+    const { data } = await client.post('auth/register', { 
       email, 
       username, 
       password 
@@ -77,8 +123,22 @@ export const authApi = {
    * @returns {boolean}
    */
   isAuthenticated: () => {
-    return !!localStorage.getItem(TOKEN_KEY)
+    const token = localStorage.getItem(TOKEN_KEY)
+    if (!token) return false
+    return !isTokenExpired()
   },
+
+  /**
+   * Get decoded token data
+   * @returns {object|null}
+   */
+  getTokenData: decodeToken,
+
+  /**
+   * Get current user's ID from token
+   * @returns {string|null}
+   */
+  getCurrentUserId,
 
   /**
    * Get current user profile (from token or API)

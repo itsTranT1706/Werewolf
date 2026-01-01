@@ -137,25 +137,25 @@ function FantasyToast({ type, title, message, visible }) {
  *   notify.info('A new day has begun')
  */
 export const notify = {
-  success: (message, title = 'Success') => {
+  success: (message, title = 'Thành Công') => {
     toast.custom((t) => (
       <FantasyToast type="success" title={title} message={message} visible={t.visible} />
     ))
   },
 
-  error: (message, title = 'Error') => {
+  error: (message, title = 'Lỗi') => {
     toast.custom((t) => (
       <FantasyToast type="error" title={title} message={message} visible={t.visible} />
     ), { duration: 5000 })
   },
 
-  warning: (message, title = 'Warning') => {
+  warning: (message, title = 'Cảnh Báo') => {
     toast.custom((t) => (
       <FantasyToast type="warning" title={title} message={message} visible={t.visible} />
     ))
   },
 
-  info: (message, title = 'Notice') => {
+  info: (message, title = 'Thông Báo') => {
     toast.custom((t) => (
       <FantasyToast type="info" title={title} message={message} visible={t.visible} />
     ))
@@ -164,7 +164,7 @@ export const notify = {
   // Game-specific notifications
   gameEvent: (message) => {
     toast.custom((t) => (
-      <FantasyToast type="info" title="⚔ Game Event" message={message} visible={t.visible} />
+      <FantasyToast type="info" title="⚔ Sự Kiện" message={message} visible={t.visible} />
     ))
   },
 
@@ -172,8 +172,8 @@ export const notify = {
     toast.custom((t) => (
       <FantasyToast 
         type="warning" 
-        title="☽ Phase Change" 
-        message={`The ${phase} has begun...`} 
+        title="☽ Chuyển Pha" 
+        message={`${phase} đã bắt đầu...`} 
         visible={t.visible} 
       />
     ), { duration: 5000 })
@@ -183,8 +183,8 @@ export const notify = {
     toast.custom((t) => (
       <FantasyToast 
         type="error" 
-        title="☠ Death" 
-        message={`${playerName} has been eliminated`} 
+        title="☠ Tử Vong" 
+        message={`${playerName} đã bị loại`} 
         visible={t.visible} 
       />
     ), { duration: 6000 })
