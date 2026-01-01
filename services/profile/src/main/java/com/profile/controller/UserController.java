@@ -27,6 +27,12 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
     }
 
+    @GetMapping("/{id}")
+    public ApiResponse<UserProfileResponse> getProfile(@PathVariable String id) {
+        UserProfileResponse response = userService.getProfile(id);
+        return ApiResponse.success(response);
+    }
+
     @PutMapping("/{id}")
     public ApiResponse<UserProfileResponse> updateProfile(
             @PathVariable String id,
