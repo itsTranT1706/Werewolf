@@ -47,9 +47,9 @@ services:
   database: # chứa User DB và Room DB
     image: postgres:15
     environment:
-      - POSTGRES_DB=profile_service_db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      POSTGRES_DB: profile_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     healthcheck:
