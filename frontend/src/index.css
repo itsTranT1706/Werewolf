@@ -2,7 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Fantasy Game Base Styles */
+/* ============================================
+   CUSTOM CURSORS - Dark Fantasy Theme
+   Geometric 3D Arrow with beveled edges
+   ============================================ */
+
+/* Default cursor - Beveled arrow */
+*, *::before, *::after {
+  cursor: url('/assets/cursors/arrow-default.svg') 2 2, auto;
+}
+
+/* Pointer cursor for interactive elements */
+a, button, [role="button"], 
+input[type="submit"], input[type="button"],
+.cursor-pointer, [onclick] {
+  cursor: url('/assets/cursors/arrow-pointer.svg') 2 2, pointer;
+}
+
+/* Text input cursor */
+input[type="text"], input[type="email"], 
+input[type="password"], input[type="search"],
+textarea, [contenteditable="true"] {
+  cursor: url('/assets/cursors/arrow-default.svg') 2 2, text;
+}
+
+/* Night phase cursor - Darker tones */
+body.phase-night *, 
+body.phase-night *::before, 
+body.phase-night *::after {
+  cursor: url('/assets/cursors/arrow-night.svg') 2 2, auto;
+}
+
+body.phase-night a, 
+body.phase-night button, 
+body.phase-night [role="button"],
+body.phase-night .cursor-pointer {
+  cursor: url('/assets/cursors/arrow-night.svg') 2 2, pointer;
+}
+
+/* ============================================
+   Fantasy Game Base Styles
+   ============================================ */
 * {
   box-sizing: border-box;
 }
