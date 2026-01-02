@@ -1,9 +1,14 @@
+name: werewolf
+
 services:
   frontend:
-    build: ./frontend/
+    profiles: ["full"]
+    build:
+      context: ./frontend
     ports:
       - "3000:3000"
-
+    depends_on:
+      - api-gateway
     environment: []
 
   zookeeper:
@@ -13,11 +18,17 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
     ports:
       - "2181:2181"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   kafka:
     image: confluentinc/cp-kafka:7.6.0
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy
     ports:
       - "9092:9092"
     environment:
@@ -29,121 +40,130 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-    # Vai trò: Trái tim của hệ thống (Event Bus), giúp các service giao tiếp bất đồng bộ.
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
 
-  database: # chứa User DB và Room DB
+  database:
     image: postgres:15
     environment:
-      - POSTGRES_DB=profile_service_db
-      - POSTGRES_USER:postgres
-      - POSTGRES_PASSWORD=postgres
+      POSTGRES_DB: profile_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
-    # Vai trò: Lưu trữ dữ liệu lâu dài (User Profile, Lịch sử trận đấu).
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:latest
     ports:
       - "6379:6379"
-    # Vai trò: Cache trạng thái ván game đang diễn ra để truy xuất cực nhanh.
 
-  # --- CỔNG (GATEWAY) ---
   api-gateway:
-    build: ./api-gateway
+    build:
+      context: ./api-gateway
     ports:
       - "80:80"
     depends_on:
       - kafka
       - auth-service
     environment:
-      - KAFKA_BROKERS=kafka:9092
-      - JWT_SECRET=ww_s3cr3t_k3y_pr0d_2025_g4m3_4uth_t0k3n_s1gn1ng
-      - AUTH_SERVICE_URL=http://auth-service:8081
+      KAFKA_BROKERS: kafka:9092
+      JWT_SECRET: ww_s3cr3t_k3y_pr0d_2025_g4m3_4uth_t0k3n_s1gn1ng
+      AUTH_SERVICE_URL: http://auth-service:8081
 
-    # Vai trò: Quản lý WebSocket (Socket.io) và REST. Chuyển đổi Client Action sang Kafka Message.
-
-  # --- DỊCH VỤ LOGIC (MICROSERVICES) ---
   auth-service:
-    build: ./services/auth
+    build:
+      context: ./services/auth
     ports:
       - "8081:8081"
     depends_on:
       - database
     environment:
-      - PORT=8081
-      - DATABASE_URL=postgresql://postgres:postgres@database:5432/profile_service_db?schema=public
-      - JWT_SECRET=ww_s3cr3t_k3y_pr0d_2025_g4m3_4uth_t0k3n_s1gn1ng
-      - JWT_EXPIRES_IN=24h
-      - NODE_ENV=production
-      - PROFILE_SERVICE_URL=http://profile-service:8086
-    # Vai trò: Xử lý đăng ký, đăng nhập người dùng và phát hành JWT token.
+      PORT: 8081
+      DATABASE_URL: postgresql://postgres:postgres@database:5432/profile_service_db?schema=public
+      JWT_SECRET: ww_s3cr3t_k3y_pr0d_2025_g4m3_4uth_t0k3n_s1gn1ng
+      JWT_EXPIRES_IN: 24h
+      NODE_ENV: production
+      PROFILE_SERVICE_URL: http://profile-service:8086
 
   room-service:
-    build: ./services/room
+    profiles: ["full"]
+    build:
+      context: ./services/room
     ports:
       - "8082:8082"
     depends_on:
       - kafka
       - database
     environment:
-      - PORT=8082
-      - KAFKA_BROKERS=kafka:9092
-    # Vai trò: Quản lý tạo/tham gia phòng, danh sách người chơi chờ.
+      PORT: 8082
+      KAFKA_BROKERS: kafka:9092
 
   gameplay-service:
-    build: ./services/gameplay
+    profiles: ["full"]
+    build:
+      context: ./services/gameplay
     ports:
       - "8083:8083"
     depends_on:
       - kafka
       - redis
     environment:
-      - KAFKA_BROKERS=kafka:9092
-      - PORT=8083
-    # Vai trò: State Machine chính (Điều phối Ngày/Đêm, kỹ năng nhân vật, tính toán người chết).
+      KAFKA_BROKERS: kafka:9092
+      PORT: 8083
 
   vote-service:
-    build: ./services/vote
+    profiles: ["full"]
+    build:
+      context: ./services/vote
     ports:
       - "8084:8084"
     depends_on:
       - kafka
     environment:
-      - KAFKA_BROKERS=kafka:9092
-      - PORT=8084
-    # Vai trò: Xử lý đếm phiếu biểu quyết thời gian thực và trả kết quả cho Gameplay.
+      KAFKA_BROKERS: kafka:9092
+      PORT: 8084
 
   chat-service:
-    build: ./services/chat
+    build:
+      context: ./services/chat
     ports:
       - "8085:8085"
     depends_on:
       - kafka
     environment:
-      - KAFKA_BROKERS=kafka:9092
-      - KAFKA_CLIENT_ID=chat-service
-      - KAFKA_GROUP_ID=chat-service-cmd
-      - CMD_TOPIC=cmd.ingest
-      - EVT_TOPIC=evt.broadcast
-      - PORT=8085
-    # Vai trò: Kiểm duyệt nội dung chat và lọc quyền chat (Sói chat đêm, Dân chat ngày).
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_CLIENT_ID: chat-service
+      KAFKA_GROUP_ID: chat-service-cmd
+      CMD_TOPIC: cmd.ingest
+      EVT_TOPIC: evt.broadcast
+      PORT: 8085
 
   profile-service:
-    build: ./services/profile
+    build:
+      context: ./services/profile
     ports:
       - "8086:8086"
     depends_on:
       - database
     environment:
-      - PORT=8086
-      - DB_HOST=database
-      - DB_PORT=5432
-      - DB_NAME=profile_service_db
-      - DB_USERNAME=postgres
-      - DB_PASSWORD=postgres
-    # Vai trò: Xử lý REST request cho Ranking, Stats, Avatar. Không cần Kafka cho các tác vụ Read.
+      PORT: 8086
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_NAME: profile_service_db
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
 
-# --- QUẢN LÝ VOLUME & NETWORK ---
 networks:
   default:
     name: werewolf-network
@@ -151,3 +171,5 @@ networks:
 volumes:
   kafka_data:
   postgres_data:
+    name: werewolf_pgdata
+    external: true

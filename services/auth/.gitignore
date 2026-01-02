@@ -22,9 +22,6 @@ yarn.lock
 .DS_Store
 Thumbs.db
 
-# Prisma
-prisma/migrations/
-
 # Build outputs
 dist/
 build/
