@@ -53,19 +53,12 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d profile_service_db"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 10s
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    command: 
-      - "postgres"
-      - "-c"
-      - "max_connections=200"
-      - "-c"
-      - "idle_in_transaction_session_timeout=60000"
     # Vai trò: Lưu trữ dữ liệu lâu dài (User Profile, Lịch sử trận đấu).
 
   redis:
@@ -103,15 +96,9 @@ services:
       profile-service:
         condition: service_started
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
     environment:
       - PORT=8081
-      - DATABASE_URL=postgresql://postgres:postgres@database:5432/profile_service_db?schema=public&connection_limit=10&pool_timeout=30&connect_timeout=30
+      - DATABASE_URL=postgresql://postgres:postgres@database:5432/profile_service_db?schema=public
       - JWT_SECRET=ww_s3cr3t_k3y_pr0d_2025_g4m3_4uth_t0k3n_s1gn1ng
       - JWT_EXPIRES_IN=24h
       - NODE_ENV=production
