@@ -16,6 +16,7 @@ class Database {
     }
 
     getClient() {
+    getClient() {
         return this.prisma;
     }
 
