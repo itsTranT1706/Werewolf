@@ -20,7 +20,7 @@ export default {
       },
       fontFamily: {
         'medieval': ['MedievalSharp', 'Georgia', 'serif'],
-        'fantasy': ['Cinzel', 'Times New Roman', 'serif'],
+        'fantasy': ['Cormorant Garamond', 'Times New Roman', 'serif'],
       },
       backgroundImage: {
         'wood-texture': "url('/assets/textures/wood-panel.png')",
