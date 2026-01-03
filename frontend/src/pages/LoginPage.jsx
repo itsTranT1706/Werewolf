@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { MedievalPanel, MedievalInput, MedievalButton, Divider, notify } from '@/components/ui'
+import { MedievalPanel, MedievalInput, MedievalButton, Divider, notify, BackButton } from '@/components/ui'
 import { authApi } from '@/api'
 
 export default function LoginPage() {
@@ -60,11 +60,22 @@ export default function LoginPage() {
   }
 
   return (
-    <MedievalPanel className="w-full max-w-md">
-      {/* Panel header */}
-      <div className="text-center mb-6">
+    <div className="w-full max-w-md">
+      {/* Back button */}
+      <div className="mb-4">
+        <BackButton to="/" label="Trở Về Trang Chủ" />
+      </div>
+
+      <MedievalPanel className="w-full">
+        {/* Panel header */}
+        <div className="text-center mb-6">
         <div className="flex justify-center mb-3">
-          <WolfIcon className="w-16 h-16 text-gold opacity-80" />
+          <img 
+            src="/assets/ui/wolf-icon.svg" 
+            alt="Wolf" 
+            className="w-16 h-16 opacity-80"
+            style={{ filter: 'brightness(0) saturate(100%) invert(73%) sepia(61%) saturate(400%) hue-rotate(359deg) brightness(95%) contrast(92%)' }}
+          />
         </div>
         <h2 className="font-medieval text-2xl text-gold-glow tracking-wide">
           Bước Vào Làng
@@ -127,19 +138,12 @@ export default function LoginPage() {
           </Link>
         </p>
       </div>
-    </MedievalPanel>
+      </MedievalPanel>
+    </div>
   )
 }
 
 // Icons
-function WolfIcon({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 64 64" fill="currentColor">
-      <path d="M32 4c-2 0-4 1-6 3l-4 6-8-2c-2 0-3 1-3 3l2 10-6 8c-1 2 0 4 2 5l8 4v12c0 2 1 4 3 5l10 4c1 0 2 0 4-1l10-4c2-1 3-3 3-5V41l8-4c2-1 3-3 2-5l-6-8 2-10c0-2-1-3-3-3l-8 2-4-6c-2-2-4-3-6-3zm-8 24a3 3 0 110 6 3 3 0 010-6zm16 0a3 3 0 110 6 3 3 0 010-6zm-8 10c2 0 4 2 4 4h-8c0-2 2-4 4-4z"/>
-    </svg>
-  )
-}
-
 function UserIcon({ className }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">

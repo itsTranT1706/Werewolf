@@ -63,7 +63,7 @@ Gold gradient divider with optional text.
 
 ### Fonts
 - `font-medieval` (MedievalSharp) - Titles and headers
-- `font-fantasy` (Cinzel) - Body text and labels
+- `font-fantasy` (Cormorant Garamond) - Body text and labels
 
 ## API Integration
 
