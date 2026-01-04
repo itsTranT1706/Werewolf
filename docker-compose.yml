@@ -15,7 +15,7 @@ services:
     ports:
       - "2181:2181"
     healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      test: [ "CMD", "nc", "-z", "localhost", "2181" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -37,14 +37,15 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     healthcheck:
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      test: [ "CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092" ]
       interval: 10s
       timeout: 10s
       retries: 10
       start_period: 30s
     # Vai trò: Trái tim của hệ thống (Event Bus), giúp các service giao tiếp bất đồng bộ.
 
-  database: # chứa User DB và Room DB
+  database:
+    # chứa User DB và Room DB
     image: postgres:15
     environment:
       POSTGRES_DB: profile_service_db
@@ -53,7 +54,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -67,7 +68,7 @@ services:
       - "6379:6379"
     # Vai trò: Cache trạng thái ván game đang diễn ra để truy xuất cực nhanh.
 
-  # --- CỔNG (GATEWAY) ---
+    # --- CỔNG (GATEWAY) ---
   api-gateway:
     build: ./api-gateway
     ports:
@@ -82,10 +83,9 @@ services:
       - KAFKA_BROKERS=kafka:9092
       - JWT_SECRET=ww_s3cr3t_k3y_pr0d_2025_g4m3_4uth_t0k3n_s1gn1ng
       - AUTH_SERVICE_URL=http://auth-service:8081
-
     # Vai trò: Quản lý WebSocket (Socket.io) và REST. Chuyển đổi Client Action sang Kafka Message.
 
-  # --- DỊCH VỤ LOGIC (MICROSERVICES) ---
+    # --- DỊCH VỤ LOGIC (MICROSERVICES) ---
   auth-service:
     build: ./services/auth
     ports:
@@ -105,39 +105,39 @@ services:
       - PROFILE_SERVICE_URL=http://profile-service:8086
     # Vai trò: Xử lý đăng ký, đăng nhập người dùng và phát hành JWT token.
 
-  #room-service:
-  #  build: ./services/room
-  #  ports:
-  #    - "8082:8082"
-  #  depends_on:
-  #    - kafka
-  #    - database
-  #  environment:
-  #    - PORT=8082
-  #    - KAFKA_BROKERS=kafka:9092
+    #room-service:
+    #  build: ./services/room
+    #  ports:
+    #    - "8082:8082"
+    #  depends_on:
+    #    - kafka
+    #    - database
+    #  environment:
+    #    - PORT=8082
+    #    - KAFKA_BROKERS=kafka:9092
     # Vai trò: Quản lý tạo/tham gia phòng, danh sách người chơi chờ.
 
-  #gameplay-service:
-  #  build: ./services/gameplay
-  #  ports:
-  #    - "8083:8083"
-  #  depends_on:
-  #    - kafka
-  #    - redis
-  #  environment:
-  #    - KAFKA_BROKERS=kafka:9092
-  #    - PORT=8083
+  gameplay-service:
+    build: ./services/gameplay
+    ports:
+      - "8083:8083"
+    depends_on:
+      - kafka
+      - redis
+    environment:
+      - KAFKA_BROKERS=kafka:9092
+      - PORT=8083
     # Vai trò: State Machine chính (Điều phối Ngày/Đêm, kỹ năng nhân vật, tính toán người chết).
 
-  # vote-service:
-  #   build: ./services/vote
-  #   ports:
-  #     - "8084:8084"
-  #   depends_on:
-  #     - kafka
-  #   environment:
-  #     - KAFKA_BROKERS=kafka:9092
-  #     - PORT=8084
+    # vote-service:
+    #   build: ./services/vote
+    #   ports:
+    #     - "8084:8084"
+    #   depends_on:
+    #     - kafka
+    #   environment:
+    #     - KAFKA_BROKERS=kafka:9092
+    #     - PORT=8084
     # Vai trò: Xử lý đếm phiếu biểu quyết thời gian thực và trả kết quả cho Gameplay.
 
   chat-service:
@@ -174,7 +174,7 @@ services:
       - DB_PASSWORD=postgres
     # Vai trò: Xử lý REST request cho Ranking, Stats, Avatar. Không cần Kafka cho các tác vụ Read.
 
-# --- QUẢN LÝ VOLUME & NETWORK ---
+    # --- QUẢN LÝ VOLUME & NETWORK ---
 networks:
   default:
     name: werewolf-network

@@ -37,6 +37,16 @@ async function createBroadcastConsumer(kafka, { io, userSockets, roomFactions })
       };
 
       try {
+         // Handle GAME_ROLE_ASSIGNED - Send to specific user
+         if (event.type === 'GAME_ROLE_ASSIGNED' && targetUserId) {
+          io.to(`user:${targetUserId}`).emit(event.type, data);
+          const sockets = userSockets.get(targetUserId);
+          if (sockets && sockets.size) {
+            sockets.forEach((id) => io.to(id).emit(event.type, data));
+          }
+          console.log('Role assigned to user:', targetUserId, event.payload.role);
+          return;
+        }
         // Handle faction chat - only emit to users with matching faction
         if (event.type === 'CHAT_MESSAGE_FACTION' && roomId) {
           const faction = event.payload?.faction;

@@ -4,11 +4,14 @@
  */
 
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import GameHUD from '@/components/game/GameHUD'
+import RolesModal from '@/components/game/RolesModal'
 import { profileApi, authApi } from '@/api'
 
 export default function GamePage() {
   const [user, setUser] = useState(null)
+  const [showRolesModal, setShowRolesModal] = useState(false)
 
   useEffect(() => {
     // Load user info for HUD
@@ -27,20 +30,20 @@ export default function GamePage() {
   return (
     <div className="min-h-screen relative overflow-hidden flex items-center justify-center">
       {/* Dark fantasy background */}
-      <div 
+      <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
           backgroundImage: `url('/assets/backgrounds/dark-forest.jpg')`,
           filter: 'brightness(0.35) saturate(0.8)'
         }}
       />
-      
+
       {/* Gradient overlays for depth */}
       <div className="absolute inset-0 bg-gradient-to-b from-night-blue/70 via-transparent to-night-blue/80" />
       <div className="absolute inset-0 bg-gradient-to-r from-night-blue/50 via-transparent to-night-blue/50" />
-      
+
       {/* Vignette effect */}
-      <div 
+      <div
         className="absolute inset-0 pointer-events-none"
         style={{
           background: 'radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,0.7) 100%)'
@@ -48,7 +51,7 @@ export default function GamePage() {
       />
 
       {/* Ambient particles/fog */}
-      <div 
+      <div
         className="absolute inset-0 opacity-15 pointer-events-none"
         style={{
           background: 'url(/assets/effects/fog.png)',
@@ -68,7 +71,7 @@ export default function GamePage() {
         </div>
 
         {/* Main title */}
-        <h1 
+        <h1
           className="font-medieval text-6xl md:text-8xl lg:text-9xl tracking-wider"
           style={{
             color: '#c9a227',
@@ -84,7 +87,7 @@ export default function GamePage() {
         </h1>
 
         {/* Subtitle */}
-        <p 
+        <p
           className="font-fantasy text-parchment/60 text-lg md:text-xl tracking-[0.4em] uppercase mt-4"
           style={{
             textShadow: '0 2px 4px rgba(0, 0, 0, 0.8)'
@@ -96,6 +99,31 @@ export default function GamePage() {
         {/* Decorative bottom flourish */}
         <div className="flex justify-center mt-6 opacity-60">
           <div className="w-32 h-1 bg-gradient-to-r from-transparent via-gold to-transparent" />
+        </div>
+
+        {/* Action Buttons */}
+        <div className="mt-8 flex flex-col items-center gap-4">
+          <Link
+            to="/room/test-room-123"
+            className="px-8 py-4 bg-yellow-600/30 border-2 border-yellow-400 rounded-lg text-yellow-300 font-fantasy hover:bg-yellow-600/50 transition-all shadow-lg hover:shadow-yellow-400/50 text-lg font-semibold"
+            style={{
+              textShadow: '0 0 10px rgba(255, 255, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.8)',
+              boxShadow: '0 0 20px rgba(255, 255, 0, 0.3)'
+            }}
+          >
+            🎮 Vào Phòng Test
+          </Link>
+
+          <button
+            onClick={() => setShowRolesModal(true)}
+            className="px-8 py-4 bg-purple-600/30 border-2 border-purple-400 rounded-lg text-purple-300 font-fantasy hover:bg-purple-600/50 transition-all shadow-lg hover:shadow-purple-400/50 text-lg font-semibold"
+            style={{
+              textShadow: '0 0 10px rgba(192, 132, 252, 0.5), 0 2px 4px rgba(0, 0, 0, 0.8)',
+              boxShadow: '0 0 20px rgba(192, 132, 252, 0.3)'
+            }}
+          >
+            🎭 Vai Trò
+          </button>
         </div>
       </div>
 
@@ -112,6 +140,12 @@ export default function GamePage() {
       <div className="absolute bottom-6 right-6 w-24 h-24 opacity-20 pointer-events-none transform scale-[-1]">
         <img src="/assets/ui/corner-ornament.png" alt="" className="w-full h-full" />
       </div>
+
+      {/* Roles Modal */}
+      <RolesModal
+        isOpen={showRolesModal}
+        onClose={() => setShowRolesModal(false)}
+      />
     </div>
   )
 }

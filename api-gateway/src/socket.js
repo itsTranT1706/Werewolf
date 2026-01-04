@@ -98,17 +98,17 @@ async function handleChatSendDm(socket, producer, payload = {}) {
 
 async function handleChatSendFaction(socket, producer, payload = {}) {
   const { roomId, faction, phase, text } = payload;
-  
+
   if (!roomId) {
     socket.emit('ERROR', { message: 'roomId is required' });
     return;
   }
-  
+
   if (!faction) {
     socket.emit('ERROR', { message: 'faction is required' });
     return;
   }
-  
+
   if (typeof text !== 'string' || !text.trim() || text.length > 500) {
     socket.emit('ERROR', { message: 'text must be 1-500 characters' });
     return;
@@ -139,10 +139,39 @@ async function handleChatSendFaction(socket, producer, payload = {}) {
   }
 }
 
+async function handleGameStart(socket, producer, payload = {}) {
+  const { roomId, players } = payload
+
+  if (!roomId) {
+    socket.emit('ERROR', { message: 'roomId is required' })
+    return
+  }
+
+  if (!players || players.length < 8) {
+    socket.emit('ERROR', { message: 'Cần ít nhất 8 người chơi' })
+    return
+  }
+
+  const message = buildCommandMessage({
+    userId: socket.data.userId,
+    roomId,
+    actionType: 'GAME_START',
+    payload: { players }
+  })
+
+  try {
+    await produceCommand(producer, message)
+    socket.emit('GAME_START_REQUESTED', { roomId, message: 'Game đang được khởi tạo...' })
+  } catch (err) {
+    console.error('Failed to publish GAME_START', err)
+    socket.emit('ERROR', { message: 'Failed to start game' })
+  }
+}
+
 function setupSocket(io, producer) {
   const userSockets = new Map();
   const roomFactions = new Map(); // Map<roomId, Map<userId, faction>>
-  
+
   io.use(socketAuthMiddleware);
 
   io.on('connection', (socket) => {
@@ -154,12 +183,15 @@ function setupSocket(io, producer) {
     socket.on('CHAT_SEND', (payload) => handleChatSend(socket, producer, payload));
     socket.on('CHAT_SEND_DM', (payload) => handleChatSendDm(socket, producer, payload));
     socket.on('CHAT_SEND_FACTION', (payload) => handleChatSendFaction(socket, producer, payload));
-    
+
+    // ✅ Thêm GAME_START handler
+    socket.on('GAME_START', (payload) => handleGameStart(socket, producer, payload));
+
     // Handler để update faction info từ gameplay service
     socket.on('UPDATE_FACTION', (payload) => {
       const { roomId, faction } = payload;
       if (!roomId || !faction) return;
-      
+
       if (!roomFactions.has(roomId)) {
         roomFactions.set(roomId, new Map());
       }

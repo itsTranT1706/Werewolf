@@ -25,11 +25,11 @@ export default function LoginPage() {
 
   const validate = () => {
     const newErrors = {}
-    
+
     if (!formData.identifier) {
       newErrors.identifier = 'Vui lòng nhập email hoặc tên người dùng'
     }
-    
+
     if (!formData.password) {
       newErrors.password = 'Vui lòng nhập mật khẩu'
     }
@@ -40,7 +40,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!validate()) return
 
     setLoading(true)
@@ -135,7 +135,7 @@ export default function LoginPage() {
 function WolfIcon({ className }) {
   return (
     <svg className={className} viewBox="0 0 64 64" fill="currentColor">
-      <path d="M32 4c-2 0-4 1-6 3l-4 6-8-2c-2 0-3 1-3 3l2 10-6 8c-1 2 0 4 2 5l8 4v12c0 2 1 4 3 5l10 4c1 0 2 0 4-1l10-4c2-1 3-3 3-5V41l8-4c2-1 3-3 2-5l-6-8 2-10c0-2-1-3-3-3l-8 2-4-6c-2-2-4-3-6-3zm-8 24a3 3 0 110 6 3 3 0 010-6zm16 0a3 3 0 110 6 3 3 0 010-6zm-8 10c2 0 4 2 4 4h-8c0-2 2-4 4-4z"/>
+      <path d="M32 4c-2 0-4 1-6 3l-4 6-8-2c-2 0-3 1-3 3l2 10-6 8c-1 2 0 4 2 5l8 4v12c0 2 1 4 3 5l10 4c1 0 2 0 4-1l10-4c2-1 3-3 3-5V41l8-4c2-1 3-3 2-5l-6-8 2-10c0-2-1-3-3-3l-8 2-4-6c-2-2-4-3-6-3zm-8 24a3 3 0 110 6 3 3 0 010-6zm16 0a3 3 0 110 6 3 3 0 010-6zm-8 10c2 0 4 2 4 4h-8c0-2 2-4 4-4z" />
     </svg>
   )
 }

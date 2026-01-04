@@ -26,7 +26,7 @@ export default function RegisterPage() {
 
   const validate = () => {
     const newErrors = {}
-    
+
     if (!formData.email) {
       newErrors.email = 'Vui lòng nhập email'
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -40,7 +40,7 @@ export default function RegisterPage() {
     } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
       newErrors.username = 'Chỉ được dùng chữ cái, số và dấu gạch dưới'
     }
-    
+
     if (!formData.password) {
       newErrors.password = 'Vui lòng nhập mật khẩu'
     } else if (formData.password.length < 6) {
@@ -57,7 +57,7 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!validate()) return
 
     setLoading(true)
@@ -174,7 +174,7 @@ export default function RegisterPage() {
 function ScrollIcon({ className }) {
   return (
     <svg className={className} viewBox="0 0 64 64" fill="currentColor">
-      <path d="M12 8c-2 0-4 2-4 4v40c0 2 2 4 4 4h4V12H12zm8 0v48h28c2 0 4-2 4-4V12c0-2-2-4-4-4H20zm4 8h20v4H24v-4zm0 8h20v4H24v-4zm0 8h16v4H24v-4z"/>
+      <path d="M12 8c-2 0-4 2-4 4v40c0 2 2 4 4 4h4V12H12zm8 0v48h28c2 0 4-2 4-4V12c0-2-2-4-4-4H20zm4 8h20v4H24v-4zm0 8h20v4H24v-4zm0 8h16v4H24v-4z" />
     </svg>
   )
 }

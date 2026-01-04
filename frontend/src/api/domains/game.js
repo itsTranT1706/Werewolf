@@ -8,6 +8,7 @@
  */
 
 import client from '../client'
+import { getSocket } from '../socket'
 
 export const gameApi = {
   /**
@@ -69,4 +70,101 @@ export const gameApi = {
   skipAction: async (gameId) => {
     await client.post(`/games/${gameId}/skip`)
   },
+  
+  // ============================================
+  // CHIA NHÂN VẬT - WebSocket Functions
+  // ============================================
+
+  /**
+   * Bắt đầu game và phân vai trò
+   * @param {string} roomId 
+   * @param {Array} players - Array of { userId, username }
+   * @returns {void}
+   */
+  startGame: (roomId, players) => {
+    const socket = getSocket()
+    socket.emit('GAME_START', {
+      roomId,
+      players
+    })
+  },
+
+  /**
+   * Lắng nghe khi nhận được vai trò
+   * @param {Function} callback - (data) => void
+   *   data = { role, roleName, faction, userId }
+   * @returns {Function} Unsubscribe function
+   */
+  onRoleAssigned: (callback) => {
+    const socket = getSocket()
+
+    const handler = (data) => {
+      const { payload } = data
+      callback({
+        role: payload.role,
+        roleName: payload.roleName,
+        faction: payload.faction,
+        userId: payload.userId
+      })
+    }
+
+    socket.on('GAME_ROLE_ASSIGNED', handler)
+
+    // Return unsubscribe function
+    return () => {
+      socket.off('GAME_ROLE_ASSIGNED', handler)
+    }
+  },
+
+  /**
+   * Lắng nghe khi game bắt đầu
+   * @param {Function} callback - (data) => void
+   * @returns {Function} Unsubscribe function
+   */
+  onGameStarted: (callback) => {
+    const socket = getSocket()
+
+    const handler = (data) => {
+      callback(data.payload)
+    }
+
+    socket.on('GAME_STARTED', handler)
+
+    return () => {
+      socket.off('GAME_STARTED', handler)
+    }
+  },
+
+  /**
+   * Lắng nghe lỗi khi bắt đầu game
+   * @param {Function} callback - (error) => void
+   * @returns {Function} Unsubscribe function
+   */
+  onGameStartError: (callback) => {
+    const socket = getSocket()
+
+    const handler = (data) => {
+      callback(data.payload)
+    }
+
+    socket.on('GAME_START_ERROR', handler)
+
+    return () => {
+      socket.off('GAME_START_ERROR', handler)
+    }
+  },
+
+  /**
+   * Cập nhật faction để dùng cho faction chat
+   * @param {string} roomId 
+   * @param {string} faction - 'VILLAGER', 'WEREWOLF', 'NEUTRAL'
+   * @returns {void}
+   */
+  updateFaction: (roomId, faction) => {
+    const socket = getSocket()
+    socket.emit('UPDATE_FACTION', {
+      roomId,
+      faction
+    })
+  }
 }
