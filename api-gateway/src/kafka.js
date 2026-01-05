@@ -51,28 +51,28 @@ async function createBroadcastConsumer(kafka, { io, userSockets, roomFactions })
         if (event.type === 'CHAT_MESSAGE_FACTION' && roomId) {
           const faction = event.payload?.faction;
           if (!faction) return;
-          
+
           const factionMap = roomFactions?.get(roomId);
           if (!factionMap) {
             console.warn('No faction map found for room', { roomId, faction });
             return;
           }
-          
+
           // Emit to all users in the room with matching faction
           const socketsInRoom = await io.in(roomId).fetchSockets();
           socketsInRoom.forEach((socket) => {
             const socketUserId = socket.data.userId;
             const userFaction = factionMap.get(socketUserId);
-            
+
             if (userFaction === faction) {
               socket.emit(event.type, data);
             }
           });
-          
+
           console.log('Faction chat broadcast', { roomId, faction, recipientCount: socketsInRoom.length });
           return;
         }
-        
+
         // Handle other event types
         if (roomId) {
           io.to(roomId).emit(event.type, data);

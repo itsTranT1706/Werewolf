@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { MedievalPanel, MedievalInput, MedievalButton, Divider, notify } from '@/components/ui'
+import { MedievalPanel, MedievalInput, MedievalButton, Divider, notify, BackButton } from '@/components/ui'
 import { authApi } from '@/api'
 
 export default function LoginPage() {
@@ -60,11 +60,22 @@ export default function LoginPage() {
   }
 
   return (
-    <MedievalPanel className="w-full max-w-md">
-      {/* Panel header */}
-      <div className="text-center mb-6">
+    <div className="w-full max-w-md">
+      {/* Back button */}
+      <div className="mb-4">
+        <BackButton to="/" label="Trở Về Trang Chủ" />
+      </div>
+
+      <MedievalPanel className="w-full">
+        {/* Panel header */}
+        <div className="text-center mb-6">
         <div className="flex justify-center mb-3">
-          <WolfIcon className="w-16 h-16 text-gold opacity-80" />
+          <img 
+            src="/assets/ui/wolf-icon.svg" 
+            alt="Wolf" 
+            className="w-16 h-16 opacity-80"
+            style={{ filter: 'brightness(0) saturate(100%) invert(73%) sepia(61%) saturate(400%) hue-rotate(359deg) brightness(95%) contrast(92%)' }}
+          />
         </div>
         <h2 className="font-medieval text-2xl text-gold-glow tracking-wide">
           Bước Vào Làng
@@ -127,7 +138,8 @@ export default function LoginPage() {
           </Link>
         </p>
       </div>
-    </MedievalPanel>
+      </MedievalPanel>
+    </div>
   )
 }
 

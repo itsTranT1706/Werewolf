@@ -43,12 +43,8 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 # Copy source code
 COPY src ./src
 
-# Copy entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
 # Expose port
-EXPOSE 3000
+EXPOSE 8081
 
-# Use entrypoint script
-ENTRYPOINT ["docker-entrypoint.sh"]
+# Start application (migrations run automatically via docker-compose depends_on)
+CMD ["node", "src/index.js"]
