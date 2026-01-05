@@ -40,11 +40,11 @@ async function handleFactionChat(command, { producer, config, logger }) {
 
   // Validate text
   if (!text || text.length > 500) {
-    logger.warn('Invalid faction chat text', { 
-      traceId, 
-      roomId, 
+    logger.warn('Invalid faction chat text', {
+      traceId,
+      roomId,
       faction,
-      length: text.length 
+      length: text.length
     });
     return;
   }
@@ -80,15 +80,15 @@ async function handleFactionChat(command, { producer, config, logger }) {
 
   const { valid, errors } = validate(evtBroadcastSchema, eventMessage);
   if (!valid) {
-    logger.error('evt.broadcast validation failed for faction chat', { 
-      traceId, 
-      errors: formatErrors(errors) 
+    logger.error('evt.broadcast validation failed for faction chat', {
+      traceId,
+      errors: formatErrors(errors)
     });
     return;
   }
 
   await publishBroadcast(producer, config.evtTopic, eventMessage, logger);
-  
+
   logger.info('Faction chat message published', {
     traceId,
     roomId,
