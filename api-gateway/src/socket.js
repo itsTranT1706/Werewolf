@@ -140,15 +140,20 @@ async function handleChatSendFaction(socket, producer, payload = {}) {
 }
 
 async function handleGameStart(socket, producer, payload = {}) {
-  const { roomId, players } = payload
+  const { roomId, players, roleSetup } = payload
 
   if (!roomId) {
     socket.emit('ERROR', { message: 'roomId is required' })
     return
   }
 
-  if (!players || players.length < 8) {
-    socket.emit('ERROR', { message: 'Cần ít nhất 8 người chơi' })
+  if (!players || players.length < 3) {
+    socket.emit('ERROR', { message: 'Cần ít nhất 3 người chơi' })
+    return
+  }
+
+  if (players.length > 75) {
+    socket.emit('ERROR', { message: 'Tối đa 75 người chơi' })
     return
   }
 
@@ -156,7 +161,7 @@ async function handleGameStart(socket, producer, payload = {}) {
     userId: socket.data.userId,
     roomId,
     actionType: 'GAME_START',
-    payload: { players }
+    payload: { players, roleSetup, availableRoles: payload.availableRoles }
   })
 
   try {

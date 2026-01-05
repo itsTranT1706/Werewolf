@@ -81,20 +81,19 @@ async function handleGameStart(roomId, payload, command = {}) {
 
     const { players } = payload // Array of { userId, username }
 
-    // Validate số lượng người chơi
-    if (!players || players.length < 8) {
-        console.error(`❌ Not enough players: ${players?.length || 0}/8 minimum`)
+    // Validate số lượng người chơi (3-75)
+    if (!players || players.length < 3) {
+        console.error(`❌ Not enough players: ${players?.length || 0}/3 minimum`)
 
-        // Publish error event
         await publishEvent('evt.broadcast', {
             traceId: command.traceId || generateTraceId(),
             roomId,
             event: {
                 type: 'GAME_START_ERROR',
                 payload: {
-                    message: 'Cần ít nhất 8 người chơi để bắt đầu game',
+                    message: 'Cần ít nhất 3 người chơi để bắt đầu game',
                     currentCount: players?.length || 0,
-                    requiredCount: 8
+                    requiredCount: 3
                 }
             },
             ts: Date.now()
@@ -102,15 +101,44 @@ async function handleGameStart(roomId, payload, command = {}) {
         return
     }
 
-    if (players.length > 16) {
-        console.warn(`⚠️ Too many players: ${players.length} (max 16 recommended)`)
+    if (players.length > 75) {
+        console.error(`❌ Too many players: ${players.length}/75 maximum`)
+        await publishEvent('evt.broadcast', {
+            traceId: command.traceId || generateTraceId(),
+            roomId,
+            event: {
+                type: 'GAME_START_ERROR',
+                payload: {
+                    message: 'Tối đa 75 người chơi trong một ván',
+                    currentCount: players.length,
+                    maxCount: 75
+                }
+            },
+            ts: Date.now()
+        })
+        return
     }
 
     console.log(`🎲 Starting game for room ${roomId} with ${players.length} players`)
 
     try {
-        // 1. Phân vai trò
-        const roleIds = assignRoles(players.length)
+        // 1. Phân vai trò (hỗ trợ custom role setup và availableRoles từ phòng)
+        let roleIds
+        const { assignRolesFromSetup, assignRolesFromAvailable } = await import('./utils/roleAssignment.js')
+
+        if (payload.roleSetup) {
+            // Custom role setup từ quản trò (khi bắt đầu game)
+            roleIds = assignRolesFromSetup(payload.roleSetup, players.length, payload.availableRoles)
+            console.log('📋 Using custom role setup:', payload.roleSetup)
+        } else if (payload.availableRoles) {
+            // Dùng availableRoles từ phòng (auto assign)
+            roleIds = assignRolesFromAvailable(players.length, payload.availableRoles)
+            console.log('🎲 Using available roles from room:', payload.availableRoles)
+        } else {
+            // Fallback: Auto assign với tất cả roles
+            roleIds = assignRoles(players.length)
+            console.log('🎲 Using auto role assignment (all roles)')
+        }
 
         // 2. Validate
         const validation = validateRoleAssignment(roleIds, players.length)
@@ -144,9 +172,33 @@ async function handleGameStart(roomId, payload, command = {}) {
             console.log(`   ${p.username}: ${p.assignedRole} (${p.roleName})`)
         })
 
-        // 4. Publish GAME_ROLE_ASSIGNED event cho từng player
+        // 4. Publish GAME_ROLE_ASSIGNMENT_LIST cho quản trò (host)
         const traceId = command.traceId || generateTraceId()
+        const hostUserId = command.userId // User tạo game
 
+        await publishEvent('evt.broadcast', {
+            traceId,
+            roomId,
+            targetUserId: hostUserId, // Gửi riêng cho quản trò
+            event: {
+                type: 'GAME_ROLE_ASSIGNMENT_LIST',
+                payload: {
+                    assignment: playersWithRoles.map(p => ({
+                        player: {
+                            userId: p.userId,
+                            username: p.username
+                        },
+                        role: p.assignedRole,
+                        roleName: p.roleName,
+                        faction: p.faction
+                    }))
+                }
+            },
+            ts: Date.now()
+        })
+        console.log(`📋 Sent role assignment list to host (${hostUserId})`)
+
+        // 5. Publish GAME_ROLE_ASSIGNED event cho từng player
         for (const player of playersWithRoles) {
             await publishEvent('evt.broadcast', {
                 traceId,
@@ -167,7 +219,7 @@ async function handleGameStart(roomId, payload, command = {}) {
             console.log(`📤 Sent role assignment to ${player.username}: ${player.assignedRole}`)
         }
 
-        // 5. Publish GAME_STARTED event cho tất cả
+        // 6. Publish GAME_STARTED event cho tất cả
         await publishEvent('evt.broadcast', {
             traceId,
             roomId,

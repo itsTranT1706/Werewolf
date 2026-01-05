@@ -1,7 +1,7 @@
 import { ROLES } from '../constants/roles.js'
 
 /**
- * Phân vai trò cho người chơi dựa trên số lượng
+ * Phân vai trò cho người chơi dựa trên số lượng (auto mode)
  * 
  * @param {number} playerCount - Số lượng người chơi
  * @returns {Array<string>} - Mảng role IDs
@@ -9,54 +9,67 @@ import { ROLES } from '../constants/roles.js'
 export function assignRoles(playerCount) {
     const roles = []
 
-    // Minimum 8 players
-    if (playerCount < 8) {
-        throw new Error('Cần ít nhất 8 người chơi')
+    // Minimum 3 players, maximum 75 players
+    if (playerCount < 3) {
+        throw new Error('Cần ít nhất 3 người chơi')
     }
 
-    // Setup cơ bản cho 8-12 players
-    if (playerCount >= 8 && playerCount <= 12) {
-        // 2-3 Sói (tùy số người)
-        const werewolfCount = playerCount <= 10 ? 2 : 3
+    if (playerCount > 75) {
+        throw new Error('Tối đa 75 người chơi')
+    }
 
-        if (werewolfCount === 2) {
+    // Thiết kế cân bằng cho 3-75 players
+    // Game 6 người: 2 Sói + 4 Dân làng (SEER, WITCH, BODYGUARD, VILLAGER)
+    if (playerCount >= 3 && playerCount <= 75) {
+        // Tính số lượng Sói theo tỷ lệ cân bằng (20-30%)
+        let finalWerewolfCount
+        if (playerCount === 3) {
+            finalWerewolfCount = 1  // 3 người: 1 Sói
+        } else if (playerCount <= 5) {
+            finalWerewolfCount = 1  // 4-5 người: 1 Sói
+        } else if (playerCount === 6) {
+            finalWerewolfCount = 2  // Chính xác 2 Sói cho game 6 người
+        } else if (playerCount <= 8) {
+            finalWerewolfCount = 2
+        } else if (playerCount === 9) {
+            finalWerewolfCount = 3
+        } else {
+            // 10-75 players: ~25% Sói (làm tròn)
+            finalWerewolfCount = Math.max(2, Math.round(playerCount * 0.25))
+        }
+
+        // Thêm Sói
+        if (finalWerewolfCount === 1) {
+            roles.push('ALPHA_WOLF')
+        } else if (finalWerewolfCount === 2) {
             roles.push('YOUNG_WOLF', 'ALPHA_WOLF')
         } else {
-            roles.push('YOUNG_WOLF', 'ALPHA_WOLF', 'DARK_WOLF')
-        }
-
-        // Special villagers (3-4 roles)
-        roles.push('SEER', 'WITCH', 'BODYGUARD')
-
-        if (playerCount >= 10) {
-            roles.push('MONSTER_HUNTER')
-        }
-
-        // Fill rest with villagers hoặc special roles
-        const remaining = playerCount - roles.length
-        const specialRoles = ['DETECTIVE', 'WATCHMAN', 'MEDIUM', 'MAYOR']
-
-        // Thêm 1-2 special roles nếu còn chỗ
-        for (let i = 0; i < Math.min(remaining - 1, 2); i++) {
-            if (specialRoles.length > 0) {
-                const randomIndex = Math.floor(Math.random() * specialRoles.length)
-                roles.push(specialRoles.splice(randomIndex, 1)[0])
+            // 3+ Sói: 1 ALPHA_WOLF + các YOUNG_WOLF
+            roles.push('ALPHA_WOLF')
+            for (let i = 1; i < finalWerewolfCount; i++) {
+                roles.push('YOUNG_WOLF')
             }
         }
 
-        // Fill còn lại với VILLAGER (hoặc có thể thêm SOUL_BINDER, FOOL, SERIAL_KILLER)
-        const availableNeutrals = ['FOOL', 'SERIAL_KILLER']
-        while (roles.length < playerCount) {
-            // 10% chance cho neutral roles nếu còn chỗ và chưa dùng hết
-            const remainingSlots = playerCount - roles.length
-            if (remainingSlots > 1 && availableNeutrals.length > 0 && Math.random() < 0.1) {
-                const randomIndex = Math.floor(Math.random() * availableNeutrals.length)
-                const selectedNeutral = availableNeutrals.splice(randomIndex, 1)[0]
-                roles.push(selectedNeutral)
-            } else {
-                // Default: VILLAGER (có thể có nhiều bản)
-                roles.push('VILLAGER')
-            }
+        // Số lượng Dân làng còn lại
+        const villagerCount = playerCount - finalWerewolfCount
+
+        // Luôn có SEER và WITCH (roles quan trọng nhất)
+        roles.push('SEER', 'WITCH')
+
+        // Thêm BODYGUARD cho game >= 6 players
+        if (villagerCount >= 3) {
+            roles.push('BODYGUARD')
+        }
+
+        // Fill còn lại với VILLAGER
+        const specialVillagers = roles.filter(r =>
+            ['SEER', 'WITCH', 'BODYGUARD'].includes(r)
+        ).length
+        const remainingVillagers = villagerCount - specialVillagers
+
+        for (let i = 0; i < remainingVillagers; i++) {
+            roles.push('VILLAGER')
         }
     }
 
@@ -91,6 +104,190 @@ function shuffleArray(array) {
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
     }
     return shuffled
+}
+
+/**
+ * Phân vai trò từ custom role setup của quản trò
+ * 
+ * @param {Object} roleSetup - Object chứa số lượng từng role: { 'VILLAGER': 5, 'SEER': 1, ... }
+ * @param {number} playerCount - Số lượng người chơi
+ * @param {Array<string>} availableRoles - Optional: Chỉ dùng các role này (từ room settings)
+ * @returns {Array<string>} - Mảng role IDs
+ */
+export function assignRolesFromSetup(roleSetup, playerCount, availableRoles = null) {
+    const roles = []
+
+    // Validate tổng số vai trò
+    const totalRoles = Object.values(roleSetup).reduce((sum, count) => sum + count, 0)
+    if (totalRoles !== playerCount) {
+        throw new Error(`Tổng số vai trò (${totalRoles}) không khớp với số người chơi (${playerCount})`)
+    }
+
+    // Tạo mảng roles từ setup
+    for (const [roleId, count] of Object.entries(roleSetup)) {
+        // Validate role ID tồn tại
+        if (!ROLES[roleId]) {
+            throw new Error(`Vai trò không hợp lệ: ${roleId}`)
+        }
+
+        // Nếu có availableRoles, chỉ dùng các role đã chọn khi tạo phòng
+        if (availableRoles && !availableRoles.includes(roleId)) {
+            throw new Error(`Vai trò ${roleId} không có trong danh sách role của phòng`)
+        }
+
+        // Thêm role vào mảng
+        for (let i = 0; i < count; i++) {
+            roles.push(roleId)
+        }
+    }
+
+    // Shuffle để random
+    const shuffledRoles = shuffleArray(roles)
+
+    // Validate cân bằng
+    const validation = validateRoleAssignment(shuffledRoles, playerCount)
+    if (!validation.valid) {
+        throw new Error(validation.error)
+    }
+
+    return shuffledRoles
+}
+
+/**
+ * Phân vai trò từ availableRoles của phòng (auto mode)
+ * 
+ * @param {number} playerCount - Số lượng người chơi thực tế
+ * @param {Array<string>} availableRoles - Các role đã chọn khi tạo phòng
+ * @returns {Array<string>} - Mảng role IDs
+ */
+export function assignRolesFromAvailable(playerCount, availableRoles) {
+    if (!availableRoles || availableRoles.length === 0) {
+        throw new Error('Phải có ít nhất 1 role trong danh sách')
+    }
+
+    const roles = []
+
+    // Validate số người chơi
+    if (playerCount < 3) {
+        throw new Error('Cần ít nhất 3 người chơi')
+    }
+
+    if (playerCount > 75) {
+        throw new Error('Tối đa 75 người chơi')
+    }
+
+    // Phân loại roles
+    const werewolfRoles = availableRoles.filter(r => {
+        const role = ROLES[r]
+        return role && role.faction === 'WEREWOLF'
+    })
+    const villagerRoles = availableRoles.filter(r => {
+        const role = ROLES[r]
+        return role && role.faction === 'VILLAGER'
+    })
+
+    if (werewolfRoles.length === 0) {
+        throw new Error('Phải có ít nhất 1 role phe Ma Sói')
+    }
+
+    if (villagerRoles.length === 0) {
+        throw new Error('Phải có ít nhất 1 role phe Dân Làng')
+    }
+
+    // Tính số lượng Sói (20-30%)
+    let finalWerewolfCount
+    if (playerCount === 3) {
+        finalWerewolfCount = 1
+    } else if (playerCount <= 5) {
+        finalWerewolfCount = 1
+    } else if (playerCount === 6) {
+        finalWerewolfCount = 2
+    } else if (playerCount <= 8) {
+        finalWerewolfCount = 2
+    } else if (playerCount === 9) {
+        finalWerewolfCount = 3
+    } else {
+        finalWerewolfCount = Math.max(2, Math.round(playerCount * 0.25))
+    }
+
+    // Thêm Sói từ availableRoles
+    if (werewolfRoles.includes('ALPHA_WOLF')) {
+        roles.push('ALPHA_WOLF')
+        finalWerewolfCount--
+    }
+
+    for (let i = 0; i < finalWerewolfCount; i++) {
+        if (werewolfRoles.includes('YOUNG_WOLF')) {
+            roles.push('YOUNG_WOLF')
+        } else if (werewolfRoles.length > 0) {
+            // Dùng role Sói đầu tiên có sẵn
+            roles.push(werewolfRoles[0])
+        }
+    }
+
+    // Thêm Dân làng từ availableRoles
+    const villagerCount = playerCount - roles.length
+
+    // Ưu tiên: SEER, WITCH, BODYGUARD
+    if (villagerRoles.includes('SEER') && villagerCount > 0) {
+        roles.push('SEER')
+    }
+    if (villagerRoles.includes('WITCH') && roles.length < playerCount) {
+        roles.push('WITCH')
+    }
+    if (villagerRoles.includes('BODYGUARD') && roles.length < playerCount && villagerCount >= 3) {
+        roles.push('BODYGUARD')
+    }
+
+    // Fill còn lại với VILLAGER hoặc role dân làng khác
+    while (roles.length < playerCount) {
+        if (villagerRoles.includes('VILLAGER')) {
+            roles.push('VILLAGER')
+        } else if (villagerRoles.length > 0) {
+            // Dùng role dân làng đầu tiên có sẵn
+            roles.push(villagerRoles[0])
+        } else {
+            throw new Error('Không đủ role để phân cho tất cả người chơi')
+        }
+    }
+
+    // Shuffle
+    return shuffleArray(roles)
+}
+
+/**
+ * Tính toán gợi ý tỉ lệ vai trò theo số người chơi
+ * 
+ * @param {number} playerCount - Số lượng người chơi
+ * @returns {Object} - Object chứa gợi ý số lượng từng role
+ */
+export function suggestRoleSetup(playerCount) {
+    const setup = {}
+
+    // Tính số lượng Sói (20-30% số người)
+    const werewolfCount = Math.max(1, Math.round(playerCount * 0.25))
+    setup['ALPHA_WOLF'] = 1
+    if (werewolfCount > 1) {
+        setup['YOUNG_WOLF'] = werewolfCount - 1
+    }
+
+    // Luôn có SEER và WITCH
+    setup['SEER'] = 1
+    setup['WITCH'] = 1
+
+    // Thêm BODYGUARD nếu có >= 6 người
+    if (playerCount >= 6) {
+        setup['BODYGUARD'] = 1
+    }
+
+    // Fill còn lại với VILLAGER
+    const usedSlots = Object.values(setup).reduce((sum, count) => sum + count, 0)
+    const remainingVillagers = playerCount - usedSlots
+    if (remainingVillagers > 0) {
+        setup['VILLAGER'] = remainingVillagers
+    }
+
+    return setup
 }
 
 /**

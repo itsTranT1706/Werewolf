@@ -8,6 +8,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { gameApi } from '@/api'
 import { getSocket } from '@/api/socket'
 import MedievalButton from '@/components/ui/MedievalButton'
+import RoleSetupModal from '@/components/game/RoleSetupModal'
 
 export default function RoomPage() {
     const { roomId } = useParams()
@@ -21,6 +22,12 @@ export default function RoomPage() {
     const [loading, setLoading] = useState(false)
     const [socketConnected, setSocketConnected] = useState(false)
     const [currentUserId, setCurrentUserId] = useState(null)
+    const [showRoleSetup, setShowRoleSetup] = useState(false)
+    const [roleSetup, setRoleSetup] = useState(null)
+    const [roleAssignment, setRoleAssignment] = useState(null) // Danh sách vai đã xáo cho quản trò
+    const [maxPlayers, setMaxPlayers] = useState(12) // Số người chơi tối đa khi tạo phòng
+    const [availableRoles, setAvailableRoles] = useState(null) // Các role đã chọn khi tạo phòng
+    const [showRoleWheel, setShowRoleWheel] = useState(false) // Hiển thị vòng quay khi phân vai trò
 
     // Get current user ID
     useEffect(() => {
@@ -103,17 +110,30 @@ export default function RoomPage() {
             setLoading(false)
         })
 
+        // Listen for role assignment list (cho quản trò)
+        const unsubscribeRoleList = gameApi.onRoleAssignmentList((data) => {
+            console.log('📋 Danh sách vai trò đã xáo:', data)
+            setRoleAssignment(data.assignment)
+            setLoading(false)
+        })
+
         // Cleanup
         return () => {
             unsubscribeRole()
             unsubscribeStarted()
             unsubscribeError()
+            unsubscribeRoleList()
         }
     }, [roomId])
 
     const handleStartGame = () => {
-        if (players.length < 8) {
-            setError('Cần ít nhất 8 người chơi để bắt đầu game')
+        if (players.length < 3) {
+            setError('Cần ít nhất 3 người chơi để bắt đầu game')
+            return
+        }
+
+        if (players.length > 75) {
+            setError('Tối đa 75 người chơi trong một ván')
             return
         }
 
@@ -122,15 +142,22 @@ export default function RoomPage() {
             return
         }
 
+        // Mở modal chọn bộ vai trò
+        setShowRoleSetup(true)
+    }
+
+    const handleRoleSetupConfirm = (setup) => {
+        setRoleSetup(setup)
+        setShowRoleSetup(false)
         setError(null)
         setLoading(true)
 
-        console.log('🎮 Starting game with players:', players)
+        console.log('🎮 Starting game with role setup:', setup)
 
-        // Start game với danh sách players
+        // Start game với danh sách players, role setup và availableRoles
         try {
-            gameApi.startGame(roomId, players)
-            console.log('✅ GAME_START event đã được gửi')
+            gameApi.startGame(roomId, players, setup, availableRoles)
+            console.log('✅ GAME_START event đã được gửi với role setup và availableRoles:', availableRoles)
         } catch (err) {
             console.error('❌ Error starting game:', err)
             setError('Lỗi khi bắt đầu game: ' + err.message)
@@ -161,7 +188,7 @@ export default function RoomPage() {
                             Room: {roomId || 'Unknown'}
                         </h1>
                         <p className="text-gold-dim">
-                            {players.length} / 12 Players
+                            {players.length} / {maxPlayers || 75} Players
                         </p>
                     </div>
                     <Link
@@ -240,11 +267,36 @@ export default function RoomPage() {
                     <div className="flex justify-center">
                         <MedievalButton
                             onClick={handleStartGame}
-                            disabled={loading || players.length < 8}
+                            disabled={loading || players.length < 3 || players.length > 75 || (maxPlayers && players.length > maxPlayers)}
                             className="px-8 py-4 text-lg"
                         >
                             {loading ? 'Đang khởi tạo...' : 'Bắt Đầu Game'}
                         </MedievalButton>
+                    </div>
+                )}
+
+                {/* Role Assignment List (cho quản trò) */}
+                {roleAssignment && roleAssignment.length > 0 && (
+                    <div className="mb-8 p-6 bg-wood-dark border-2 border-gold-dim rounded-lg">
+                        <h2 className="font-heading text-2xl text-gold-dim mb-4">
+                            📋 Danh Sách Vai Trò Đã Xáo
+                        </h2>
+                        <div className="space-y-2 max-h-96 overflow-y-auto custom-scrollbar">
+                            {roleAssignment.map((item, index) => (
+                                <div key={index} className="flex items-center justify-between p-3 bg-wood-light/30 rounded border border-wood-light">
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-gold-dim font-bold w-8">#{index + 1}</span>
+                                        <span className="font-heading text-parchment-text">{item.player?.username || item.player?.userId || 'Unknown'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <span className={`px-3 py-1 rounded font-bold text-sm ${item.faction === 'WEREWOLF' ? 'bg-red-900/50 text-red-300' : 'bg-green-900/50 text-green-300'
+                                            }`}>
+                                            {item.roleName || item.role}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
 
@@ -259,6 +311,16 @@ export default function RoomPage() {
                         </p>
                     </div>
                 )}
+
+                {/* Role Setup Modal */}
+                <RoleSetupModal
+                    isOpen={showRoleSetup}
+                    onClose={() => setShowRoleSetup(false)}
+                    playerCount={players.length}
+                    onConfirm={handleRoleSetupConfirm}
+                    initialSetup={roleSetup}
+                    availableRoles={availableRoles}
+                />
 
                 {/* Debug Info */}
                 <div className="mt-8 p-4 bg-wood-dark/50 border border-wood-light rounded-lg">

@@ -70,7 +70,7 @@ export const gameApi = {
   skipAction: async (gameId) => {
     await client.post(`/games/${gameId}/skip`)
   },
-  
+
   // ============================================
   // CHIA NHÂN VẬT - WebSocket Functions
   // ============================================
@@ -79,13 +79,17 @@ export const gameApi = {
    * Bắt đầu game và phân vai trò
    * @param {string} roomId 
    * @param {Array} players - Array of { userId, username }
+   * @param {Object} roleSetup - Optional: Custom role setup { 'VILLAGER': 5, 'SEER': 1, ... }
+   * @param {Array<string>} availableRoles - Optional: Các role đã chọn khi tạo phòng
    * @returns {void}
    */
-  startGame: (roomId, players) => {
+  startGame: (roomId, players, roleSetup = null, availableRoles = null) => {
     const socket = getSocket()
     socket.emit('GAME_START', {
       roomId,
-      players
+      players,
+      roleSetup,
+      availableRoles
     })
   },
 
@@ -155,9 +159,32 @@ export const gameApi = {
   },
 
   /**
+   * Lắng nghe danh sách vai trò đã xáo (cho quản trò)
+   * @param {Function} callback - (data) => void
+   *   data = { assignment: [{ player: {...}, role: 'SEER', roleName: 'Thầy Bói' }, ...] }
+   * @returns {Function} Unsubscribe function
+   */
+  onRoleAssignmentList: (callback) => {
+    const socket = getSocket()
+
+    const handler = (data) => {
+      const { payload } = data
+      callback({
+        assignment: payload.assignment || []
+      })
+    }
+
+    socket.on('GAME_ROLE_ASSIGNMENT_LIST', handler)
+
+    return () => {
+      socket.off('GAME_ROLE_ASSIGNMENT_LIST', handler)
+    }
+  },
+
+  /**
    * Cập nhật faction để dùng cho faction chat
    * @param {string} roomId 
-   * @param {string} faction - 'VILLAGER', 'WEREWOLF', 'NEUTRAL'
+   * @param {string} faction - 'VILLAGER', 'WEREWOLF'
    * @returns {void}
    */
   updateFaction: (roomId, faction) => {

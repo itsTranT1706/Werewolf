@@ -7,11 +7,13 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import GameHUD from '@/components/game/GameHUD'
 import RolesModal from '@/components/game/RolesModal'
+import CreateRoomModal from '@/components/game/CreateRoomModal'
 import { profileApi, authApi } from '@/api'
 
 export default function GamePage() {
   const [user, setUser] = useState(null)
   const [showRolesModal, setShowRolesModal] = useState(false)
+  const [showCreateRoom, setShowCreateRoom] = useState(false)
 
   useEffect(() => {
     // Load user info for HUD
@@ -103,12 +105,23 @@ export default function GamePage() {
 
         {/* Action Buttons */}
         <div className="mt-8 flex flex-col items-center gap-4">
-          <Link
-            to="/room/test-room-123"
+          <button
+            onClick={() => setShowCreateRoom(true)}
             className="px-8 py-4 bg-yellow-600/30 border-2 border-yellow-400 rounded-lg text-yellow-300 font-fantasy hover:bg-yellow-600/50 transition-all shadow-lg hover:shadow-yellow-400/50 text-lg font-semibold"
             style={{
               textShadow: '0 0 10px rgba(255, 255, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.8)',
               boxShadow: '0 0 20px rgba(255, 255, 0, 0.3)'
+            }}
+          >
+            🏰 Tạo Phòng
+          </button>
+
+          <Link
+            to="/room/test-room-123"
+            className="px-8 py-4 bg-blue-600/30 border-2 border-blue-400 rounded-lg text-blue-300 font-fantasy hover:bg-blue-600/50 transition-all shadow-lg hover:shadow-blue-400/50 text-lg font-semibold"
+            style={{
+              textShadow: '0 0 10px rgba(59, 130, 246, 0.5), 0 2px 4px rgba(0, 0, 0, 0.8)',
+              boxShadow: '0 0 20px rgba(59, 130, 246, 0.3)'
             }}
           >
             🎮 Vào Phòng Test
@@ -145,6 +158,12 @@ export default function GamePage() {
       <RolesModal
         isOpen={showRolesModal}
         onClose={() => setShowRolesModal(false)}
+      />
+
+      {/* Create Room Modal */}
+      <CreateRoomModal
+        isOpen={showCreateRoom}
+        onClose={() => setShowCreateRoom(false)}
       />
     </div>
   )
