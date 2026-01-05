@@ -11,11 +11,28 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  username  String   @unique
-  email     String   @unique
+  id        String      @id @default(uuid())
+  username  String      @unique
+  email     String      @unique
   password  String
-  createdAt DateTime @default(now())
+  createdAt DateTime    @default(now())
+  profile   UserProfile?
 
   @@map("users")
+}
+
+model UserProfile {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName String?
+  avatarUrl   String?
+  bio         String?
+  totalGames  Int      @default(0)
+  wins        Int      @default(0)
+  losses      Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("user_profiles")
 }

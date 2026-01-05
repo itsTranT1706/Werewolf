@@ -46,5 +46,5 @@ COPY src ./src
 # Expose port
 EXPOSE 3000
 
-# Run migrations and start the application
-CMD npx prisma migrate deploy && node src/index.js
+# Start the application (NO migration on every restart)
+CMD ["node", "src/index.js"]
