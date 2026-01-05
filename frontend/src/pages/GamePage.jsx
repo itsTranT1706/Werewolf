@@ -58,7 +58,7 @@ export default function GamePage() {
       />
 
       {/* Game HUD */}
-      <GameHUD username={user?.username} avatar={user?.avatar} />
+      <GameHUD username={user?.username} avatar={user?.avatarUrl} />
 
       {/* Main content */}
       <div className="relative z-10 text-center px-4">
