@@ -24,8 +24,8 @@ FROM node:18-slim
 
 WORKDIR /app
 
-# Install OpenSSL for Prisma
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+# Install OpenSSL and netcat for Prisma and health checks
+RUN apt-get update -y && apt-get install -y openssl netcat-openbsd && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
@@ -43,8 +43,12 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 # Copy source code
 COPY src ./src
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Expose port
 EXPOSE 8081
 
-# Start application (migrations run automatically via docker-compose depends_on)
-CMD ["node", "src/index.js"]
+# Use entrypoint script
+ENTRYPOINT ["docker-entrypoint.sh"]
