@@ -111,10 +111,9 @@ function shuffleArray(array) {
  * 
  * @param {Object} roleSetup - Object chứa số lượng từng role: { 'VILLAGER': 5, 'SEER': 1, ... }
  * @param {number} playerCount - Số lượng người chơi
- * @param {Array<string>} availableRoles - Optional: Chỉ dùng các role này (từ room settings)
  * @returns {Array<string>} - Mảng role IDs
  */
-export function assignRolesFromSetup(roleSetup, playerCount, availableRoles = null) {
+export function assignRolesFromSetup(roleSetup, playerCount) {
     const roles = []
 
     // Validate tổng số vai trò
@@ -128,11 +127,6 @@ export function assignRolesFromSetup(roleSetup, playerCount, availableRoles = nu
         // Validate role ID tồn tại
         if (!ROLES[roleId]) {
             throw new Error(`Vai trò không hợp lệ: ${roleId}`)
-        }
-
-        // Nếu có availableRoles, chỉ dùng các role đã chọn khi tạo phòng
-        if (availableRoles && !availableRoles.includes(roleId)) {
-            throw new Error(`Vai trò ${roleId} không có trong danh sách role của phòng`)
         }
 
         // Thêm role vào mảng
@@ -151,108 +145,6 @@ export function assignRolesFromSetup(roleSetup, playerCount, availableRoles = nu
     }
 
     return shuffledRoles
-}
-
-/**
- * Phân vai trò từ availableRoles của phòng (auto mode)
- * 
- * @param {number} playerCount - Số lượng người chơi thực tế
- * @param {Array<string>} availableRoles - Các role đã chọn khi tạo phòng
- * @returns {Array<string>} - Mảng role IDs
- */
-export function assignRolesFromAvailable(playerCount, availableRoles) {
-    if (!availableRoles || availableRoles.length === 0) {
-        throw new Error('Phải có ít nhất 1 role trong danh sách')
-    }
-
-    const roles = []
-
-    // Validate số người chơi
-    if (playerCount < 3) {
-        throw new Error('Cần ít nhất 3 người chơi')
-    }
-
-    if (playerCount > 75) {
-        throw new Error('Tối đa 75 người chơi')
-    }
-
-    // Phân loại roles
-    const werewolfRoles = availableRoles.filter(r => {
-        const role = ROLES[r]
-        return role && role.faction === 'WEREWOLF'
-    })
-    const villagerRoles = availableRoles.filter(r => {
-        const role = ROLES[r]
-        return role && role.faction === 'VILLAGER'
-    })
-
-    if (werewolfRoles.length === 0) {
-        throw new Error('Phải có ít nhất 1 role phe Ma Sói')
-    }
-
-    if (villagerRoles.length === 0) {
-        throw new Error('Phải có ít nhất 1 role phe Dân Làng')
-    }
-
-    // Tính số lượng Sói (20-30%)
-    let finalWerewolfCount
-    if (playerCount === 3) {
-        finalWerewolfCount = 1
-    } else if (playerCount <= 5) {
-        finalWerewolfCount = 1
-    } else if (playerCount === 6) {
-        finalWerewolfCount = 2
-    } else if (playerCount <= 8) {
-        finalWerewolfCount = 2
-    } else if (playerCount === 9) {
-        finalWerewolfCount = 3
-    } else {
-        finalWerewolfCount = Math.max(2, Math.round(playerCount * 0.25))
-    }
-
-    // Thêm Sói từ availableRoles
-    if (werewolfRoles.includes('ALPHA_WOLF')) {
-        roles.push('ALPHA_WOLF')
-        finalWerewolfCount--
-    }
-
-    for (let i = 0; i < finalWerewolfCount; i++) {
-        if (werewolfRoles.includes('YOUNG_WOLF')) {
-            roles.push('YOUNG_WOLF')
-        } else if (werewolfRoles.length > 0) {
-            // Dùng role Sói đầu tiên có sẵn
-            roles.push(werewolfRoles[0])
-        }
-    }
-
-    // Thêm Dân làng từ availableRoles
-    const villagerCount = playerCount - roles.length
-
-    // Ưu tiên: SEER, WITCH, BODYGUARD
-    if (villagerRoles.includes('SEER') && villagerCount > 0) {
-        roles.push('SEER')
-    }
-    if (villagerRoles.includes('WITCH') && roles.length < playerCount) {
-        roles.push('WITCH')
-    }
-    if (villagerRoles.includes('BODYGUARD') && roles.length < playerCount && villagerCount >= 3) {
-        roles.push('BODYGUARD')
-    }
-
-    // Fill còn lại với VILLAGER hoặc role dân làng khác
-    while (roles.length < playerCount) {
-        if (villagerRoles.includes('VILLAGER')) {
-            roles.push('VILLAGER')
-        } else if (villagerRoles.length > 0) {
-            // Dùng role dân làng đầu tiên có sẵn
-            roles.push(villagerRoles[0])
-        } else {
-            throw new Error('Không đủ role để phân cho tất cả người chơi')
-        }
-    }
-
-    // Shuffle
-    return shuffleArray(roles)
 }
 
 /**

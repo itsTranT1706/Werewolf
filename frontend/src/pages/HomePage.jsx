@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MedievalPanel, MedievalInput, MedievalButton, Divider, notify } from '@/components/ui'
+import CreateRoomModal from '@/components/game/CreateRoomModal'
 
 export default function HomePage() {
   const navigate = useNavigate()
   const [roomCode, setRoomCode] = useState('')
   const [error, setError] = useState('')
+  const [showCreateRoom, setShowCreateRoom] = useState(false)
 
   const handleRoomCodeChange = (e) => {
     const value = e.target.value.replace(/\D/g, '').slice(0, 4) // Only digits, max 4
@@ -24,8 +26,7 @@ export default function HomePage() {
   }
 
   const handleCreateRoom = () => {
-    notify.success('Đang tạo phòng mới...', 'Tạo Phòng')
-    navigate('/game?create=true')
+    setShowCreateRoom(true)
   }
 
   const handleLoginRegister = () => {
@@ -104,6 +105,12 @@ export default function HomePage() {
           (để lưu lịch sử trò chơi)
         </p>
       </div>
+
+      {/* Create Room Modal */}
+      <CreateRoomModal
+        isOpen={showCreateRoom}
+        onClose={() => setShowCreateRoom(false)}
+      />
     </MedievalPanel>
   )
 }

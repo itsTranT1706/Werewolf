@@ -70,12 +70,12 @@ export default function RoleSetupModal({
         const warnings = []
         const total = Object.values(setup).reduce((sum, count) => sum + count, 0)
 
-        // Check tổng số
+        // Check tổng số (lỗi cứng)
         if (total !== playerCount) {
-            warnings.push(`Tổng vai trò (${total}) không khớp với số người chơi (${playerCount})`)
+            warnings.push(`❌ Tổng vai trò (${total}) không khớp với số người chơi (${playerCount})`)
         }
 
-        // Check tỉ lệ Sói
+        // Check tỉ lệ Sói (chỉ cảnh báo mềm, vẫn cho bắt đầu)
         const werewolfCount = (setup['YOUNG_WOLF'] || 0) + (setup['ALPHA_WOLF'] || 0)
         const werewolfPercent = (werewolfCount / playerCount) * 100
 
@@ -85,7 +85,7 @@ export default function RoleSetupModal({
             warnings.push(`⚠️ Phe Sói quá mạnh (${werewolfPercent.toFixed(1)}%). Khuyến nghị: 20-30%`)
         }
 
-        // Check có ít nhất 1 Sói và 1 Dân
+        // Check có ít nhất 1 Sói và 1 Dân (lỗi cứng)
         if (werewolfCount === 0) {
             warnings.push('❌ Phải có ít nhất 1 Sói')
         }
@@ -96,7 +96,10 @@ export default function RoleSetupModal({
         }
 
         setWarnings(warnings)
-        return warnings.length === 0
+
+        // Chỉ chặn khi có lỗi cứng (❌)
+        const hasCritical = warnings.some(w => w.startsWith('❌'))
+        return !hasCritical
     }
 
     // Update role count
@@ -150,6 +153,7 @@ export default function RoleSetupModal({
     // Get roles by faction (chỉ hiển thị các role đã chọn khi tạo phòng)
     const allVillagerRoles = Object.values(ROLES).filter(r => r.faction === FACTION.VILLAGER)
     const allWerewolfRoles = Object.values(ROLES).filter(r => r.faction === FACTION.WEREWOLF)
+    const allNeutralRoles = Object.values(ROLES).filter(r => r.faction === FACTION.NEUTRAL)
 
     const villagerRoles = availableRoles
         ? allVillagerRoles.filter(r => availableRoles.includes(r.id))
@@ -158,6 +162,10 @@ export default function RoleSetupModal({
     const werewolfRoles = availableRoles
         ? allWerewolfRoles.filter(r => availableRoles.includes(r.id))
         : allWerewolfRoles
+
+    const neutralRoles = availableRoles
+        ? allNeutralRoles.filter(r => availableRoles.includes(r.id))
+        : allNeutralRoles
 
     const totalRoles = Object.values(roleSetup).reduce((sum, count) => sum + count, 0)
 
@@ -200,7 +208,7 @@ export default function RoleSetupModal({
                     {/* Phe Dân Làng */}
                     <div>
                         <h3 className="font-heading text-xl text-green-400 mb-4 flex items-center gap-2">
-                            <span className="material-symbols-outlined">shield</span>
+
                             Phe Dân Làng
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -239,7 +247,7 @@ export default function RoleSetupModal({
                     {/* Phe Ma Sói */}
                     <div>
                         <h3 className="font-heading text-xl text-red-400 mb-4 flex items-center gap-2">
-                            <span className="material-symbols-outlined">pets</span>
+
                             Phe Ma Sói
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -274,6 +282,47 @@ export default function RoleSetupModal({
                             ))}
                         </div>
                     </div>
+
+                    {/* Phe Độc Lập */}
+                    {neutralRoles.length > 0 && (
+                        <div>
+                            <h3 className="font-heading text-xl text-amber-300 mb-4 flex items-center gap-2">
+
+                                Phe Độc Lập
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {neutralRoles.map(role => (
+                                    <div key={role.id} className="flex items-center justify-between p-3 bg-wood-dark/50 border border-wood-light rounded">
+                                        <div className="flex-1">
+                                            <p className="font-heading text-parchment-text">{role.name}</p>
+                                            <p className="text-xs text-parchment-text/60">{role.id}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => updateRoleCount(role.id, -1)}
+                                                className="w-8 h-8 flex items-center justify-center bg-blood-dried border border-blood-red rounded text-parchment-text hover:bg-blood-red transition-colors"
+                                            >
+                                                -
+                                            </button>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                value={roleSetup[role.id] || 0}
+                                                onChange={(e) => setRoleCount(role.id, e.target.value)}
+                                                className="w-16 text-center bg-wood-dark border border-wood-light rounded text-parchment-text font-bold"
+                                            />
+                                            <button
+                                                onClick={() => updateRoleCount(role.id, 1)}
+                                                className="w-8 h-8 flex items-center justify-center bg-green-900 border border-green-600 rounded text-parchment-text hover:bg-green-800 transition-colors"
+                                            >
+                                                +
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Actions */}

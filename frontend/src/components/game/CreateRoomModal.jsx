@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ROLES, FACTION } from '@/constants/roles'
 import { roomApi } from '@/api'
+import { getOrCreateGuestUsername, getOrCreateGuestUserId } from '@/utils/guestUtils'
 
 export default function CreateRoomModal({ isOpen, onClose }) {
     const navigate = useNavigate()
@@ -19,13 +20,13 @@ export default function CreateRoomModal({ isOpen, onClose }) {
         'YOUNG_WOLF': true,
         'ALPHA_WOLF': true
     })
-    const [roomName, setRoomName] = useState('')
-    const [zoomId, setZoomId] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
+    const [displayName, setDisplayName] = useState('') // Tên hiển thị cho guest user
 
     const villagerRoles = Object.values(ROLES).filter(r => r.faction === FACTION.VILLAGER)
     const werewolfRoles = Object.values(ROLES).filter(r => r.faction === FACTION.WEREWOLF)
+    const neutralRoles = Object.values(ROLES).filter(r => r.faction === FACTION.NEUTRAL)
 
     const toggleRole = (roleId) => {
         setSelectedRoles(prev => ({
@@ -65,36 +66,114 @@ export default function CreateRoomModal({ isOpen, onClose }) {
         setLoading(true)
 
         try {
+            // Đảm bảo guest userId và username được tạo TRƯỚC khi tạo phòng
+            const token = localStorage.getItem('token')
+            let username = null
+            let currentUserId = null
+
+            if (!token) {
+                // Tạo guest userId và username trước khi gửi request
+                currentUserId = getOrCreateGuestUserId()
+                // Sử dụng displayName nếu có, nếu không thì dùng username từ localStorage
+                username = displayName.trim() || getOrCreateGuestUsername()
+                // Lưu displayName vào localStorage nếu có
+                if (displayName.trim()) {
+                    localStorage.setItem('guest_username', displayName.trim())
+                }
+                console.log(`👤 Guest user - userId: ${currentUserId}, username: ${username}`)
+            } else {
+                // Lấy userId + username từ token cho user đã đăng nhập
+                try {
+                    const payload = JSON.parse(atob(token.split('.')[1]))
+                    currentUserId = payload.userId || payload.id
+                    // username trong token chính là username dùng ở trang hồ sơ
+                    username = payload.username || payload.displayname || null
+                    console.log(`🔐 Auth user - userId: ${currentUserId}, username: ${username}`)
+                } catch (err) {
+                    console.warn('Could not get userId/username from token:', err)
+                }
+            }
+
+            // QUAN TRỌNG: Đảm bảo userId được gửi lên backend khớp với currentUserId
+            // Lưu vào localStorage trước để client.js interceptor có thể dùng
+            if (currentUserId && !token) {
+                // Nếu là guest, đảm bảo guest_user_id trong localStorage khớp
+                localStorage.setItem('guest_user_id', currentUserId)
+            }
+
             const roomData = {
-                name: roomName || `Phòng ${Date.now()}`,
                 maxPlayers,
                 availableRoles, // Danh sách role IDs được chọn
-                zoomId: zoomId || null,
-                isPrivate: false
+                isPrivate: false,
+                username, // Gửi username cho cả guest lẫn user đăng nhập
+                userId: currentUserId // Gửi userId trong body để đảm bảo backend nhận đúng
             }
 
             const result = await roomApi.create(roomData)
             const newRoomId = result.room?.id || result.roomId || `room-${Date.now()}`
 
-            // Lưu room settings vào localStorage (tạm thời, sẽ thay bằng API sau)
+            console.log(`🏗️ Room created: ${newRoomId}, hostId from API: ${result.room?.hostId}, currentUserId: ${currentUserId}`)
+
+            // Lưu room settings và hostId vào localStorage
             localStorage.setItem(`room_${newRoomId}_settings`, JSON.stringify({
                 maxPlayers,
                 availableRoles
             }))
 
+            // Lưu hostId (ưu tiên từ API, sau đó từ currentUserId đã lấy ở trên)
+            const hostId = result.room?.hostId || currentUserId
+            if (hostId) {
+                localStorage.setItem(`room_${newRoomId}_host`, hostId)
+                console.log(`💾 Saved hostId to localStorage: ${hostId}`)
+            }
+
+            // QUAN TRỌNG: Lưu userId đã dùng khi tạo phòng để đảm bảo nhất quán
+            // Khi vào RoomPage, sẽ dùng userId này thay vì lấy từ token/guest mới
+            if (currentUserId) {
+                localStorage.setItem(`room_${newRoomId}_creator_userId`, currentUserId)
+                console.log(`💾 Saved creator userId to localStorage: ${currentUserId}`)
+            }
+
             // Navigate to room
             navigate(`/room/${newRoomId}`)
             onClose()
         } catch (err) {
-            console.error('Error creating room:', err)
-            // Nếu API chưa có, vẫn tạo phòng với localStorage
+            console.warn('API không khả dụng, tạo phòng với localStorage:', err.message || err)
+            // Nếu API chưa có, vẫn tạo phòng với localStorage (fallback)
             const newRoomId = `room-${Date.now()}`
+
+            // Lấy userId hiện tại
+            let currentUserId = null
+            try {
+                const token = localStorage.getItem('token')
+                if (token) {
+                    const payload = JSON.parse(atob(token.split('.')[1]))
+                    currentUserId = payload.userId || payload.id
+                }
+            } catch (tokenErr) {
+                console.warn('Could not get userId from token:', tokenErr)
+            }
+
+            // Lưu room settings và hostId vào localStorage
             localStorage.setItem(`room_${newRoomId}_settings`, JSON.stringify({
                 maxPlayers,
                 availableRoles
             }))
+
+            // Lưu hostId (người tạo phòng)
+            if (currentUserId) {
+                localStorage.setItem(`room_${newRoomId}_host`, currentUserId)
+            } else {
+                // Nếu không có userId, tạo một ID tạm thời
+                const tempUserId = `temp-user-${Date.now()}`
+                localStorage.setItem(`room_${newRoomId}_host`, tempUserId)
+            }
+
+            // Navigate to room
             navigate(`/room/${newRoomId}`)
             onClose()
+        } finally {
+            setLoading(false)
         }
     }
 
@@ -122,19 +201,25 @@ export default function CreateRoomModal({ isOpen, onClose }) {
 
                 {/* Form */}
                 <div className="p-6 space-y-6">
-                    {/* Room Name */}
-                    <div>
-                        <label className="block text-parchment-text font-heading mb-2">
-                            Tên Phòng (Tùy chọn)
-                        </label>
-                        <input
-                            type="text"
-                            value={roomName}
-                            onChange={(e) => setRoomName(e.target.value)}
-                            placeholder="Nhập tên phòng..."
-                            className="w-full px-4 py-3 bg-wood-light border border-wood-dark rounded text-parchment-text focus:outline-none focus:border-gold"
-                        />
-                    </div>
+                    {/* Display Name Input (chỉ hiển thị khi chưa đăng nhập) */}
+                    {!localStorage.getItem('token') && (
+                        <div>
+                            <label className="block text-parchment-text font-heading mb-2">
+                                Tên Hiển Thị
+                            </label>
+                            <input
+                                type="text"
+                                value={displayName}
+                                onChange={(e) => setDisplayName(e.target.value)}
+                                placeholder="Nhập tên hiển thị của bạn"
+                                maxLength={30}
+                                className="w-full px-4 py-2 bg-wood-dark border border-wood-light rounded text-parchment-text placeholder-parchment-text/50 focus:outline-none focus:border-gold-dim"
+                            />
+                            <p className="text-xs text-parchment-text/60 mt-1">
+                                Tên này sẽ được hiển thị trong phòng (tối đa 30 ký tự)
+                            </p>
+                        </div>
+                    )}
 
                     {/* Max Players */}
                     <div>
@@ -155,20 +240,6 @@ export default function CreateRoomModal({ isOpen, onClose }) {
                         </div>
                     </div>
 
-                    {/* Zoom ID */}
-                    <div>
-                        <label className="block text-parchment-text font-heading mb-2">
-                            Zoom ID (Tùy chọn)
-                        </label>
-                        <input
-                            type="text"
-                            value={zoomId}
-                            onChange={(e) => setZoomId(e.target.value)}
-                            placeholder="Nhập Zoom ID..."
-                            className="w-full px-4 py-3 bg-wood-light border border-wood-dark rounded text-parchment-text focus:outline-none focus:border-gold"
-                        />
-                    </div>
-
                     {/* Available Roles */}
                     <div>
                         <label className="block text-parchment-text font-heading mb-4">
@@ -178,7 +249,7 @@ export default function CreateRoomModal({ isOpen, onClose }) {
                         {/* Phe Dân Làng */}
                         <div className="mb-4">
                             <h3 className="font-heading text-lg text-green-400 mb-3 flex items-center gap-2">
-                                <span className="material-symbols-outlined">shield</span>
+                            
                                 Phe Dân Làng
                             </h3>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -186,8 +257,8 @@ export default function CreateRoomModal({ isOpen, onClose }) {
                                     <label
                                         key={role.id}
                                         className={`flex items-center gap-2 p-3 border rounded cursor-pointer transition-all ${selectedRoles[role.id]
-                                                ? 'bg-green-900/30 border-green-500'
-                                                : 'bg-wood-dark/50 border-wood-light'
+                                            ? 'bg-green-900/30 border-green-500'
+                                            : 'bg-wood-dark/50 border-wood-light'
                                             }`}
                                     >
                                         <input
@@ -205,7 +276,7 @@ export default function CreateRoomModal({ isOpen, onClose }) {
                         {/* Phe Ma Sói */}
                         <div>
                             <h3 className="font-heading text-lg text-red-400 mb-3 flex items-center gap-2">
-                                <span className="material-symbols-outlined">pets</span>
+                            
                                 Phe Ma Sói
                             </h3>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -213,8 +284,35 @@ export default function CreateRoomModal({ isOpen, onClose }) {
                                     <label
                                         key={role.id}
                                         className={`flex items-center gap-2 p-3 border rounded cursor-pointer transition-all ${selectedRoles[role.id]
-                                                ? 'bg-red-900/30 border-red-500'
-                                                : 'bg-wood-dark/50 border-wood-light'
+                                            ? 'bg-red-900/30 border-red-500'
+                                            : 'bg-wood-dark/50 border-wood-light'
+                                            }`}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedRoles[role.id] || false}
+                                            onChange={() => toggleRole(role.id)}
+                                            className="w-5 h-5"
+                                        />
+                                        <span className="text-parchment-text font-heading">{role.name}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Phe Độc Lập */}
+                        <div className="mt-6">
+                            <h3 className="font-heading text-lg text-amber-300 mb-3 flex items-center gap-2">
+                             
+                                Phe Độc Lập
+                            </h3>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                {neutralRoles.map(role => (
+                                    <label
+                                        key={role.id}
+                                        className={`flex items-center gap-2 p-3 border rounded cursor-pointer transition-all ${selectedRoles[role.id]
+                                            ? 'bg-amber-900/30 border-amber-500'
+                                            : 'bg-wood-dark/50 border-wood-light'
                                             }`}
                                     >
                                         <input
@@ -251,4 +349,3 @@ export default function CreateRoomModal({ isOpen, onClose }) {
         </div>
     )
 }
-

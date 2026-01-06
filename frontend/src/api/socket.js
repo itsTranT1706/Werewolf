@@ -26,6 +26,8 @@ export function getSocket() {
 
     // Lấy token từ localStorage
     const token = localStorage.getItem('token')
+    // Nếu không có token, dùng guestId để socket backend nhận dạng
+    const guestId = !token ? localStorage.getItem('guest_user_id') || localStorage.getItem('guestId') : null
 
     // URL của API Gateway (WebSocket endpoint)
     const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:8080'
@@ -33,7 +35,8 @@ export function getSocket() {
     // Tạo socket connection
     socket = io(socketUrl, {
         auth: {
-            token: token  // Gửi JWT để authenticate
+            token: token,       // JWT nếu có
+            guestId: guestId || undefined // fallback cho guest
         },
         transports: ['websocket', 'polling'], // Ưu tiên WebSocket, fallback polling
         reconnection: true,  // Tự động reconnect nếu mất kết nối
