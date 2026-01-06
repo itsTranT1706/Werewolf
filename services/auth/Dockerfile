@@ -44,7 +44,7 @@ COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 COPY src ./src
 
 # Expose port
-EXPOSE 3000
+EXPOSE 8081
 
-# Run migrations and start the application
-CMD npx prisma migrate deploy && node src/index.js
+# Start application (migrations run automatically via docker-compose depends_on)
+CMD ["node", "src/index.js"]

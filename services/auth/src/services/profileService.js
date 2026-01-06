@@ -16,7 +16,7 @@ class ProfileService {
     async initializeProfile(userData) {
         try {
             const response = await axios.post(
-                `${this.baseUrl}/api/user-profile/internal/init`,
+                `${this.baseUrl}/api/v1/user-profile/internal/init`,
                 {
                     id: userData.id,  // Profile service expects 'id'
                     username: userData.username,
@@ -30,7 +30,7 @@ class ProfileService {
                 }
             );
 
-            console.log(`[PROFILE] Profile created for user ${userData.userId}`);
+            console.log(`[PROFILE] Profile created for user ${userData.id}`);
             return response.data;
         } catch (error) {
             console.error('[PROFILE ERROR] Failed to create profile:', error.message);

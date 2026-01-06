@@ -98,17 +98,17 @@ async function handleChatSendDm(socket, producer, payload = {}) {
 
 async function handleChatSendFaction(socket, producer, payload = {}) {
   const { roomId, faction, phase, text } = payload;
-  
+
   if (!roomId) {
     socket.emit('ERROR', { message: 'roomId is required' });
     return;
   }
-  
+
   if (!faction) {
     socket.emit('ERROR', { message: 'faction is required' });
     return;
   }
-  
+
   if (typeof text !== 'string' || !text.trim() || text.length > 500) {
     socket.emit('ERROR', { message: 'text must be 1-500 characters' });
     return;
@@ -142,7 +142,7 @@ async function handleChatSendFaction(socket, producer, payload = {}) {
 function setupSocket(io, producer) {
   const userSockets = new Map();
   const roomFactions = new Map(); // Map<roomId, Map<userId, faction>>
-  
+
   io.use(socketAuthMiddleware);
 
   io.on('connection', (socket) => {
@@ -154,12 +154,12 @@ function setupSocket(io, producer) {
     socket.on('CHAT_SEND', (payload) => handleChatSend(socket, producer, payload));
     socket.on('CHAT_SEND_DM', (payload) => handleChatSendDm(socket, producer, payload));
     socket.on('CHAT_SEND_FACTION', (payload) => handleChatSendFaction(socket, producer, payload));
-    
+
     // Handler để update faction info từ gameplay service
     socket.on('UPDATE_FACTION', (payload) => {
       const { roomId, faction } = payload;
       if (!roomId || !faction) return;
-      
+
       if (!roomFactions.has(roomId)) {
         roomFactions.set(roomId, new Map());
       }
