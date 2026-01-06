@@ -25,6 +25,7 @@ services:
     depends_on:
       zookeeper:
         condition: service_healthy
+      
     ports:
       - "9092:9092"
     environment:
@@ -54,7 +55,7 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -105,39 +106,39 @@ services:
       - PROFILE_SERVICE_URL=http://profile-service:8086
     # Vai trò: Xử lý đăng ký, đăng nhập người dùng và phát hành JWT token.
 
-    #room-service:
-    #  build: ./services/room
-    #  ports:
-    #    - "8082:8082"
-    #  depends_on:
-    #    - kafka
-    #    - database
-    #  environment:
-    #    - PORT=8082
-    #    - KAFKA_BROKERS=kafka:9092
-    # Vai trò: Quản lý tạo/tham gia phòng, danh sách người chơi chờ.
-
-  gameplay-service:
-    build: ./services/gameplay
+  room-service:
+    build: ./services/room
     ports:
-      - "8083:8083"
+      - "8082:8082"
     depends_on:
       - kafka
-      - redis
+      - database
     environment:
+      - PORT=8082
       - KAFKA_BROKERS=kafka:9092
-      - PORT=8083
+    # Vai trò: Quản lý tạo/tham gia phòng, danh sách người chơi chờ.
+
+  #gameplay-service:
+  #  build: ./services/gameplay
+  #  ports:
+  #    - "8083:8083"
+  #  depends_on:
+  #    - kafka
+  #    - redis
+  #  environment:
+  #    - KAFKA_BROKERS=kafka:9092
+  #    - PORT=8083
     # Vai trò: State Machine chính (Điều phối Ngày/Đêm, kỹ năng nhân vật, tính toán người chết).
 
-    # vote-service:
-    #   build: ./services/vote
-    #   ports:
-    #     - "8084:8084"
-    #   depends_on:
-    #     - kafka
-    #   environment:
-    #     - KAFKA_BROKERS=kafka:9092
-    #     - PORT=8084
+  vote-service:
+    build: ./services/vote
+    ports:
+      - "8084:8084"
+    depends_on:
+      - kafka
+    environment:
+      - KAFKA_BROKERS=kafka:9092
+      - PORT=8084
     # Vai trò: Xử lý đếm phiếu biểu quyết thời gian thực và trả kết quả cho Gameplay.
 
   chat-service:

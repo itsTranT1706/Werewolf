@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { MedievalPanel, MedievalInput, MedievalButton, Divider, BackButton } from '@/components/ui'
+import { MedievalPanel, MedievalInput, MedievalButton, Divider, BackButton } from '@/components/ui'
 import { authApi } from '@/api'
 
 export default function RegisterPage() {
