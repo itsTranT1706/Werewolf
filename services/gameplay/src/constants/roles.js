@@ -10,6 +10,11 @@ export const FACTION = {
 
 export const ROLES = {
     // PHE DÂN LÀNG
+    VILLAGER: {
+        id: 'VILLAGER',
+        name: 'Dân Làng',
+        faction: 'VILLAGER'
+    },
     BODYGUARD: {
         id: 'BODYGUARD',
         name: 'Bảo Vệ',
