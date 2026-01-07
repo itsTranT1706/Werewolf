@@ -1,0 +1,97 @@
+{
+    "client": "Thunder Client",
+    "collectionName": "Werewolf Auth Service",
+    "dateExported": "2025-12-30",
+    "version": "1.1",
+    "folders": [],
+    "requests": [
+        {
+            "name": "Health Check",
+            "method": "GET",
+            "url": "http://localhost:3000/api/auth/me",
+            "headers": [],
+            "body": {},
+            "tests": []
+        },
+        {
+            "name": "Register User",
+            "method": "POST",
+            "url": "http://localhost:3000/api/auth/register",
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"test123\"\n}"
+            },
+            "tests": []
+        },
+        {
+            "name": "Login User",
+            "method": "POST",
+            "url": "http://localhost:3000/api/auth/login",
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"emailOrUsername\": \"test@example.com\",\n  \"password\": \"test123\"\n}"
+            },
+            "tests": []
+        },
+        {
+            "name": "Register - Invalid Email",
+            "method": "POST",
+            "url": "http://localhost:3000/api/auth/register",
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"invalid-email\",\n  \"password\": \"test123\"\n}"
+            },
+            "tests": []
+        },
+        {
+            "name": "Register - Short Password",
+            "method": "POST",
+            "url": "http://localhost:3000/api/auth/register",
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"123\"\n}"
+            },
+            "tests": []
+        },
+        {
+            "name": "Login - Invalid Credentials",
+            "method": "POST",
+            "url": "http://localhost:3000/api/auth/login",
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"emailOrUsername\": \"test@example.com\",\n  \"password\": \"wrongpassword\"\n}"
+            },
+            "tests": []
+        }
+    ]
+}

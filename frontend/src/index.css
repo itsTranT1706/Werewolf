@@ -1,0 +1,200 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   CUSTOM CURSORS - Dark Fantasy Theme
+   Geometric 3D Arrow with beveled edges
+   ============================================ */
+
+/* Default cursor - Beveled arrow */
+*, *::before, *::after {
+  cursor: url('/assets/cursors/arrow-default.svg') 2 2, auto;
+}
+
+/* Pointer cursor for interactive elements */
+a, button, [role="button"], 
+input[type="submit"], input[type="button"],
+.cursor-pointer, [onclick] {
+  cursor: url('/assets/cursors/arrow-pointer.svg') 2 2, pointer;
+}
+
+/* Text input cursor */
+input[type="text"], input[type="email"], 
+input[type="password"], input[type="search"],
+textarea, [contenteditable="true"] {
+  cursor: url('/assets/cursors/arrow-default.svg') 2 2, text;
+}
+
+/* Night phase cursor - Darker tones */
+body.phase-night *, 
+body.phase-night *::before, 
+body.phase-night *::after {
+  cursor: url('/assets/cursors/arrow-night.svg') 2 2, auto;
+}
+
+body.phase-night a, 
+body.phase-night button, 
+body.phase-night [role="button"],
+body.phase-night .cursor-pointer {
+  cursor: url('/assets/cursors/arrow-night.svg') 2 2, pointer;
+}
+
+/* ============================================
+   Fantasy Game Base Styles
+   ============================================ */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0a0a1a;
+  font-family: 'MedievalSharp', 'Georgia', 'serif';
+  color: #d4b896;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar for fantasy theme */
+::-webkit-scrollbar {
+  width: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1a1a2e;
+  border: 2px solid #3d2914;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #5c3d1e 0%, #3d2914 100%);
+  border: 2px solid #c9a227;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #6d4a25 0%, #4a3518 100%);
+}
+
+/* Medieval text selection */
+::selection {
+  background-color: rgba(201, 162, 39, 0.4);
+  color: #fff;
+}
+
+@layer components {
+  /* Stone carved input style */
+  .input-stone {
+    @apply w-full px-4 py-3 bg-stone-dark border-2 border-stone-light text-parchment;
+    @apply font-fantasy tracking-wide;
+    @apply focus:outline-none focus:border-gold transition-all duration-200;
+    background: linear-gradient(180deg, #1a1a1a 0%, #2a2a2a 50%, #1a1a1a 100%);
+    box-shadow: 
+      inset 0 2px 4px rgba(0, 0, 0, 0.8),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+      0 1px 0 rgba(255, 255, 255, 0.05);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+
+  .input-stone::placeholder {
+    @apply text-stone-light opacity-100;
+    font-style: italic;
+  }
+
+  .input-stone:focus {
+    box-shadow: 
+      inset 0 2px 4px rgba(0, 0, 0, 0.8),
+      0 0 10px rgba(201, 162, 39, 0.3),
+      0 0 20px rgba(201, 162, 39, 0.1);
+  }
+
+  /* Wood button style */
+  .btn-wood {
+    @apply px-8 py-3 font-fantasy font-bold tracking-widest uppercase;
+    @apply text-parchment border-2 border-wood-dark;
+    @apply transition-all duration-200 cursor-pointer;
+    background: linear-gradient(180deg, #6d4a25 0%, #5c3d1e 30%, #3d2914 100%);
+    box-shadow: 
+      0 4px 0 #2a1a0a,
+      0 6px 10px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+  }
+
+  .btn-wood:hover {
+    @apply text-gold-light;
+    background: linear-gradient(180deg, #7d5a30 0%, #6d4a25 30%, #4a3518 100%);
+    transform: translateY(-2px);
+    box-shadow: 
+      0 6px 0 #2a1a0a,
+      0 8px 15px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.3);
+  }
+
+  .btn-wood:active {
+    transform: translateY(2px);
+    box-shadow: 
+      0 2px 0 #2a1a0a,
+      0 3px 5px rgba(0, 0, 0, 0.4),
+      inset 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .btn-wood:disabled {
+    @apply opacity-50 cursor-not-allowed;
+    transform: none;
+  }
+
+  /* Medieval panel */
+  .panel-medieval {
+    background: linear-gradient(180deg, 
+      rgba(30, 20, 10, 0.95) 0%, 
+      rgba(20, 15, 8, 0.98) 50%,
+      rgba(15, 10, 5, 0.95) 100%
+    );
+    border: 4px solid #3d2914;
+    box-shadow: 
+      0 0 0 2px #1a0f05,
+      0 0 0 4px #c9a227,
+      0 0 0 6px #1a0f05,
+      0 10px 40px rgba(0, 0, 0, 0.8),
+      inset 0 1px 0 rgba(255, 255, 255, 0.05),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.5);
+  }
+
+  /* Gold accent text */
+  .text-gold-glow {
+    @apply text-gold;
+    text-shadow: 
+      0 0 10px rgba(201, 162, 39, 0.5),
+      0 0 20px rgba(201, 162, 39, 0.3),
+      0 2px 4px rgba(0, 0, 0, 0.8);
+  }
+
+  /* Link style */
+  .link-fantasy {
+    @apply text-gold hover:text-gold-light transition-colors duration-200 cursor-pointer;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+
+  .link-fantasy:hover {
+    text-shadow: 
+      0 0 10px rgba(201, 162, 39, 0.5),
+      0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+}
+
+/* Ambient fog animation */
+@keyframes fogDrift {
+  0%, 100% { transform: translateX(0) translateY(0); opacity: 0.3; }
+  50% { transform: translateX(20px) translateY(-10px); opacity: 0.5; }
+}
+
+/* Torch flicker effect */
+@keyframes torchFlicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+  25%, 75% { opacity: 0.9; }
+}
