@@ -13,6 +13,13 @@ async function createProducer(kafka) {
   return producer;
 }
 
+async function createConsumer(kafka, groupId = 'room-service-group') {
+  const consumer = kafka.consumer({ groupId });
+  await consumer.connect();
+  await consumer.subscribe({ topic: 'commands', fromBeginning: false });
+  return consumer;
+}
+
 async function sendRoomEvent(producer, eventType, roomData) {
   try {
     await producer.send({
@@ -36,5 +43,6 @@ async function sendRoomEvent(producer, eventType, roomData) {
 module.exports = {
   createKafkaClient,
   createProducer,
+  createConsumer,
   sendRoomEvent,
 };

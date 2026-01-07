@@ -1,63 +1,103 @@
-const express = require('express');
-const cors = require('cors');
-const prisma = require('./config/database');
-const { createKafkaClient, createProducer } = require('./utils/kafka');
-const roomRoutes = require('./routes/roomRoutes');
+const express = require('express')
+const http = require('http')
+const { Server } = require('socket.io')
+
+const prisma = require('./config/database')
+const { createKafkaClient, createProducer, createConsumer } = require('./utils/kafka')
+const RoomSocketHandler = require('./handlers/roomSocketHandler')
+
+const PORT = process.env.PORT || 8082
 
 async function startServer() {
-  const app = express();
-  const port = process.env.PORT || 8082;
+  // ===== EXPRESS =====
+  const app = express()
 
-  // Middleware
-  app.use(cors());
-  app.use(express.json());
-
-  // Health check
   app.get('/health', (req, res) => {
-    res.json({ status: 'ok', service: 'room-service' });
-  });
+    res.json({ status: 'ok', service: 'room-service' })
+  })
 
-  // Kafka setup
-  const kafka = createKafkaClient();
-  const producer = await createProducer(kafka);
+  // ===== HTTP SERVER =====
+  const server = http.createServer(app)
 
-  // Attach prisma and producer to request object
-  app.use((req, res, next) => {
-    req.prisma = prisma;
-    req.kafkaProducer = producer;
-    next();
-  });
+  // ===== SOCKET.IO =====
+  const io = new Server(server, {
+    cors: {
+      origin: '*',
+      methods: ['GET', 'POST']
+    },
+    transports: ['websocket', 'polling']
+  })
 
-  // Routes
-  app.use('/api/v1/rooms', roomRoutes);
+  // ===== KAFKA =====
+  const kafka = createKafkaClient()
+  const producer = await createProducer(kafka)
+  const consumer = await createConsumer(kafka, 'room-service-group')
 
-  // Error handling
-  app.use((error, req, res, next) => {
-    console.error('Error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  });
+  const socketHandler = new RoomSocketHandler(prisma, producer, io)
 
-  app.listen(port, () => {
-    console.log(`Room service listening on port ${port}`);
-  });
+  await consumer.run({
+    eachMessage: async ({ message }) => {
+      if (!message.value) return
 
-  return { app, prisma, producer };
+      let command
+      try {
+        command = JSON.parse(message.value.toString())
+      } catch {
+        console.warn('Invalid Kafka message')
+        return
+      }
+
+      switch (command.action?.type) {
+        case 'ROOM_JOIN':
+          await socketHandler.handleRoomJoin(command)
+          break
+        case 'ROOM_LEAVE':
+          await socketHandler.handleRoomLeave(command)
+          break
+        default:
+          console.warn('Unknown command', command.action?.type)
+      }
+    }
+  })
+
+  // ===== SOCKET EVENTS =====
+  io.on('connection', (socket) => {
+    console.log('Client connected:', socket.id)
+
+    socket.on('CREATE_ROOM', (data) => socketHandler.handleCreateRoom(socket, data))
+    socket.on('JOIN_ROOM', (data) => socketHandler.handleJoinRoom(socket, data))
+    socket.on('LEAVE_ROOM', (data) => socketHandler.handleLeaveRoom(socket, data))
+    socket.on('START_GAME', (data) => {
+      console.log(`[SERVER_DEBUG] START_GAME event received from socket ${socket.id}`);
+      socketHandler.handleStartGame(socket, data);
+    })
+    socket.on('UPDATE_ROOM', (data) => socketHandler.handleUpdateRoom(socket, data))
+    socket.on('KICK_PLAYER', (data) => socketHandler.handleKickPlayer(socket, data))
+    socket.on('GET_ROOM_INFO', (data) => socketHandler.handleGetRoomInfo(socket, data))
+
+    socket.on('disconnect', () => {
+      console.log('Client disconnected:', socket.id)
+      socketHandler.handleDisconnect(socket)
+    })
+  })
+
+  server.listen(PORT, () => {
+    console.log(`Room service listening on port ${PORT}`)
+    console.log(`Socket.IO endpoint: ws://localhost:${PORT}`)
+    console.log(`Health check: http://localhost:${PORT}/health`)
+  })
+
+  return { server, io, prisma, producer, consumer }
 }
 
-async function stopServer(resources) {
-  const { prisma, producer } = resources;
-
-  if (producer) {
-    await producer.disconnect();
-  }
-
-  if (prisma) {
-    await prisma.$disconnect();
-  }
+async function stopServer({ prisma, producer, consumer }) {
+  if (consumer) await consumer.disconnect()
+  if (producer) await producer.disconnect()
+  if (prisma) await prisma.$disconnect()
 }
 
 if (require.main === module) {
-  startServer().catch(console.error);
+  startServer().catch(console.error)
 }
 
-module.exports = { startServer, stopServer };
+module.exports = { startServer, stopServer }

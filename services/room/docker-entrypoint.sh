@@ -14,14 +14,14 @@ done
 
 echo "✅ Database is ready"
 
-# Check if the users table exists
-TABLE_EXISTS=$(npx prisma db execute --stdin <<EOF | grep -c "users" || true
-SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = 'users';
+# Check if the rooms table exists
+TABLE_EXISTS=$(npx prisma db execute --stdin <<EOF | grep -c "rooms" || true
+SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename = 'rooms';
 EOF
 )
 
 if [ "$TABLE_EXISTS" -eq "0" ]; then
-  echo "🔨 Users table not found. Initializing database schema..."
+  echo "🔨 Rooms table not found. Initializing database schema..."
   npx prisma db push --skip-generate --accept-data-loss
   echo "✅ Database schema initialized"
 else
@@ -35,6 +35,5 @@ if [ -d "prisma/migrations" ] && [ "$(ls -A prisma/migrations)" ]; then
   echo "✅ Migrations completed"
 fi
 
-echo "🚀 Starting Auth Service..."
+echo "🚀 Starting Room Service..."
 exec node src/index.js
-
