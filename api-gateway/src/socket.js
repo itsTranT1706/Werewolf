@@ -18,28 +18,6 @@ function removeUserSocket(userSockets, userId, socketId) {
   }
 }
 
-async function handleRoomJoin(socket, producer, payload = {}) {
-  const { roomId } = payload;
-  if (!roomId) {
-    socket.emit('ERROR', { message: 'roomId is required' });
-    return;
-  }
-
-  socket.join(roomId);
-  const message = buildCommandMessage({
-    userId: socket.data.userId,
-    roomId,
-    actionType: 'ROOM_JOIN',
-    payload: {}
-  });
-
-  try {
-    await produceCommand(producer, message);
-  } catch (err) {
-    console.error('Failed to publish ROOM_JOIN', err);
-    socket.emit('ERROR', { message: 'Failed to publish action' });
-  }
-}
 
 async function handleChatSend(socket, producer, payload = {}) {
   const { roomId, text } = payload;
@@ -184,7 +162,6 @@ function setupSocket(io, producer) {
     addUserSocket(userSockets, userId, socket.id);
     socket.join(`user:${userId}`);
 
-    socket.on('ROOM_JOIN', (payload) => handleRoomJoin(socket, producer, payload));
     socket.on('CHAT_SEND', (payload) => handleChatSend(socket, producer, payload));
     socket.on('CHAT_SEND_DM', (payload) => handleChatSendDm(socket, producer, payload));
     socket.on('CHAT_SEND_FACTION', (payload) => handleChatSendFaction(socket, producer, payload));
