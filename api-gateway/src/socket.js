@@ -173,6 +173,30 @@ async function handleGameStart(socket, producer, payload = {}) {
   }
 }
 
+async function handleGMCommand(socket, producer, actionType, payload = {}) {
+  const { roomId } = payload
+
+  if (!roomId) {
+    socket.emit('ERROR', { message: 'roomId is required for GM commands' })
+    return
+  }
+
+  const message = buildCommandMessage({
+    userId: socket.data.userId,
+    roomId,
+    actionType,
+    payload
+  })
+
+  try {
+    await produceCommand(producer, message)
+    console.log(`✅ GM command sent: ${actionType}`, { roomId, userId: socket.data.userId })
+  } catch (err) {
+    console.error(`Failed to publish ${actionType}`, err)
+    socket.emit('ERROR', { message: `Failed to execute ${actionType}` })
+  }
+}
+
 function setupSocket(io, producer) {
   const userSockets = new Map();
   const roomFactions = new Map(); // Map<roomId, Map<userId, faction>>
@@ -191,6 +215,18 @@ function setupSocket(io, producer) {
 
     // ✅ Thêm GAME_START handler
     socket.on('GAME_START', (payload) => handleGameStart(socket, producer, payload));
+
+    // ========== GM COMMANDS ==========
+    socket.on('GM_START_NIGHT', (payload) => handleGMCommand(socket, producer, 'GM_START_NIGHT', payload));
+    socket.on('GM_CUPID_SELECT', (payload) => handleGMCommand(socket, producer, 'GM_CUPID_SELECT', payload));
+    socket.on('GM_WEREWOLF_KILL', (payload) => handleGMCommand(socket, producer, 'GM_WEREWOLF_KILL', payload));
+    socket.on('GM_SEER_CHECK', (payload) => handleGMCommand(socket, producer, 'GM_SEER_CHECK', payload));
+    socket.on('GM_BODYGUARD_PROTECT', (payload) => handleGMCommand(socket, producer, 'GM_BODYGUARD_PROTECT', payload));
+    socket.on('GM_WITCH_ACTION', (payload) => handleGMCommand(socket, producer, 'GM_WITCH_ACTION', payload));
+    socket.on('GM_END_NIGHT', (payload) => handleGMCommand(socket, producer, 'GM_END_NIGHT', payload));
+    socket.on('GM_ANNOUNCE_DEATHS', (payload) => handleGMCommand(socket, producer, 'GM_ANNOUNCE_DEATHS', payload));
+    socket.on('GM_START_DAY', (payload) => handleGMCommand(socket, producer, 'GM_START_DAY', payload));
+    socket.on('GM_HUNTER_SHOOT', (payload) => handleGMCommand(socket, producer, 'GM_HUNTER_SHOOT', payload));
 
     // Handler để update faction info từ gameplay service
     socket.on('UPDATE_FACTION', (payload) => {

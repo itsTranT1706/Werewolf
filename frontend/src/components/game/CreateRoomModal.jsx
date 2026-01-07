@@ -249,7 +249,7 @@ export default function CreateRoomModal({ isOpen, onClose }) {
                         {/* Phe Dân Làng */}
                         <div className="mb-4">
                             <h3 className="font-heading text-lg text-green-400 mb-3 flex items-center gap-2">
-                            
+
                                 Phe Dân Làng
                             </h3>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -276,7 +276,7 @@ export default function CreateRoomModal({ isOpen, onClose }) {
                         {/* Phe Ma Sói */}
                         <div>
                             <h3 className="font-heading text-lg text-red-400 mb-3 flex items-center gap-2">
-                            
+
                                 Phe Ma Sói
                             </h3>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -303,7 +303,7 @@ export default function CreateRoomModal({ isOpen, onClose }) {
                         {/* Phe Độc Lập */}
                         <div className="mt-6">
                             <h3 className="font-heading text-lg text-amber-300 mb-3 flex items-center gap-2">
-                             
+
                                 Phe Độc Lập
                             </h3>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">

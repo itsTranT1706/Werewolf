@@ -25,7 +25,7 @@ const REFRESH_TOKEN_KEY = 'refreshToken'
 export function decodeToken() {
   const token = localStorage.getItem(TOKEN_KEY)
   if (!token) return null
-  
+
   try {
     const payload = token.split('.')[1]
     const decoded = JSON.parse(atob(payload))
@@ -68,7 +68,7 @@ export const authApi = {
    */
   login: async (emailOrUsername, password) => {
     const { data } = await client.post('auth/login', { emailOrUsername, password })
-    
+
     // Store token on successful login
     if (data.token) {
       authApi.setToken(data.token)
@@ -76,7 +76,7 @@ export const authApi = {
     if (data.refreshToken) {
       localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken)
     }
-    
+
     return data
   },
 
@@ -86,10 +86,10 @@ export const authApi = {
    * @returns {Promise<{message: string}>}
    */
   register: async ({ email, username, password }) => {
-    const { data } = await client.post('auth/register', { 
-      email, 
-      username, 
-      password 
+    const { data } = await client.post('auth/register', {
+      email,
+      username,
+      password
     })
     return data
   },
@@ -158,13 +158,13 @@ export const authApi = {
     if (!refreshToken) {
       throw new Error('No refresh token available')
     }
-    
+
     const { data } = await client.post('/auth/refresh', { refreshToken })
-    
+
     if (data.token) {
       authApi.setToken(data.token)
     }
-    
+
     return data
   },
 }
