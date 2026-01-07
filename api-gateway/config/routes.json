@@ -70,6 +70,59 @@
                     "public": false
                 }
             ]
-        }  
+        },
+        "room-service": {
+            "target": "http://room-service:8082",
+            "routes": [
+                {
+                    "path": "/api/v1/rooms",
+                    "method": "GET",
+                    "targetPath": "/api/v1/rooms",
+                    "public": true
+                },
+                {
+                    "path": "/api/v1/rooms",
+                    "method": "POST",
+                    "targetPath": "/api/v1/rooms",
+                    "public": true
+                },
+                {
+                    "path": "/api/v1/rooms/{code}",
+                    "method": "GET",
+                    "targetPath": "/api/v1/rooms/{code}",
+                    "public": true
+                },
+                {
+                    "path": "/api/v1/rooms/{code}/join",
+                    "method": "POST",
+                    "targetPath": "/api/v1/rooms/{code}/join",
+                    "public": true
+                },
+                {
+                    "path": "/api/v1/rooms/{code}/leave",
+                    "method": "POST",
+                    "targetPath": "/api/v1/rooms/{code}/leave",
+                    "public": false
+                },
+                {
+                    "path": "/api/v1/rooms/{id}/start",
+                    "method": "POST",
+                    "targetPath": "/api/v1/rooms/{id}/start",
+                    "public": false
+                },
+                {
+                    "path": "/api/v1/rooms/{id}",
+                    "method": "PATCH",
+                    "targetPath": "/api/v1/rooms/{id}",
+                    "public": false
+                },
+                {
+                    "path": "/api/v1/rooms/{id}/kick/{playerId}",
+                    "method": "POST",
+                    "targetPath": "/api/v1/rooms/{id}/kick/{playerId}",
+                    "public": false
+                }
+            ]
+        }
     }
 }

@@ -84,7 +84,7 @@ function normalizeError(error) {
   return {
     status,
     code: data?.code || `HTTP_${status}`,
-    message: data?.message || getDefaultMessage(status),
+    message: data?.message || data?.error || getDefaultMessage(status),
     errors: data?.errors || null, // Validation errors array
     original: error,
   }

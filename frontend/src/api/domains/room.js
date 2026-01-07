@@ -43,11 +43,12 @@ export const roomApi = {
   /**
    * Join a room
    * @param {string} roomId 
-   * @param {string} password - Optional for private rooms
-   * @returns {Promise<{room: object}>}
+   * @param {object} options - { displayname, userId, password }
+   * @returns {Promise<{room: object, player: object}>}
    */
-  join: async (roomId, password = null) => {
-    const { data } = await client.post(`/rooms/${roomId}/join`, { password })
+  join: async (roomId, options = {}) => {
+    const { displayname, userId, password = null } = options
+    const { data } = await client.post(`/rooms/${roomId}/join`, { displayname, userId, password })
     return data
   },
 

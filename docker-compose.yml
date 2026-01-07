@@ -105,18 +105,19 @@ services:
       - PROFILE_SERVICE_URL=http://profile-service:8086
     # Vai trò: Xử lý đăng ký, đăng nhập người dùng và phát hành JWT token.
 
-  #room-service:
-  #  build: ./services/room
-  #  ports:
-  #    - "8082:8082"
-  #  depends_on:
-  #    - kafka
-  #    - database
-  #  environment:
-  #    - PORT=8082
-  #    - KAFKA_BROKERS=kafka:9092
-    # Vai trò: Quản lý tạo/tham gia phòng, danh sách người chơi chờ.
+  room-service:
+    build: ./services/room
+    ports:
+      - "8082:8082"
+    depends_on:
+      - kafka
+      - database
+    environment:
+      - PORT=8082
+      - KAFKA_BROKERS=kafka:9092
+      - DATABASE_URL=postgresql://postgres:postgres@database:5432/profile_service_db?schema=public
 
+    # Room service: create/join rooms and waiting list.
   #gameplay-service:
   #  build: ./services/gameplay
   #  ports:
@@ -182,3 +183,4 @@ networks:
 volumes:
   kafka_data:
   postgres_data:
+
