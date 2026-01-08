@@ -9,6 +9,7 @@ import { gameApi } from '@/api'
 import { getSocket } from '@/api/socket'
 import { getRoomSocket } from '@/api/roomSocket'
 import RoleSetupModal from '@/components/game/RoleSetupModal'
+import RoleRevealCard from '@/components/game/RoleRevealCard'
 import { ROLES, FACTION_NAMES } from '@/constants/roles'
 import { notify } from '@/components/ui'
 import { getOrCreateGuestUserId, getOrCreateGuestUsername } from '@/utils/guestUtils'
@@ -1147,35 +1148,14 @@ export default function RoomPage() {
                 availableRoles={availableRoles}
             />
 
-            {/* Role Reveal Modal - cho từng người chơi biết vai trò của mình */}
-            {myRole && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[80] p-4">
-                    <div className="bg-wood-dark border-4 border-gold rounded-xl max-w-lg w-full p-6 shadow-2xl">
-                        <h3 className="font-heading text-2xl text-gold-dim mb-4 text-center">
-                            🎭 Vai Trò Của Bạn
-                        </h3>
-                        <p className="text-center text-sm text-parchment-text/70 mb-2">
-                            Chỉ bạn mới thấy được màn hình này
-                        </p>
-                        <div className="mt-4 text-center space-y-3">
-                            <p className="text-sm text-gold-dim/80 uppercase tracking-[0.2em]">
-                                {FACTION_NAMES[myRole.faction] || myRole.faction}
-                            </p>
-                            <p className="font-heading text-3xl text-parchment-text">
-                                {myRole.roleName || myRole.role}
-                            </p>
-                        </div>
-                        <div className="mt-6 text-center">
-                            <button
-                                onClick={() => setMyRole({ ...myRole, acknowledged: true })}
-                                className="px-6 py-3 bg-gold border border-gold-dark rounded text-wood-dark font-bold hover:bg-gold-light transition-colors"
-                            >
-                                Đã Hiểu
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            {/* Role Reveal Card - Medieval tarot card style reveal */}
+            <RoleRevealCard
+                roleId={myRole?.role}
+                roleName={myRole?.roleName}
+                faction={myRole?.faction}
+                isOpen={myRole && !myRole.acknowledged}
+                onClose={() => setMyRole({ ...myRole, acknowledged: true })}
+            />
         </div>
     )
 }

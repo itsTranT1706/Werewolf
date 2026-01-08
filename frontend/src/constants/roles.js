@@ -15,6 +15,73 @@ export const FACTION_NAMES = {
     NEUTRAL: 'Độc Lập'
 }
 
+/**
+ * Role Image Mapping
+ * Maps role ID to image path in /assets/role-images/
+ */
+export const ROLE_IMAGES = {
+    VILLAGER: '/assets/role-images/danthuong.png',
+    BODYGUARD: '/assets/role-images/baove.png',
+    WATCHMAN: '/assets/role-images/nguoicanhgac.png',
+    SEER: '/assets/role-images/thayboi.png',
+    DETECTIVE: '/assets/role-images/thamtu.png',
+    MEDIUM: '/assets/role-images/thaydong.png',
+    SOUL_BINDER: '/assets/role-images/keganhon.png',
+    MAYOR: '/assets/role-images/thitruong.png',
+    WITCH: '/assets/role-images/phuthuy.png',
+    MONSTER_HUNTER: '/assets/role-images/thosan.png',
+    TRAITOR: '/assets/role-images/bansoi.png',
+    YOUNG_WOLF: '/assets/role-images/soitre.png',
+    DARK_WOLF: '/assets/role-images/soihacam.png',
+    ALPHA_WOLF: '/assets/role-images/soidaudan.png',
+    PROPHET_WOLF: '/assets/role-images/soitientri.png',
+    FOOL: '/assets/role-images/thangngo.png',
+    SERIAL_KILLER: '/assets/role-images/satnhan.png',
+    MODERATOR: null // Moderator không dùng card reveal
+}
+
+/**
+ * Get role image path by role ID
+ * @param {string} roleId - Role ID
+ * @returns {string|null} Image path or null if not found
+ */
+export function getRoleImage(roleId) {
+    return ROLE_IMAGES[roleId] || null
+}
+
+/**
+ * Role Icons (emoji fallback)
+ */
+export const ROLE_ICONS = {
+    BODYGUARD: '🛡️',
+    WATCHMAN: '🔔',
+    SEER: '👁️',
+    DETECTIVE: '🔍',
+    MEDIUM: '🔮',
+    SOUL_BINDER: '💀',
+    MAYOR: '👑',
+    WITCH: '🧪',
+    MONSTER_HUNTER: '🏹',
+    TRAITOR: '🎭',
+    YOUNG_WOLF: '🐺',
+    DARK_WOLF: '🌑',
+    ALPHA_WOLF: '👑',
+    PROPHET_WOLF: '🔮',
+    FOOL: '🤡',
+    SERIAL_KILLER: '🔪',
+    VILLAGER: '👤',
+    MODERATOR: '📋'
+}
+
+/**
+ * Get role icon by role ID
+ * @param {string} roleId - Role ID
+ * @returns {string} Emoji icon
+ */
+export function getRoleIcon(roleId) {
+    return ROLE_ICONS[roleId] || '❓'
+}
+
 export const ROLES = {
     // PHE DÂN LÀNG
     VILLAGER: {

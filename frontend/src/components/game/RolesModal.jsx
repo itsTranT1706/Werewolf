@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react'
-import { ROLES, FACTION, FACTION_NAMES, getRolesByFaction } from '@/constants/roles'
+import { ROLES, FACTION, FACTION_NAMES, getRolesByFaction, getRoleIcon } from '@/constants/roles'
 
 export default function RolesModal({ isOpen, onClose }) {
     const [activeTab, setActiveTab] = useState('classic')
@@ -190,32 +190,6 @@ export default function RolesModal({ isOpen, onClose }) {
             </div>
         </div>
     )
-}
-
-/**
- * Get icon for role
- */
-function getRoleIcon(roleId) {
-    const icons = {
-        BODYGUARD: '🛡️',
-        WATCHMAN: '🔔',
-        SEER: '👁️',
-        DETECTIVE: '🔍',
-        MEDIUM: '🔮',
-        SOUL_BINDER: '💀',
-        MAYOR: '👑',
-        WITCH: '🧪',
-        MONSTER_HUNTER: '🏹',
-        TRAITOR: '🎭',
-        YOUNG_WOLF: '🐺',
-        DARK_WOLF: '🌑',
-        ALPHA_WOLF: '👑',
-        PROPHET_WOLF: '🔮',
-        FOOL: '🤡',
-        SERIAL_KILLER: '🔪',
-        VILLAGER: '👤'
-    }
-    return icons[roleId] || '❓'
 }
 
 /**
