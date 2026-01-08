@@ -32,7 +32,7 @@ export function processNightResult(roomId) {
   // 1. Xử lý Werewolf target
   if (werewolfTarget) {
     const target = gameStateManager.getPlayer(roomId, werewolfTarget)
-    
+
     if (target && target.isAlive) {
       let isDead = true
 
@@ -82,7 +82,7 @@ export function processNightResult(roomId) {
   // 2. Xử lý Poison target (nếu có)
   if (poisonedTarget) {
     const target = gameStateManager.getPlayer(roomId, poisonedTarget)
-    
+
     if (target && target.isAlive) {
       gameStateManager.killPlayer(roomId, poisonedTarget, 'POISONED')
       deaths.push({
@@ -212,7 +212,7 @@ export function processVoteResult(roomId) {
 
     // Mayor có 2 phiếu
     const voteWeight = voter.role === 'MAYOR' ? 2 : 1
-    
+
     const currentCount = voteCounts.get(targetId) || 0
     voteCounts.set(targetId, currentCount + voteWeight)
   }

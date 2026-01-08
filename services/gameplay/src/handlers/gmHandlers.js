@@ -5,9 +5,9 @@
  */
 
 import { gameStateManager } from '../utils/gameStateManager.js'
-import { 
-  processNightResult, 
-  processHunterShoot, 
+import {
+  processNightResult,
+  processHunterShoot,
   processVoteResult,
   checkWinCondition,
   getWinMessage,
@@ -328,8 +328,8 @@ export async function handleGMEndNight(roomId, payload, command, producer) {
         deaths: result.deaths,
         saved: result.saved,
         protected: result.protected,
-        message: result.deaths.length === 0 
-          ? 'Không ai chết đêm qua' 
+        message: result.deaths.length === 0
+          ? 'Không ai chết đêm qua'
           : `${result.deaths.length} người đã chết`
       }
     },
@@ -361,8 +361,8 @@ export async function handleGMAnnounceDeaths(roomId, payload, command, producer)
       payload: {
         deaths: deaths || [],
         count: deaths?.length || 0,
-        message: deaths?.length === 0 
-          ? 'Đêm qua yên bình, không ai chết.' 
+        message: deaths?.length === 0
+          ? 'Đêm qua yên bình, không ai chết.'
           : `Đêm qua, ${deaths.map(d => d.username).join(', ')} đã chết.`
       }
     },
@@ -486,9 +486,9 @@ export async function handleGMEndVote(roomId, payload, command, producer) {
         hangedPlayer: result.hangedPlayer,
         voteResults: result.voteResults,
         reason: result.reason,
-        message: result.hangedPlayer 
+        message: result.hangedPlayer
           ? `${result.hangedPlayer.username} đã bị treo cổ với ${result.voteResults.find(v => v.userId === result.hangedPlayer.userId)?.voteCount} phiếu`
-          : result.reason === 'TIE' 
+          : result.reason === 'TIE'
             ? 'Hòa phiếu, không ai bị treo cổ'
             : 'Không đủ phiếu, không ai bị treo cổ'
       }
@@ -570,7 +570,7 @@ export async function handleGMHunterShoot(roomId, payload, command, producer) {
         hunterId,
         deaths: result.deaths,
         chainHunter: result.chainHunter,
-        message: result.chainHunter 
+        message: result.chainHunter
           ? `Thợ Săn bắn ${result.deaths[0].username}. ${result.chainHunter.username} cũng là Thợ Săn!`
           : `Thợ Săn bắn ${result.deaths[0].username}`
       }
