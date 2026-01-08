@@ -445,9 +445,6 @@ export default function RoomPage() {
             console.log('🎮 Game started via socket:', data)
             setGameStarted(true)
             updateRoomState(data.room)
-            
-            // Redirect to gameplay page
-            navigate(`/gameplay/${roomId}`)
         }
 
         // Handle ERROR event

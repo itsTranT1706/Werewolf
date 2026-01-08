@@ -336,6 +336,25 @@ export async function handleGMEndNight(roomId, payload, command, producer) {
     ts: Date.now()
   })
 
+  // Check if any Hunter died during night
+  const deadHunters = result.deaths.filter(d => d.role === 'MONSTER_HUNTER')
+  for (const hunter of deadHunters) {
+    await publishEvent(producer, 'evt.broadcast', {
+      traceId: command.traceId || generateTraceId(),
+      roomId,
+      targetUserId: gmUserId,
+      event: {
+        type: 'HUNTER_CAN_SHOOT',
+        payload: {
+          hunterId: hunter.userId,
+          hunterName: hunter.username,
+          message: `${hunter.username} là Thợ Săn đã chết! Được bắn người trước khi chết.`
+        }
+      },
+      ts: Date.now()
+    })
+  }
+
   console.log(`✅ Night result sent to GM:`, result)
 }
 
