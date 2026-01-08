@@ -144,6 +144,14 @@ export const ROLES = {
         faction: 'NEUTRAL',
         description: 'Bạn muốn giết tất cả mọi người. Mỗi đêm, bạn có thể giết một người chơi. Bạn thắng khi chỉ còn lại bạn và một người khác còn sống.',
         aura: 'Ác'
+    },
+    // QUẢN TRÒ (Host)
+    MODERATOR: {
+        id: 'MODERATOR',
+        name: 'Quản Trò',
+        faction: 'NEUTRAL',
+        description: 'Bạn là quản trò của phòng game. Bạn không tham gia chơi nhưng có thể quan sát và điều phối game.',
+        aura: 'Trung Lập'
     }
 }
 

@@ -5,8 +5,9 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { gameApi, roomApi } from '@/api'
+import { gameApi } from '@/api'
 import { getSocket } from '@/api/socket'
+import { getRoomSocket } from '@/api/roomSocket'
 import RoleSetupModal from '@/components/game/RoleSetupModal'
 import { ROLES, FACTION_NAMES } from '@/constants/roles'
 import { getOrCreateGuestUserId, getOrCreateGuestUsername } from '@/utils/guestUtils'
@@ -32,6 +33,9 @@ export default function RoomPage() {
     const [availableRoles, setAvailableRoles] = useState(null)
     const [chatMessages, setChatMessages] = useState([])
     const [chatInput, setChatInput] = useState('')
+    const [roomCode, setRoomCode] = useState(null) // Room code (4 digits)
+    const [roomSocket, setRoomSocket] = useState(null)
+    const [currentRoomId, setCurrentRoomId] = useState(null) // Room ID (UUID) từ backend
 
     // Get current user ID (hoặc guest ID nếu chưa đăng nhập)
     // QUAN TRỌNG: Ưu tiên dùng userId đã lưu khi tạo phòng để đảm bảo nhất quán
@@ -72,9 +76,12 @@ export default function RoomPage() {
         }
     }, [roomId])
 
-    // Load room info và join phòng
+    // Khởi tạo room socket và join room
     useEffect(() => {
         if (!roomId || !currentUserId) return
+
+        const socket = getRoomSocket()
+        setRoomSocket(socket)
 
         let isUnmounted = false
 
@@ -82,183 +89,377 @@ export default function RoomPage() {
             if (!room || isUnmounted) return
 
             setMaxPlayers(room.maxPlayers || 12)
-            setAvailableRoles(room.availableRoles || null)
+            setAvailableRoles(room.settings?.availableRoles || room.availableRoles || null)
+            setRoomCode(room.code || null)
 
-            const hostIdFromStorage = localStorage.getItem(`room_${roomId}_host`)
-            // Nếu backend chưa trả hostId nhưng còn người chơi, tạm chọn player đầu làm host (UI fallback)
-            const fallbackHostId = (!room.hostId && room.players?.length) ? room.players[0].userId : null
-            const actualHostId = room.hostId || fallbackHostId || hostIdFromStorage
+            // Tìm host player
+            const hostPlayer = room.players?.find(p => p.isHost)
+            const actualHostId = hostPlayer?.userId || null
 
-            // Đồng bộ lại hostId vào localStorage nếu backend đã đổi
-            if (room.hostId || fallbackHostId) {
-                localStorage.setItem(`room_${roomId}_host`, room.hostId || fallbackHostId)
+            console.log('🔍 Checking host status:', {
+                hostPlayer: hostPlayer ? { id: hostPlayer.id, userId: hostPlayer.userId, displayname: hostPlayer.displayname, isHost: hostPlayer.isHost } : null,
+                actualHostId,
+                currentUserId,
+                roomId
+            })
+
+            if (actualHostId) {
+                localStorage.setItem(`room_${roomId}_host`, actualHostId)
             }
 
             setHostId(actualHostId || null)
             const isHostUser = String(actualHostId) === String(currentUserId)
+            console.log('🔍 Host check result:', {
+                actualHostId,
+                currentUserId,
+                isHostUser,
+                comparison: `"${actualHostId}" === "${currentUserId}"`
+            })
             setIsHost(isHostUser)
 
             if (room.players && room.players.length > 0) {
                 setPlayers(room.players.map(p => ({
                     userId: p.userId,
-                    username: p.username || `Người_Chơi_${p.userId}`,
+                    username: p.displayname || p.username || `Người_Chơi_${p.userId}`,
                     isGuest: p.isGuest || p.userId?.startsWith('guest-')
                 })))
             }
         }
 
-        const fetchRoomState = async () => {
+        // Lấy username/displayname
+        const token = localStorage.getItem('token')
+        let displayname = null
+        if (!token) {
+            displayname = getOrCreateGuestUsername()
+        } else {
             try {
-                const result = await roomApi.get(roomId)
-                updateRoomState(result.room)
+                const payload = JSON.parse(atob(token.split('.')[1]))
+                displayname = payload.username || payload.displayname || null
             } catch (err) {
-                console.warn('Không thể đồng bộ phòng:', err)
-
-                // Nếu phòng không còn tồn tại trong lúc đang ở phòng → quay về /game với thông báo lỗi
-                if (err.status === 404) {
-                    navigate(`/game?error=${encodeURIComponent('Phòng không tồn tại hoặc đã bị xoá')}`)
-                }
+                console.warn('Could not get username from token:', err)
             }
         }
 
-        const loadAndJoinRoom = async () => {
-            try {
-                // Lấy username cho guest player
-                const token = localStorage.getItem('token')
-                let username = null
-                if (!token) {
-                    // Guest: dùng username random/đã lưu
-                    username = getOrCreateGuestUsername()
-                    // Đảm bảo guest userId được lưu vào localStorage trước khi gửi request
-                    const guestUserId = getOrCreateGuestUserId()
-                    console.log(`🔑 Guest user - userId: ${guestUserId}, username: ${username}`)
-                } else {
-                    // User đã đăng nhập: lấy username từ JWT (trùng với username ở hồ sơ)
-                    try {
-                        const payload = JSON.parse(atob(token.split('.')[1]))
-                        username = payload.username || payload.displayname || null
-                        console.log(`🔑 Authenticated user - userId: ${currentUserId}, username: ${username}`)
-                    } catch (err) {
-                        console.warn('Could not get username from token:', err)
+        // Kiểm tra room trước khi join
+        const checkRoomBeforeJoin = async (roomCode) => {
+            return new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => {
+                    reject(new Error('Timeout: Không thể kiểm tra trạng thái phòng'))
+                }, 5000)
+
+                const handleRoomInfo = (data) => {
+                    clearTimeout(timeout)
+                    socket.off('ROOM_INFO', handleRoomInfo)
+                    socket.off('ERROR', handleError)
+
+                    const room = data.room
+
+                    // Kiểm tra các điều kiện
+                    if (room.status !== 'WAITING') {
+                        reject(new Error('Game has already started'))
+                        return
+                    }
+
+                    if (room.currentPlayers >= room.maxPlayers) {
+                        reject(new Error('Room is full'))
+                        return
+                    }
+
+                    resolve(room)
+                }
+
+                const handleError = (errorData) => {
+                    clearTimeout(timeout)
+                    socket.off('ROOM_INFO', handleRoomInfo)
+                    socket.off('ERROR', handleError)
+
+                    if (errorData.message === 'Room not found') {
+                        reject(new Error('Room not found'))
+                    } else {
+                        reject(new Error(errorData.message || 'Không thể kiểm tra phòng'))
                     }
                 }
 
-                // Thử get room info trước để kiểm tra xem đã join chưa
-                let room = null
-                try {
-                    const result = await roomApi.get(roomId)
-                    room = result.room
+                socket.once('ROOM_INFO', handleRoomInfo)
+                socket.once('ERROR', handleError)
 
-                    if (room) {
-                        // Kiểm tra xem user đã có trong danh sách players chưa
-                        // So sánh bằng String để đảm bảo chính xác
-                        const existingPlayer = room.players?.find(p => String(p.userId) === String(currentUserId))
+                // Gửi request để lấy thông tin room
+                console.log('📤 Emitting GET_ROOM_INFO with code:', roomCode)
+                socket.emit('GET_ROOM_INFO', { code: roomCode })
+            })
+        }
 
-                        console.log(`🔍 Checking existing player - currentUserId: ${currentUserId}, players:`, room.players?.map(p => p.userId))
+        // Join room qua socket khi connected
+        const handleConnect = async () => {
+            console.log('✅ Room socket connected, checking room before joining...')
+            console.log('🔍 RoomId:', roomId, 'Type:', /^\d{4}$/.test(roomId) ? 'CODE' : 'UUID')
+            console.log('🔍 Displayname:', displayname || 'Anonymous Player')
 
-                        if (!existingPlayer) {
-                            // Nếu chưa join, mới join
-                            console.log(`➕ User ${currentUserId} not in room, joining...`)
-                            console.log(`   Sending join request with userId: ${currentUserId}, username: ${username}`)
-                            try {
-                                const joinResult = await roomApi.join(roomId, null, username)
-                                room = joinResult.room
-                                console.log(`✅ Successfully joined room - Players count: ${room.players?.length || 0}`)
-                                console.log(`   Players:`, room.players?.map(p => ({ userId: p.userId, username: p.username })))
+            let roomCode = null
 
-                                // Force update players list ngay lập tức
-                                if (room.players && room.players.length > 0) {
-                                    setPlayers(room.players.map(p => ({
-                                        userId: p.userId,
-                                        username: p.username || `Người_Chơi_${p.userId}`,
-                                        isGuest: p.isGuest || p.userId?.startsWith('guest-')
-                                    })))
-                                }
-                            } catch (joinErr) {
-                                console.error('❌ Join failed:', joinErr)
-                                console.error('   Error details:', joinErr.response?.data || joinErr.message)
-                                // Nếu join lỗi, vẫn dùng room info đã lấy
-                            }
-                        } else {
-                            console.log(`✅ User ${currentUserId} already in room`)
-                            console.log(`   Current players in room:`, room.players?.map(p => ({ userId: p.userId, username: p.username })))
-                        }
-                    }
-                } catch (getErr) {
-                    console.warn('Get room failed, room does not exist or service unavailable:', getErr)
-                    // Điều hướng về /game kèm thông báo lỗi để hiển thị rõ ràng
-                    navigate(`/game?error=${encodeURIComponent('Phòng không tồn tại hoặc đã bị xoá')}`)
+            // Xác định room code
+            if (roomId && /^\d{4}$/.test(roomId)) {
+                roomCode = roomId
+            } else {
+                const savedCode = localStorage.getItem(`room_uuid_${roomId}`)
+                if (savedCode) {
+                    roomCode = savedCode
+                } else {
+                    console.warn('⚠️ No room code found in localStorage for UUID:', roomId)
+                    setError('Không tìm thấy mã phòng. Vui lòng tạo phòng mới hoặc join bằng mã phòng 4 chữ số.')
+                    setLoading(false)
                     return
                 }
+            }
 
-                if (room) {
-                    updateRoomState(room)
-
-                    // Lưu hostId mới ngay khi lấy được từ backend
-                    if (room.hostId) {
-                        localStorage.setItem(`room_${roomId}_host`, room.hostId)
+            // Lấy userId để gửi lên backend
+            let userId = currentUserId
+            if (!userId) {
+                const token = localStorage.getItem('token')
+                if (token) {
+                    try {
+                        const payload = JSON.parse(atob(token.split('.')[1]))
+                        userId = payload.userId || payload.id
+                    } catch (err) {
+                        userId = getOrCreateGuestUserId()
                     }
+                } else {
+                    userId = getOrCreateGuestUserId()
                 }
-            } catch (err) {
-                console.warn('Error loading room from API:', err)
-                navigate(`/game?error=${encodeURIComponent('Phòng không tồn tại hoặc không thể truy cập')}`)
+            }
+
+            try {
+                // Kiểm tra room trước khi join
+                console.log('🔍 Checking room status before joining:', roomCode)
+                await checkRoomBeforeJoin(roomCode)
+                console.log('✅ Room check passed, joining room...')
+
+                // Nếu check thành công, join room
+                socket.emit('JOIN_ROOM', {
+                    code: roomCode,
+                    displayname: displayname || 'Anonymous Player',
+                    userId: userId
+                })
+            } catch (checkError) {
+                console.error('❌ Room check failed:', checkError.message)
+                setError(getErrorMessage(checkError.message))
+                setLoading(false)
+
+                // Navigate về game page nếu có lỗi nghiêm trọng
+                if (checkError.message === 'Room not found' || checkError.message === 'Game has already started') {
+                    setTimeout(() => {
+                        navigate('/game')
+                    }, 3000)
+                }
             }
         }
 
-        loadAndJoinRoom()
+        // Hàm chuyển đổi error message sang tiếng Việt
+        const getErrorMessage = (errorMessage) => {
+            const errorMap = {
+                'Game has already started': 'Game đã bắt đầu. Không thể tham gia phòng này.',
+                'Room is full': 'Phòng đã đầy. Vui lòng chọn phòng khác.',
+                'Room not found': 'Không tìm thấy phòng. Mã phòng có thể không đúng hoặc phòng đã bị xóa.',
+                'You are already in another room': 'Bạn đang ở phòng khác. Vui lòng rời phòng hiện tại trước.',
+                'Timeout: Không thể kiểm tra trạng thái phòng': 'Không thể kết nối với server. Vui lòng thử lại.'
+            }
+            return errorMap[errorMessage] || errorMessage
+        }
 
-        const intervalId = setInterval(fetchRoomState, 3000)
+        // Handle ROOM_JOINED event
+        const handleRoomJoined = (data) => {
+            console.log('✅ Joined room via socket:', data)
+            const room = data.room
+            const player = data.player
+
+            console.log('👤 Player info from ROOM_JOINED:', {
+                playerId: player?.id,
+                userId: player?.userId,
+                displayname: player?.displayname,
+                isHost: player?.isHost
+            })
+
+            // Lưu room ID để dùng khi leave
+            if (room.id) {
+                setCurrentRoomId(room.id)
+                console.log(`💾 Saved currentRoomId: ${room.id}`)
+            }
+
+            // Lưu code vào localStorage để dùng lại sau
+            if (room.code && room.id) {
+                localStorage.setItem(`room_uuid_${room.id}`, room.code)
+                localStorage.setItem(`room_id_${room.code}`, room.id) // Lưu room ID theo code
+                console.log(`💾 Saved room code to localStorage: ${room.code} for room ${room.id}`)
+            }
+
+            // Nếu player là host, set isHost ngay
+            if (player?.isHost) {
+                console.log('👑 Player is host! Setting isHost = true')
+                setIsHost(true)
+            }
+
+            updateRoomState(room)
+        }
+
+        // Handle PLAYER_JOINED event
+        const handlePlayerJoined = (data) => {
+            console.log('➕ Player joined:', data)
+            updateRoomState(data.room)
+        }
+
+        // Handle PLAYER_LEFT event
+        const handlePlayerLeft = (data) => {
+            console.log('➖ Player left:', data)
+            updateRoomState(data.room)
+        }
+
+        // Handle ROOM_INFO event
+        const handleRoomInfo = (data) => {
+            console.log('📋 Room info:', data)
+            const room = data.room
+
+            // Lưu code vào localStorage nếu chưa có
+            if (room.code && room.id) {
+                const existingCode = localStorage.getItem(`room_uuid_${room.id}`)
+                if (!existingCode) {
+                    localStorage.setItem(`room_uuid_${room.id}`, room.code)
+                    console.log(`💾 Saved room code to localStorage: ${room.code} for room ${room.id}`)
+                }
+            }
+
+            updateRoomState(room)
+        }
+
+        // Handle GAME_STARTED event
+        const handleGameStarted = (data) => {
+            console.log('🎮 Game started via socket:', data)
+            setGameStarted(true)
+            updateRoomState(data.room)
+        }
+
+        // Handle ERROR event
+        const handleError = (error) => {
+            console.error('❌ Room socket error:', error)
+            console.error('❌ Error details:', JSON.stringify(error, null, 2))
+            const errorMessage = error?.message || error?.error || 'Có lỗi xảy ra'
+            setError(errorMessage)
+            setLoading(false)
+        }
+
+        // Register event listeners
+        socket.on('connect', handleConnect)
+        socket.on('ROOM_JOINED', handleRoomJoined)
+        socket.on('PLAYER_JOINED', handlePlayerJoined)
+        socket.on('PLAYER_LEFT', handlePlayerLeft)
+        socket.on('ROOM_INFO', handleRoomInfo)
+        socket.on('GAME_STARTED', handleGameStarted)
+        socket.on('ERROR', handleError)
+
+        // Join room nếu đã connected
+        if (socket.connected) {
+            handleConnect()
+        }
 
         return () => {
             isUnmounted = true
-            clearInterval(intervalId)
+            socket.off('connect', handleConnect)
+            socket.off('ROOM_JOINED', handleRoomJoined)
+            socket.off('PLAYER_JOINED', handlePlayerJoined)
+            socket.off('PLAYER_LEFT', handlePlayerLeft)
+            socket.off('ROOM_INFO', handleRoomInfo)
+            socket.off('GAME_STARTED', handleGameStarted)
+            socket.off('ERROR', handleError)
         }
     }, [roomId, currentUserId])
 
-    // Check socket connection và join room
+    // Check API Gateway socket connection (cho game events)
     useEffect(() => {
         const socket = getSocket()
         setSocketConnected(socket.connected)
 
         const onConnect = () => {
-            console.log('✅ Socket connected')
+            console.log('✅ API Gateway socket connected')
             setSocketConnected(true)
-
-            // Emit ROOM_JOIN khi socket connected
-            if (roomId && currentUserId) {
-                socket.emit('ROOM_JOIN', { roomId })
-                console.log('📥 Đã join phòng:', roomId)
-            }
         }
 
         const onDisconnect = () => {
-            console.log('❌ Socket disconnected')
+            console.log('❌ API Gateway socket disconnected')
             setSocketConnected(false)
         }
 
         socket.on('connect', onConnect)
         socket.on('disconnect', onDisconnect)
 
-        // Nếu đã connected, join room ngay
-        if (socket.connected && roomId && currentUserId) {
-            socket.emit('ROOM_JOIN', { roomId })
-            console.log('📥 Đã join phòng:', roomId)
-        }
-
         return () => {
             socket.off('connect', onConnect)
             socket.off('disconnect', onDisconnect)
         }
-    }, [roomId, currentUserId])
+    }, [])
 
 
     // Listen for role assignment và game events
     useEffect(() => {
+        // Listen từ API Gateway socket (gameApi)
         const unsubscribeRole = gameApi.onRoleAssigned((data) => {
-            console.log('🎭 Nhận vai trò:', data)
-            setMyRole(data)
-            gameApi.updateFaction(roomId, data.faction)
+            console.log('🎭 Nhận vai trò từ API Gateway:', data)
+            console.log(`   Current userId: ${currentUserId}, Role userId: ${data.userId}, Match: ${String(currentUserId) === String(data.userId)}`)
+            // API Gateway đã filter theo userId rồi, nên nhận được là đúng user
+            // Nhưng vẫn check để đảm bảo
+            if (!data.userId || String(currentUserId) === String(data.userId)) {
+                console.log('✅ Setting role:', data.role)
+                setMyRole(data)
+                gameApi.updateFaction(roomId, data.faction)
+            } else {
+                console.warn(`⚠️ Role assignment userId mismatch: expected ${currentUserId}, got ${data.userId}`)
+            }
         })
+
+        // Also listen directly from socket (fallback)
+        const apiSocket = getSocket()
+        const directHandler = (data) => {
+            console.log('🎭 Nhận vai trò trực tiếp từ socket:', data)
+            const roleData = data.payload || data
+            if (roleData.userId && String(currentUserId) === String(roleData.userId)) {
+                console.log('✅ Setting role from direct socket:', roleData.role)
+                setMyRole({
+                    role: roleData.role,
+                    roleName: roleData.roleName,
+                    faction: roleData.faction,
+                    userId: roleData.userId
+                })
+                gameApi.updateFaction(roomId, roleData.faction)
+            }
+        }
+        if (apiSocket) {
+            apiSocket.on('GAME_ROLE_ASSIGNED', directHandler)
+        }
+
+        // Listen từ Room socket (roomSocket) - fallback cho players join sau
+        const handleRoomRoleAssigned = (data) => {
+            console.log('🎭 Nhận vai trò từ Room socket:', data)
+            const roleData = {
+                role: data.payload.role,
+                roleName: data.payload.roleName,
+                faction: data.payload.faction,
+                userId: data.payload.userId
+            }
+            console.log(`   Current userId: ${currentUserId}, Role userId: ${roleData.userId}, Match: ${String(currentUserId) === String(roleData.userId)}`)
+            // Room socket có thể broadcast đến tất cả, nên check userId
+            if (!roleData.userId || String(currentUserId) === String(roleData.userId)) {
+                setMyRole(roleData)
+                // Update faction nếu có API Gateway socket
+                const apiSocket = getSocket()
+                if (apiSocket && apiSocket.connected) {
+                    gameApi.updateFaction(roomId, roleData.faction)
+                }
+            } else {
+                console.log(`ℹ️ Role assignment for different user (${roleData.userId}), ignoring`)
+            }
+        }
+
+        if (roomSocket) {
+            roomSocket.on('GAME_ROLE_ASSIGNED', handleRoomRoleAssigned)
+        }
 
         const unsubscribeStarted = gameApi.onGameStarted((data) => {
             console.log('🎮 Game đã bắt đầu!', data)
@@ -282,8 +483,14 @@ export default function RoomPage() {
             unsubscribeStarted()
             unsubscribeError()
             unsubscribeRoleList()
+            if (roomSocket) {
+                roomSocket.off('GAME_ROLE_ASSIGNED', handleRoomRoleAssigned)
+            }
+            if (apiSocket) {
+                apiSocket.off('GAME_ROLE_ASSIGNED', directHandler)
+            }
         }
-    }, [roomId])
+    }, [roomId, roomSocket, currentUserId])
 
     const handleStartGame = () => {
         if (players.length < 3) {
@@ -296,8 +503,8 @@ export default function RoomPage() {
             return
         }
 
-        if (!socketConnected) {
-            setError('Socket chưa kết nối. Vui lòng đợi...')
+        if (!roomSocket || !roomSocket.connected) {
+            setError('Chưa kết nối với server. Vui lòng đợi...')
             return
         }
 
@@ -312,14 +519,16 @@ export default function RoomPage() {
 
         console.log('🎮 Starting game with role setup:', setup)
 
-        try {
-            gameApi.startGame(roomId, players, setup, availableRoles)
-            console.log('✅ GAME_START event đã được gửi')
-        } catch (err) {
-            console.error('❌ Error starting game:', err)
-            setError('Lỗi khi bắt đầu game: ' + err.message)
+        if (!roomSocket || !roomSocket.connected) {
+            setError('Chưa kết nối với server. Vui lòng đợi...')
             setLoading(false)
+            return
         }
+
+        // Gửi START_GAME event qua room socket với roleSetup
+        roomSocket.emit('START_GAME', {
+            roleSetup: setup // Gửi roleSetup để gameplay service sử dụng
+        })
     }
 
     const handleLeaveRoom = async () => {
@@ -328,34 +537,64 @@ export default function RoomPage() {
             return
         }
 
+        if (!roomSocket || !roomSocket.connected) {
+            // Nếu socket chưa kết nối, vẫn navigate về /game
+            navigate('/game')
+            return
+        }
+
         try {
             setLoading(true)
-            await roomApi.leave(roomId, currentUserId)
-            setPlayers(prev => {
-                const remaining = prev.filter(p => String(p.userId) !== String(currentUserId))
 
-                // Nếu mình là quản trò và vẫn còn người chơi, gán tạm người đầu tiên làm quản trò
-                if (isHost && remaining.length > 0) {
-                    const [newHost, ...rest] = remaining
-                    return [
-                        { ...newHost, isHost: true },
-                        ...rest.map(p => ({ ...p, isHost: false }))
-                    ]
-                }
-
-                return remaining
-            })
-            if (isHost) {
-                setIsHost(false)
+            // Listen for ROOM_LEFT event
+            const handleRoomLeft = () => {
+                console.log('✅ Left room successfully')
+                // Dọn localStorage
+                localStorage.removeItem(`room_${roomId}_host`)
+                localStorage.removeItem(`room_${roomId}_creator_userId`)
+                navigate('/game')
             }
-            // Dọn localStorage để tránh giữ host cũ
-            localStorage.removeItem(`room_${roomId}_host`)
-            localStorage.removeItem(`room_${roomId}_creator_userId`)
-            navigate('/game')
+
+            roomSocket.once('ROOM_LEFT', handleRoomLeft)
+
+            // Gửi LEAVE_ROOM event với roomId (fallback nếu socket.data.currentRoomId bị mất)
+            // Ưu tiên: currentRoomId (từ ROOM_JOINED) > roomId từ URL > roomCode
+            let roomIdToLeave = currentRoomId
+
+            // Nếu không có currentRoomId, thử lấy từ localStorage hoặc URL
+            if (!roomIdToLeave) {
+                // Thử lấy từ localStorage theo code
+                if (roomCode) {
+                    roomIdToLeave = localStorage.getItem(`room_id_${roomCode}`)
+                }
+                // Nếu vẫn không có, dùng roomId từ URL (có thể là UUID)
+                if (!roomIdToLeave && roomId && !/^\d{4}$/.test(roomId)) {
+                    roomIdToLeave = roomId
+                }
+            }
+
+            console.log('📤 Emitting LEAVE_ROOM', {
+                currentRoomId,
+                roomIdFromURL: roomId,
+                roomCode,
+                roomIdToLeave
+            })
+            roomSocket.emit('LEAVE_ROOM', roomIdToLeave ? { roomId: roomIdToLeave } : {})
+
+            // Timeout sau 3 giây nếu không nhận được response
+            setTimeout(() => {
+                roomSocket.off('ROOM_LEFT', handleRoomLeft)
+                if (loading) {
+                    console.warn('⚠️ Leave room timeout, navigating anyway')
+                    localStorage.removeItem(`room_${roomId}_host`)
+                    localStorage.removeItem(`room_${roomId}_creator_userId`)
+                    navigate('/game')
+                    setLoading(false)
+                }
+            }, 3000)
         } catch (err) {
             console.error('❌ Rời phòng thất bại:', err)
             setError('Không thể rời phòng, thử lại sau.')
-        } finally {
             setLoading(false)
         }
     }
@@ -435,7 +674,7 @@ export default function RoomPage() {
                                 <div className="flex flex-wrap items-end justify-between gap-6 border-b border-wood-light/30 pb-6">
                                     <div>
                                         <h1 className="font-heading text-4xl lg:text-6xl text-parchment-text drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)]">
-                                            Phòng {roomId || 'Không xác định'}
+                                            Phòng {roomCode || roomId || 'Không xác định'}
                                         </h1>
                                         <p className="text-gold-dim text-lg font-serif italic flex items-center gap-2 mt-2">
                                             <span className="material-symbols-outlined text-base">forest</span>
@@ -452,13 +691,13 @@ export default function RoomPage() {
                                             </div>
                                             <div className="flex flex-col">
                                                 <span className="text-[10px] text-gold-dim uppercase font-bold tracking-[0.2em]">Mã Triệu Hồi</span>
-                                                <span className="font-heading text-2xl text-parchment-text tracking-widest">{roomId || '8291'}</span>
+                                                <span className="font-heading text-2xl text-parchment-text tracking-widest">{roomCode || roomId || '8291'}</span>
                                             </div>
                                             <div className="h-8 w-[1px] bg-wood-light/50 mx-1"></div>
                                             <span
                                                 className="material-symbols-outlined text-parchment-text/50 group-hover:text-parchment-text transition-colors cursor-pointer"
                                                 onClick={() => {
-                                                    navigator.clipboard.writeText(roomId || '8291')
+                                                    navigator.clipboard.writeText(roomCode || roomId || '8291')
                                                 }}
                                             >sao chép</span>
                                         </div>
@@ -531,6 +770,19 @@ export default function RoomPage() {
                                     </div>
                                 ))}
                             </div>
+
+                            {/* Debug Info (tạm thời để debug) */}
+                            {process.env.NODE_ENV === 'development' && (
+                                <div className="mt-4 p-4 bg-black/50 border border-yellow-500 rounded text-xs text-yellow-300">
+                                    <p>🔍 DEBUG INFO:</p>
+                                    <p>isHost: {String(isHost)}</p>
+                                    <p>hostId: {String(hostId)}</p>
+                                    <p>currentUserId: {String(currentUserId)}</p>
+                                    <p>gameStarted: {String(gameStarted)}</p>
+                                    <p>players.length: {players.length}</p>
+                                    <p>Should show button: {String(!gameStarted && isHost)}</p>
+                                </div>
+                            )}
 
                             {/* Start Game Button (chỉ hiển thị cho quản trò) */}
                             {!gameStarted && isHost && (
@@ -639,7 +891,7 @@ export default function RoomPage() {
             <RoleSetupModal
                 isOpen={showRoleSetup}
                 onClose={() => setShowRoleSetup(false)}
-                playerCount={players.length}
+                playerCount={Math.max(1, players.length - 1)} // Trừ host ra (host sẽ nhận role MODERATOR)
                 onConfirm={handleRoleSetupConfirm}
                 initialSetup={roleSetup}
                 availableRoles={availableRoles}

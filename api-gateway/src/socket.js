@@ -159,8 +159,10 @@ function setupSocket(io, producer) {
 
   io.on('connection', (socket) => {
     const userId = socket.data.userId;
+    console.log(`[SOCKET] New connection: socketId=${socket.id}, userId=${userId}`);
     addUserSocket(userSockets, userId, socket.id);
     socket.join(`user:${userId}`);
+    console.log(`[SOCKET] Socket ${socket.id} joined room user:${userId}, total sockets for this user: ${userSockets.get(userId)?.size || 0}`);
 
     socket.on('CHAT_SEND', (payload) => handleChatSend(socket, producer, payload));
     socket.on('CHAT_SEND_DM', (payload) => handleChatSendDm(socket, producer, payload));

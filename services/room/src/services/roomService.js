@@ -5,41 +5,41 @@ class RoomService {
     this.roomRepository = new RoomRepository(prisma, kafkaProducer);
   }
 
-    // Create new room
-    async createRoom(roomData) {
-      const { name, hostDisplayname, hostId, maxPlayers = 75, settings } = roomData;
-  
-      // Validate input
-      if (!name || name.trim().length === 0) {
-        throw new Error('Room name is required');
-      }
-  
-      if (name.length > 100) {
-        throw new Error('Room name must be less than 100 characters');
-      }
-  
-      if (maxPlayers < 4 || maxPlayers > 75) {
-        throw new Error('Max players must be between 4 and 75');
-      }
-  
-      const room = await this.roomRepository.create({
-        name: name.trim(),
-        hostDisplayname,
-        hostId,
-        maxPlayers,
-        settings,
-      });
-  
-      // Add host as first player to the database
-      await this.roomRepository.addPlayer(room.id, {
-        displayname: hostDisplayname,
-        userId: hostId,
-        isHost: true,
-      });
-  
-      // Re-fetch room with players included (currentPlayers is already updated by addPlayer)
-      return this.getRoomById(room.id);
+  // Create new room
+  async createRoom(roomData) {
+    const { name, hostDisplayname, hostId, maxPlayers = 75, settings } = roomData;
+
+    // Validate input
+    if (!name || name.trim().length === 0) {
+      throw new Error('Room name is required');
     }
+
+    if (name.length > 100) {
+      throw new Error('Room name must be less than 100 characters');
+    }
+
+    if (maxPlayers < 4 || maxPlayers > 75) {
+      throw new Error('Max players must be between 4 and 75');
+    }
+
+    const room = await this.roomRepository.create({
+      name: name.trim(),
+      hostDisplayname,
+      hostId,
+      maxPlayers,
+      settings,
+    });
+
+    // Add host as first player to the database
+    await this.roomRepository.addPlayer(room.id, {
+      displayname: hostDisplayname,
+      userId: hostId,
+      isHost: true,
+    });
+
+    // Re-fetch room with players included (currentPlayers is already updated by addPlayer)
+    return this.getRoomById(room.id);
+  }
 
   // Get room by code
   async getRoomByCode(code) {
@@ -131,6 +131,18 @@ class RoomService {
         // Make the first remaining player the host
         const newHost = players[0];
         await this.roomRepository.updatePlayer(roomId, newHost.id, { isHost: true });
+
+        // Update hostId in Room table
+        // Use userId if available, otherwise use guest ID based on player.id
+        const newHostId = newHost.userId || `guest-${newHost.id.substring(0, 8)}`;
+        await this.roomRepository.update(roomId, {
+          hostId: newHostId, // Always has a value (userId or guest ID)
+          hostDisplayname: newHost.displayname,
+        });
+
+        // Re-fetch room to get updated data
+        const updatedRoom = await this.getRoomById(roomId);
+        result.room = updatedRoom;
         result.newHost = newHost;
       }
     }

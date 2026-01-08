@@ -207,6 +207,14 @@ class RoomRepository {
       orderBy: { joinedAt: 'asc' },
     });
   }
+
+  // Update player
+  async updatePlayer(roomId, playerId, updateData) {
+    return this.prisma.roomPlayer.update({
+      where: { id: playerId },
+      data: updateData,
+    });
+  }
 }
 
 module.exports = RoomRepository;

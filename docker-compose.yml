@@ -62,16 +62,17 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     # Vai trò: Lưu trữ dữ liệu lâu dài (User Profile, Lịch sử trận đấu).
-  room_database: # Room Service DB
+  room_database:
+    # Room Service DB
     image: postgres:15
     environment:
       POSTGRES_DB: room_service_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
-      - "5433:5432"  # Port khác để tránh conflict
+      - "5433:5432" # Port khác để tránh conflict
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -136,19 +137,21 @@ services:
       - KAFKA_BROKERS=kafka:9092
       - DATABASE_URL=postgresql://postgres:postgres@room_database:5432/room_service_db?schema=public
     restart: unless-stopped
-
     # Vai trò: Quản lý tạo/tham gia phòng, danh sách người chơi chờ.
 
-    #gameplay-service:
-    #  build: ./services/gameplay
-    #  ports:
-    #    - "8083:8083"
-    #  depends_on:
-    #    - kafka
-    #    - redis
-    #  environment:
-    #    - KAFKA_BROKERS=kafka:9092
-    #    - PORT=8083
+  gameplay-service:
+    build: ./services/gameplay
+    ports:
+      - "8083:8083"
+    depends_on:
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    environment:
+      - KAFKA_BROKERS=kafka:9092
+      - PORT=8083
     # Vai trò: State Machine chính (Điều phối Ngày/Đêm, kỹ năng nhân vật, tính toán người chết).
 
     # vote-service:

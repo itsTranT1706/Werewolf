@@ -148,6 +148,170 @@ export function assignRolesFromSetup(roleSetup, playerCount) {
 }
 
 /**
+ * Phân vai trò từ danh sách availableRoles đã được set trong room settings
+ * 
+ * @param {number} playerCount - Số lượng người chơi
+ * @param {Array<string>} availableRoles - Mảng các role IDs đã được chọn khi tạo phòng
+ * @returns {Array<string>} - Mảng role IDs đã được phân
+ */
+export function assignRolesFromAvailable(playerCount, availableRoles) {
+    if (!availableRoles || availableRoles.length === 0) {
+        // Nếu không có availableRoles, fallback về assignRoles
+        return assignRoles(playerCount)
+    }
+
+    // Validate availableRoles
+    const validRoles = availableRoles.filter(roleId => ROLES[roleId])
+    if (validRoles.length === 0) {
+        throw new Error('Không có vai trò hợp lệ trong danh sách availableRoles')
+    }
+
+    const roles = []
+
+    // Tính số lượng Sói theo tỷ lệ cân bằng (20-30%)
+    let finalWerewolfCount
+    if (playerCount === 3) {
+        finalWerewolfCount = 1
+    } else if (playerCount <= 5) {
+        finalWerewolfCount = 1
+    } else if (playerCount === 6) {
+        finalWerewolfCount = 2
+    } else if (playerCount <= 8) {
+        finalWerewolfCount = 2
+    } else if (playerCount === 9) {
+        finalWerewolfCount = 3
+    } else {
+        finalWerewolfCount = Math.max(2, Math.round(playerCount * 0.25))
+    }
+
+    // Lọc các role Sói từ availableRoles
+    const werewolfRoles = validRoles.filter(roleId => {
+        const role = ROLES[roleId]
+        return role && role.faction === 'WEREWOLF'
+    })
+
+    // Thêm Sói từ availableRoles
+    if (werewolfRoles.length > 0) {
+        if (finalWerewolfCount === 1) {
+            // Ưu tiên ALPHA_WOLF nếu có, không thì lấy role đầu tiên
+            const alphaWolf = werewolfRoles.find(r => r === 'ALPHA_WOLF')
+            roles.push(alphaWolf || werewolfRoles[0])
+        } else if (finalWerewolfCount === 2) {
+            // Ưu tiên ALPHA_WOLF + YOUNG_WOLF
+            const alphaWolf = werewolfRoles.find(r => r === 'ALPHA_WOLF')
+            const youngWolf = werewolfRoles.find(r => r === 'YOUNG_WOLF')
+            if (alphaWolf && youngWolf) {
+                roles.push(alphaWolf, youngWolf)
+            } else if (alphaWolf) {
+                roles.push(alphaWolf, werewolfRoles[0] === alphaWolf ? (werewolfRoles[1] || werewolfRoles[0]) : werewolfRoles[0])
+            } else {
+                roles.push(werewolfRoles[0], werewolfRoles[1] || werewolfRoles[0])
+            }
+        } else {
+            // 3+ Sói: 1 ALPHA_WOLF (nếu có) + các YOUNG_WOLF hoặc role khác
+            const alphaWolf = werewolfRoles.find(r => r === 'ALPHA_WOLF')
+            const youngWolf = werewolfRoles.find(r => r === 'YOUNG_WOLF')
+
+            if (alphaWolf) {
+                roles.push(alphaWolf)
+                // Thêm YOUNG_WOLF hoặc role khác cho các slot còn lại
+                for (let i = 1; i < finalWerewolfCount; i++) {
+                    // YOUNG_WOLF có thể có nhiều bản, nên push YOUNG_WOLF nếu có
+                    // Nếu không có YOUNG_WOLF, dùng role đầu tiên (không phải ALPHA_WOLF)
+                    const otherRole = werewolfRoles.find(r => r !== 'ALPHA_WOLF') || werewolfRoles[0]
+                    roles.push(youngWolf || otherRole)
+                }
+            } else {
+                // Không có ALPHA_WOLF, dùng role đầu tiên cho tất cả
+                for (let i = 0; i < finalWerewolfCount; i++) {
+                    roles.push(werewolfRoles[0])
+                }
+            }
+        }
+    } else {
+        // Không có Sói trong availableRoles, nhưng game cần ít nhất 1 Sói
+        // Fallback: dùng assignRoles
+        console.warn('⚠️ No werewolf roles in availableRoles, using fallback')
+        return assignRoles(playerCount)
+    }
+
+    // Số lượng Dân làng còn lại
+    const villagerCount = playerCount - finalWerewolfCount
+
+    // Lọc các role Dân làng từ availableRoles
+    const villagerRoles = validRoles.filter(roleId => {
+        const role = ROLES[roleId]
+        return role && role.faction === 'VILLAGER'
+    })
+
+    // Lọc các role Neutral từ availableRoles
+    const neutralRoles = validRoles.filter(roleId => {
+        const role = ROLES[roleId]
+        return role && role.faction === 'NEUTRAL'
+    })
+
+    // Ưu tiên các role đặc biệt (SEER, WITCH, BODYGUARD)
+    const priorityRoles = ['SEER', 'WITCH', 'BODYGUARD']
+    const availablePriorityRoles = priorityRoles.filter(roleId => villagerRoles.includes(roleId))
+
+    // Thêm các role ưu tiên
+    for (const priorityRole of availablePriorityRoles) {
+        if (roles.length < playerCount) {
+            roles.push(priorityRole)
+        }
+    }
+
+    // Thêm các role Dân làng khác (không phải VILLAGER)
+    const otherVillagerRoles = villagerRoles.filter(roleId =>
+        !priorityRoles.includes(roleId) && roleId !== 'VILLAGER'
+    )
+
+    // Thêm các role khác cho đến khi đủ số lượng
+    let addedOtherRoles = 0
+    for (const roleId of otherVillagerRoles) {
+        if (roles.length < playerCount && addedOtherRoles < Math.min(2, villagerCount - availablePriorityRoles.length)) {
+            roles.push(roleId)
+            addedOtherRoles++
+        }
+    }
+
+    // Fill còn lại với VILLAGER (nếu có trong availableRoles) hoặc role đầu tiên
+    const remainingSlots = playerCount - roles.length
+    if (remainingSlots > 0) {
+        const villagerRole = villagerRoles.find(r => r === 'VILLAGER') || villagerRoles[0] || validRoles[0]
+        for (let i = 0; i < remainingSlots; i++) {
+            roles.push(villagerRole)
+        }
+    }
+
+    // Thêm Neutral roles nếu còn slot (tùy chọn)
+    if (roles.length < playerCount && neutralRoles.length > 0) {
+        const remainingNeutralSlots = playerCount - roles.length
+        for (let i = 0; i < Math.min(remainingNeutralSlots, neutralRoles.length); i++) {
+            roles.push(neutralRoles[i])
+        }
+    }
+
+    // Đảm bảo đủ số lượng
+    while (roles.length < playerCount) {
+        const fallbackRole = villagerRoles[0] || validRoles[0]
+        roles.push(fallbackRole)
+    }
+
+    // Shuffle để random
+    const shuffledRoles = shuffleArray(roles)
+
+    // Validate
+    const validation = validateRoleAssignment(shuffledRoles, playerCount)
+    if (!validation.valid) {
+        console.warn(`⚠️ Validation failed: ${validation.error}, using fallback`)
+        return assignRoles(playerCount)
+    }
+
+    return shuffledRoles
+}
+
+/**
  * Tính toán gợi ý tỉ lệ vai trò theo số người chơi
  * 
  * @param {number} playerCount - Số lượng người chơi

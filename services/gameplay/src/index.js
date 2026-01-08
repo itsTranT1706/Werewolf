@@ -79,11 +79,37 @@ async function handleGameStart(roomId, payload, command = {}) {
         return
     }
 
-    const { players } = payload // Array of { userId, username }
+    const { players, hostUserId } = payload // Array of { userId, username }, hostUserId để tách host ra
 
-    // Validate số lượng người chơi (3-75)
-    if (!players || players.length < 3) {
-        console.error(`❌ Not enough players: ${players?.length || 0}/3 minimum`)
+    if (!players || players.length === 0) {
+        console.error(`❌ No players provided`)
+        await publishEvent('evt.broadcast', {
+            traceId: command.traceId || generateTraceId(),
+            roomId,
+            event: {
+                type: 'GAME_START_ERROR',
+                payload: {
+                    message: 'Không có người chơi nào'
+                }
+            },
+            ts: Date.now()
+        })
+        return
+    }
+
+    // Tách host ra khỏi danh sách players (dựa trên hostUserId hoặc isHost flag)
+    const host = hostUserId
+        ? players.find(p => p.userId === hostUserId || p.isHost)
+        : players.find(p => p.isHost)
+    const regularPlayersList = hostUserId
+        ? players.filter(p => p.userId !== hostUserId && !p.isHost)
+        : players.filter(p => !p.isHost)
+
+    const playerCount = regularPlayersList.length
+
+    // Validate số lượng người chơi (3-75) - không tính host
+    if (playerCount < 3) {
+        console.error(`❌ Not enough players: ${playerCount || 0}/3 minimum`)
 
         await publishEvent('evt.broadcast', {
             traceId: command.traceId || generateTraceId(),
@@ -92,7 +118,7 @@ async function handleGameStart(roomId, payload, command = {}) {
                 type: 'GAME_START_ERROR',
                 payload: {
                     message: 'Cần ít nhất 3 người chơi để bắt đầu game',
-                    currentCount: players?.length || 0,
+                    currentCount: playerCount || 0,
                     requiredCount: 3
                 }
             },
@@ -101,8 +127,8 @@ async function handleGameStart(roomId, payload, command = {}) {
         return
     }
 
-    if (players.length > 75) {
-        console.error(`❌ Too many players: ${players.length}/75 maximum`)
+    if (playerCount > 75) {
+        console.error(`❌ Too many players: ${playerCount}/75 maximum`)
         await publishEvent('evt.broadcast', {
             traceId: command.traceId || generateTraceId(),
             roomId,
@@ -110,7 +136,7 @@ async function handleGameStart(roomId, payload, command = {}) {
                 type: 'GAME_START_ERROR',
                 payload: {
                     message: 'Tối đa 75 người chơi trong một ván',
-                    currentCount: players.length,
+                    currentCount: playerCount,
                     maxCount: 75
                 }
             },
@@ -119,29 +145,30 @@ async function handleGameStart(roomId, payload, command = {}) {
         return
     }
 
-    console.log(`🎲 Starting game for room ${roomId} with ${players.length} players`)
+    console.log(`🎲 Starting game for room ${roomId} with ${players.length} players (${playerCount} regular + ${host ? '1 host' : '0 host'})`)
 
     try {
-        // 1. Phân vai trò (hỗ trợ custom role setup và availableRoles từ phòng)
+
+        // 1. Phân vai trò cho các players thường (không tính host)
         let roleIds
         const { assignRolesFromSetup, assignRolesFromAvailable } = await import('./utils/roleAssignment.js')
 
         if (payload.roleSetup) {
             // Custom role setup từ quản trò (khi bắt đầu game)
-            roleIds = assignRolesFromSetup(payload.roleSetup, players.length, payload.availableRoles)
+            roleIds = assignRolesFromSetup(payload.roleSetup, playerCount, payload.availableRoles)
             console.log('📋 Using custom role setup:', payload.roleSetup)
         } else if (payload.availableRoles) {
             // Dùng availableRoles từ phòng (auto assign)
-            roleIds = assignRolesFromAvailable(players.length, payload.availableRoles)
+            roleIds = assignRolesFromAvailable(playerCount, payload.availableRoles)
             console.log('🎲 Using available roles from room:', payload.availableRoles)
         } else {
             // Fallback: Auto assign với tất cả roles
-            roleIds = assignRoles(players.length)
+            roleIds = assignRoles(playerCount)
             console.log('🎲 Using auto role assignment (all roles)')
         }
 
         // 2. Validate
-        const validation = validateRoleAssignment(roleIds, players.length)
+        const validation = validateRoleAssignment(roleIds, playerCount)
         if (!validation.valid) {
             console.error('❌ Invalid role assignment:', validation.error)
 
@@ -159,13 +186,30 @@ async function handleGameStart(roomId, payload, command = {}) {
             return
         }
 
-        // 3. Gán vai trò cho từng player
-        const playersWithRoles = players.map((player, index) => ({
+        // 3. Gán vai trò cho các players thường
+        const regularPlayersWithRoles = regularPlayersList.map((player, index) => ({
             ...player,
             assignedRole: roleIds[index],
             roleName: getRoleName(roleIds[index]),
             faction: getFactionFromRole(roleIds[index])
         }))
+
+        // 4. Gán role MODERATOR cho host (nếu có)
+        let hostWithRole = null
+        if (host) {
+            hostWithRole = {
+                ...host,
+                assignedRole: 'MODERATOR',
+                roleName: 'Quản Trò',
+                faction: 'NEUTRAL'
+            }
+            console.log(`👑 Host assigned role: MODERATOR (Quản Trò)`)
+        }
+
+        // 5. Kết hợp tất cả players với roles
+        const playersWithRoles = hostWithRole
+            ? [hostWithRole, ...regularPlayersWithRoles]
+            : regularPlayersWithRoles
 
         console.log('✅ Roles assigned:')
         playersWithRoles.forEach(p => {
@@ -291,7 +335,8 @@ function getRoleName(roleId) {
         'PROPHET_WOLF': 'Sói Tiên Tri',
         'FOOL': 'Thằng Ngố',
         'SERIAL_KILLER': 'Sát Nhân Hàng Loạt',
-        'VILLAGER': 'Dân Làng'
+        'VILLAGER': 'Dân Làng',
+        'MODERATOR': 'Quản Trò'
     }
     return roleMap[roleId] || roleId
 }
