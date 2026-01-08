@@ -38,9 +38,9 @@ export default function HomePage() {
       {/* Panel header */}
       <div className="text-center mb-6">
         <div className="flex justify-center mb-3">
-          <img 
-            src="/assets/ui/wolf-icon.svg" 
-            alt="Wolf" 
+          <img
+            src="/assets/ui/wolf-icon.svg"
+            alt="Wolf"
             className="w-16 h-16 opacity-80"
             style={{ filter: 'brightness(0) saturate(100%) invert(73%) sepia(61%) saturate(400%) hue-rotate(359deg) brightness(95%) contrast(92%)' }}
           />
@@ -85,7 +85,7 @@ export default function HomePage() {
         <MedievalButton
           onClick={handleCreateRoom}
           className="w-full"
-          variant="secondary" // Changed to secondary variant
+          variant="secondary"
         >
           Tạo Phòng Mới
         </MedievalButton>

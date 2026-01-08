@@ -227,3 +227,58 @@ body {
     opacity: 0.9;
   }
 }
+
+/* ============================================
+   HOME PAGE ANIMATIONS
+   ============================================ */
+
+/* Slow drift for mist/fog */
+@keyframes slowDrift {
+  0%, 100% { 
+    background-position: 0% 0%; 
+    opacity: 0.2;
+  }
+  50% { 
+    background-position: 100% 100%; 
+    opacity: 0.3;
+  }
+}
+
+/* Moon pulse */
+@keyframes moonPulse {
+  0%, 100% { opacity: 0.1; transform: scale(1); }
+  50% { opacity: 0.15; transform: scale(1.1); }
+}
+
+/* Scroll indicator bounce */
+@keyframes scrollBounce {
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50% { transform: translateY(4px); opacity: 1; }
+}
+
+/* Floating runes */
+@keyframes floatRune {
+  0%, 100% { 
+    transform: translateY(0) rotate(0deg); 
+    opacity: 0.2;
+  }
+  50% { 
+    transform: translateY(-20px) rotate(5deg); 
+    opacity: 0.4;
+  }
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 1s ease-out forwards;
+}
+
+/* Duration utilities */
+.duration-1500 {
+  transition-duration: 1500ms;
+}

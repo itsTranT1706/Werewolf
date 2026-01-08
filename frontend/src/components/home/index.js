@@ -1,0 +1,5 @@
+export { default as HeroSection } from './HeroSection'
+export { default as LoreSection } from './LoreSection'
+export { default as RitualsSection } from './RitualsSection'
+export { default as CursedSoulsSection } from './CursedSoulsSection'
+export { default as SacrificialGate } from './SacrificialGate'
