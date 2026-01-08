@@ -70,51 +70,51 @@ async function startServer() {
                 }
 
                 // Lắng nghe GAME_ROLE_ASSIGNED để re-emit qua room socket (fallback)
-                if (eventData?.type === 'GAME_ROLE_ASSIGNED' && eventData?.payload) {
+                if (eventData?.type === 'GAME_ROLE_ASSIGNED' && eventData?.payload && roomId) {
                     const targetUserId = event.targetUserId || eventData.payload?.userId
-                    console.log(`[BROADCAST] Received GAME_ROLE_ASSIGNED for room ${roomId}, userId: ${targetUserId}, role: ${eventData.payload?.role}`)
-                    // Re-emit qua room socket để đảm bảo players nhận được
-                    if (targetUserId && roomId) {
-                        // Tìm socket của player trong room - thử nhiều cách match
-                        const allSocketsInRoom = Array.from(io.sockets.sockets.values())
-                            .filter(s => s.data.currentRoomId === roomId)
+                    const targetUsername = eventData.payload?.username || eventData.payload?.displayname
+                    console.log(`[BROADCAST] Received GAME_ROLE_ASSIGNED for room ${roomId}, userId: ${targetUserId}, username: ${targetUsername}, role: ${eventData.payload?.role}`)
 
-                        console.log(`[BROADCAST] Looking for userId ${targetUserId} in room ${roomId}, found ${allSocketsInRoom.length} sockets in room`)
-                        allSocketsInRoom.forEach(s => {
-                            console.log(`  - Socket ${s.id}: userId=${s.data.userId}, playerId=${s.data.playerId}, displayname=${s.data.displayname}`)
-                        })
+                    // Lấy tất cả sockets trong room
+                    const allSocketsInRoom = Array.from(io.sockets.sockets.values())
+                        .filter(s => s.data.currentRoomId === roomId)
 
-                        const playerSockets = allSocketsInRoom.filter(s => {
-                            // Match chính xác userId
+                    console.log(`[BROADCAST] Found ${allSocketsInRoom.length} sockets in room ${roomId}`)
+                    allSocketsInRoom.forEach(s => {
+                        console.log(`  - Socket ${s.id}: userId=${s.data.userId}, playerId=${s.data.playerId}, displayname=${s.data.displayname}`)
+                    })
+
+                    // Tìm socket match: ưu tiên userId, sau đó match bằng username/displayname cho anonymous users
+                    let playerSockets = []
+
+                    if (targetUserId) {
+                        // Authenticated user: match bằng userId
+                        playerSockets = allSocketsInRoom.filter(s => {
                             if (s.data.userId === targetUserId) return true
-                            // Match payload userId
                             if (eventData.payload?.userId && s.data.userId === eventData.payload.userId) return true
-                            // Match string comparison
                             if (String(s.data.userId) === String(targetUserId)) return true
-                            // Match case-insensitive
                             if (String(s.data.userId).toLowerCase() === String(targetUserId).toLowerCase()) return true
                             return false
                         })
+                    } else if (targetUsername) {
+                        // Anonymous user: match bằng displayname/username
+                        playerSockets = allSocketsInRoom.filter(s => {
+                            if (!s.data.userId && s.data.displayname === targetUsername) return true
+                            if (!s.data.userId && String(s.data.displayname) === String(targetUsername)) return true
+                            return false
+                        })
+                    }
 
-                        if (playerSockets.length > 0) {
-                            for (const playerSocket of playerSockets) {
-                                playerSocket.emit('GAME_ROLE_ASSIGNED', {
-                                    payload: eventData.payload
-                                })
-                                console.log(`[BROADCAST] ✅ Re-emitted GAME_ROLE_ASSIGNED to socket ${playerSocket.id} for userId ${targetUserId}, role: ${eventData.payload.role}`)
-                            }
-                        } else {
-                            // Nếu không tìm thấy, emit đến tất cả sockets trong room (fallback)
-                            console.warn(`[BROADCAST] ⚠️ No socket found for userId ${targetUserId} in room ${roomId}, broadcasting to all sockets in room`)
-                            for (const socket of allSocketsInRoom) {
-                                socket.emit('GAME_ROLE_ASSIGNED', {
-                                    payload: eventData.payload
-                                })
-                                console.log(`[BROADCAST] 📢 Broadcasted GAME_ROLE_ASSIGNED to socket ${socket.id} (userId: ${socket.data.userId})`)
-                            }
+                    if (playerSockets.length > 0) {
+                        for (const playerSocket of playerSockets) {
+                            playerSocket.emit('GAME_ROLE_ASSIGNED', {
+                                payload: eventData.payload
+                            })
+                            console.log(`[BROADCAST] ✅ Re-emitted GAME_ROLE_ASSIGNED to socket ${playerSocket.id} (userId: ${playerSocket.data.userId}, displayname: ${playerSocket.data.displayname}), role: ${eventData.payload.role}`)
                         }
                     } else {
-                        console.warn(`[BROADCAST] ⚠️ Missing targetUserId or roomId: targetUserId=${targetUserId}, roomId=${roomId}`)
+                        // Fallback: nếu không tìm thấy, không emit (để tránh tất cả nhận cùng role)
+                        console.warn(`[BROADCAST] ⚠️ No socket found for userId=${targetUserId}, username=${targetUsername} in room ${roomId}`)
                     }
                 }
             } catch (err) {

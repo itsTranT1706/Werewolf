@@ -26,6 +26,7 @@ export default function RoomPage() {
     const [currentUserId, setCurrentUserId] = useState(null)
     const [isHost, setIsHost] = useState(false) // Quản trò (cờ cho chính user hiện tại)
     const [hostId, setHostId] = useState(null)  // userId của quản trò để mọi người đều thấy
+    const [hostPlayerId, setHostPlayerId] = useState(null)  // playerId của quản trò (cho anonymous users)
     const [showRoleSetup, setShowRoleSetup] = useState(false)
     const [roleSetup, setRoleSetup] = useState(null)
     const [roleAssignment, setRoleAssignment] = useState(null)
@@ -36,6 +37,8 @@ export default function RoomPage() {
     const [roomCode, setRoomCode] = useState(null) // Room code (4 digits)
     const [roomSocket, setRoomSocket] = useState(null)
     const [currentRoomId, setCurrentRoomId] = useState(null) // Room ID (UUID) từ backend
+    const [currentPlayerId, setCurrentPlayerId] = useState(null) // Player ID của user hiện tại
+    const [currentDisplayname, setCurrentDisplayname] = useState(null) // Displayname của user hiện tại
 
     // Get current user ID (hoặc guest ID nếu chưa đăng nhập)
     // QUAN TRỌNG: Ưu tiên dùng userId đã lưu khi tạo phòng để đảm bảo nhất quán
@@ -85,7 +88,7 @@ export default function RoomPage() {
 
         let isUnmounted = false
 
-        const updateRoomState = (room) => {
+        const updateRoomState = (room, myPlayerId = null) => {
             if (!room || isUnmounted) return
 
             setMaxPlayers(room.maxPlayers || 12)
@@ -95,33 +98,70 @@ export default function RoomPage() {
             // Tìm host player
             const hostPlayer = room.players?.find(p => p.isHost)
             const actualHostId = hostPlayer?.userId || null
+            const hostPlayerId = hostPlayer?.id || null
+
+            // Dùng myPlayerId nếu có (truyền vào), nếu không thì dùng currentPlayerId từ state
+            const playerIdToCheck = myPlayerId || currentPlayerId
 
             console.log('🔍 Checking host status:', {
                 hostPlayer: hostPlayer ? { id: hostPlayer.id, userId: hostPlayer.userId, displayname: hostPlayer.displayname, isHost: hostPlayer.isHost } : null,
                 actualHostId,
+                hostPlayerId,
                 currentUserId,
+                currentPlayerId,
+                myPlayerId,
+                playerIdToCheck,
                 roomId
             })
 
             if (actualHostId) {
                 localStorage.setItem(`room_${roomId}_host`, actualHostId)
             }
+            if (hostPlayerId) {
+                localStorage.setItem(`room_${roomId}_hostPlayerId`, hostPlayerId)
+            }
 
             setHostId(actualHostId || null)
-            const isHostUser = String(actualHostId) === String(currentUserId)
-            console.log('🔍 Host check result:', {
-                actualHostId,
-                currentUserId,
-                isHostUser,
-                comparison: `"${actualHostId}" === "${currentUserId}"`
-            })
-            setIsHost(isHostUser)
+            setHostPlayerId(hostPlayerId || null)
+
+            // Check host: Chỉ update isHost nếu myPlayerId được truyền vào (từ ROOM_JOINED)
+            // Để tránh reset isHost khi PLAYER_JOINED event được trigger
+            if (myPlayerId != null) { // Use loose equality to check both null and undefined
+                // Check host: Với anonymous users (userId = null), check bằng playerId
+                let isHostUser = false
+                if (actualHostId !== null) {
+                    // Authenticated user: check bằng userId
+                    isHostUser = String(actualHostId) === String(currentUserId)
+                } else if (hostPlayerId && playerIdToCheck) {
+                    // Anonymous user: check bằng playerId
+                    isHostUser = String(hostPlayerId) === String(playerIdToCheck)
+                }
+
+                console.log('🔍 Host check result:', {
+                    actualHostId,
+                    hostPlayerId,
+                    currentUserId,
+                    currentPlayerId,
+                    myPlayerId,
+                    playerIdToCheck,
+                    isHostUser,
+                    comparison: actualHostId !== null
+                        ? `"${actualHostId}" === "${currentUserId}"`
+                        : `"${hostPlayerId}" === "${playerIdToCheck}"`
+                })
+                setIsHost(isHostUser)
+            } else {
+                // Nếu không có myPlayerId, chỉ update state khác, giữ nguyên isHost
+                console.log('🔍 Skipping host check (no myPlayerId provided, keeping current isHost state)')
+            }
 
             if (room.players && room.players.length > 0) {
                 setPlayers(room.players.map(p => ({
+                    id: p.id, // Thêm playerId
                     userId: p.userId,
                     username: p.displayname || p.username || `Người_Chơi_${p.userId}`,
-                    isGuest: p.isGuest || p.userId?.startsWith('guest-')
+                    isGuest: p.isGuest || p.userId?.startsWith('guest-'),
+                    isHost: p.isHost // Thêm isHost flag
                 })))
             }
         }
@@ -285,6 +325,18 @@ export default function RoomPage() {
                 console.log(`💾 Saved currentRoomId: ${room.id}`)
             }
 
+            // Lưu player ID của user hiện tại
+            if (player?.id) {
+                setCurrentPlayerId(player.id)
+                console.log(`💾 Saved currentPlayerId: ${player.id}`)
+            }
+
+            // Lưu displayname của user hiện tại
+            if (player?.displayname) {
+                setCurrentDisplayname(player.displayname)
+                console.log(`💾 Saved currentDisplayname: ${player.displayname}`)
+            }
+
             // Lưu code vào localStorage để dùng lại sau
             if (room.code && room.id) {
                 localStorage.setItem(`room_uuid_${room.id}`, room.code)
@@ -292,13 +344,8 @@ export default function RoomPage() {
                 console.log(`💾 Saved room code to localStorage: ${room.code} for room ${room.id}`)
             }
 
-            // Nếu player là host, set isHost ngay
-            if (player?.isHost) {
-                console.log('👑 Player is host! Setting isHost = true')
-                setIsHost(true)
-            }
-
-            updateRoomState(room)
+            // Truyền playerId vào updateRoomState để check host ngay (vì setState là async)
+            updateRoomState(room, player?.id)
         }
 
         // Handle PLAYER_JOINED event
@@ -342,6 +389,14 @@ export default function RoomPage() {
             console.error('❌ Room socket error:', error)
             console.error('❌ Error details:', JSON.stringify(error, null, 2))
             const errorMessage = error?.message || error?.error || 'Có lỗi xảy ra'
+
+            // Ignore "You are already in a room" error if we're already in the room
+            // This can happen on reconnect when socket tracking is inconsistent
+            if (errorMessage === 'You are already in a room' && currentRoomId) {
+                console.log('ℹ️ Ignoring "You are already in a room" error - user is already connected to room')
+                return
+            }
+
             setError(errorMessage)
             setLoading(false)
         }
@@ -402,15 +457,31 @@ export default function RoomPage() {
         // Listen từ API Gateway socket (gameApi)
         const unsubscribeRole = gameApi.onRoleAssigned((data) => {
             console.log('🎭 Nhận vai trò từ API Gateway:', data)
-            console.log(`   Current userId: ${currentUserId}, Role userId: ${data.userId}, Match: ${String(currentUserId) === String(data.userId)}`)
-            // API Gateway đã filter theo userId rồi, nên nhận được là đúng user
-            // Nhưng vẫn check để đảm bảo
-            if (!data.userId || String(currentUserId) === String(data.userId)) {
+            console.log(`   Current userId: ${currentUserId}, Role userId: ${data.userId}`)
+
+            // Get current user's displayname từ state hoặc localStorage
+            const userDisplayname = currentDisplayname || localStorage.getItem('guestUsername') || null
+
+            // Match logic:
+            // 1. Nếu có userId (authenticated): match bằng userId
+            // 2. Nếu không có userId (anonymous): match bằng username/displayname
+            let shouldAccept = false
+
+            if (data.userId) {
+                // Authenticated user: match bằng userId
+                shouldAccept = String(currentUserId) === String(data.userId)
+            } else {
+                // Anonymous user: match bằng username/displayname
+                shouldAccept = userDisplayname && data.username &&
+                    String(userDisplayname) === String(data.username)
+            }
+
+            if (shouldAccept) {
                 console.log('✅ Setting role:', data.role)
                 setMyRole(data)
                 gameApi.updateFaction(roomId, data.faction)
             } else {
-                console.warn(`⚠️ Role assignment userId mismatch: expected ${currentUserId}, got ${data.userId}`)
+                console.warn(`⚠️ Role assignment mismatch: userId=${data.userId}, username=${data.username}, userDisplayname=${userDisplayname}`)
             }
         })
 
@@ -419,13 +490,30 @@ export default function RoomPage() {
         const directHandler = (data) => {
             console.log('🎭 Nhận vai trò trực tiếp từ socket:', data)
             const roleData = data.payload || data
-            if (roleData.userId && String(currentUserId) === String(roleData.userId)) {
+
+            // Get current user's displayname từ state hoặc localStorage
+            const userDisplayname = currentDisplayname || localStorage.getItem('guestUsername') || null
+
+            // Match logic: tương tự như handleRoomRoleAssigned
+            let shouldAccept = false
+
+            if (roleData.userId) {
+                // Authenticated user: match bằng userId
+                shouldAccept = String(currentUserId) === String(roleData.userId)
+            } else {
+                // Anonymous user: match bằng username/displayname
+                shouldAccept = userDisplayname && roleData.username &&
+                    String(userDisplayname) === String(roleData.username)
+            }
+
+            if (shouldAccept) {
                 console.log('✅ Setting role from direct socket:', roleData.role)
                 setMyRole({
                     role: roleData.role,
                     roleName: roleData.roleName,
                     faction: roleData.faction,
-                    userId: roleData.userId
+                    userId: roleData.userId,
+                    username: roleData.username
                 })
                 gameApi.updateFaction(roomId, roleData.faction)
             }
@@ -441,11 +529,32 @@ export default function RoomPage() {
                 role: data.payload.role,
                 roleName: data.payload.roleName,
                 faction: data.payload.faction,
-                userId: data.payload.userId
+                userId: data.payload.userId,
+                username: data.payload.username
             }
-            console.log(`   Current userId: ${currentUserId}, Role userId: ${roleData.userId}, Match: ${String(currentUserId) === String(roleData.userId)}`)
-            // Room socket có thể broadcast đến tất cả, nên check userId
-            if (!roleData.userId || String(currentUserId) === String(roleData.userId)) {
+
+            // Get current user's displayname từ state hoặc localStorage
+            const userDisplayname = currentDisplayname || localStorage.getItem('guestUsername') || null
+
+            console.log(`   Current userId: ${currentUserId}, Role userId: ${roleData.userId}`)
+            console.log(`   Current displayname: ${userDisplayname}, Role username: ${roleData.username}`)
+
+            // Match logic:
+            // 1. Nếu có userId (authenticated): match bằng userId
+            // 2. Nếu không có userId (anonymous): match bằng username/displayname
+            let shouldAccept = false
+
+            if (roleData.userId) {
+                // Authenticated user: match bằng userId
+                shouldAccept = String(currentUserId) === String(roleData.userId)
+            } else {
+                // Anonymous user: match bằng username/displayname
+                shouldAccept = userDisplayname && roleData.username &&
+                    String(userDisplayname) === String(roleData.username)
+            }
+
+            if (shouldAccept) {
+                console.log('✅ Role matches current user, setting role:', roleData.role)
                 setMyRole(roleData)
                 // Update faction nếu có API Gateway socket
                 const apiSocket = getSocket()
@@ -453,7 +562,7 @@ export default function RoomPage() {
                     gameApi.updateFaction(roomId, roleData.faction)
                 }
             } else {
-                console.log(`ℹ️ Role assignment for different user (${roleData.userId}), ignoring`)
+                console.log(`ℹ️ Role assignment for different user (userId: ${roleData.userId}, username: ${roleData.username}), ignoring`)
             }
         }
 
@@ -490,7 +599,7 @@ export default function RoomPage() {
                 apiSocket.off('GAME_ROLE_ASSIGNED', directHandler)
             }
         }
-    }, [roomId, roomSocket, currentUserId])
+    }, [roomId, roomSocket, currentUserId, currentDisplayname])
 
     const handleStartGame = () => {
         if (players.length < 3) {
@@ -633,9 +742,21 @@ export default function RoomPage() {
     }
 
     const isElder = (player) => {
-        // Quản trò là player có userId === hostId (ai cũng thấy được),
-        // riêng client của quản trò còn có thêm cờ isHost để mở nút bắt đầu game
-        return hostId && String(player.userId) === String(hostId)
+        // Quản trò là player có isHost = true (dùng trực tiếp từ player object)
+        // Nếu player object có isHost flag, dùng nó (đơn giản và chính xác nhất)
+        if (player.isHost !== undefined) {
+            return player.isHost === true
+        }
+
+        // Fallback: check bằng userId hoặc playerId nếu không có isHost flag
+        if (hostId) {
+            // Authenticated user: check bằng userId
+            return String(player.userId) === String(hostId)
+        } else if (hostPlayerId && player.id) {
+            // Anonymous user: check bằng playerId
+            return String(player.id) === String(hostPlayerId)
+        }
+        return false
     }
 
     return (
@@ -714,7 +835,7 @@ export default function RoomPage() {
 
                                     return (
                                         <div
-                                            key={player.userId}
+                                            key={player.id || player.userId || index}
                                             className={`group relative flex flex-col p-1 bg-wood-dark/80 border ${elder ? 'border-gold-dim/40 shadow-[0_0_15px_rgba(138,126,95,0.1)]' :
                                                 status === 'prepared' ? 'border-wood-light' : 'border-wood-light'
                                                 } shadow-2xl transition-all duration-500 hover:border-gold-dim hover:-translate-y-1`}

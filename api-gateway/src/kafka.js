@@ -38,36 +38,47 @@ async function createBroadcastConsumer(kafka, { io, userSockets, roomFactions })
 
       try {
          // Handle GAME_ROLE_ASSIGNED - Send to specific user
-         if (event.type === 'GAME_ROLE_ASSIGNED' && targetUserId) {
-          console.log(`[KAFKA] Sending GAME_ROLE_ASSIGNED to userId: ${targetUserId}, role: ${event.payload?.role}`);
-          
-          // Emit to room user:${targetUserId}
-          io.to(`user:${targetUserId}`).emit(event.type, data);
-          
-          // Also emit to specific sockets in userSockets map
-          const sockets = userSockets.get(targetUserId);
-          if (sockets && sockets.size) {
-            console.log(`[KAFKA] Found ${sockets.size} socket(s) for userId ${targetUserId}`);
-            sockets.forEach((id) => {
-              io.to(id).emit(event.type, data);
-              console.log(`[KAFKA] Emitted to socket ${id}`);
-            });
-          } else {
-            console.warn(`[KAFKA] ⚠️ No sockets found in userSockets map for userId ${targetUserId}`);
-            // Try to find socket by checking all connected sockets
-            const allSockets = Array.from(io.sockets.sockets.values());
-            const matchingSockets = allSockets.filter(s => s.data.userId === targetUserId);
-            if (matchingSockets.length > 0) {
-              console.log(`[KAFKA] Found ${matchingSockets.length} socket(s) by checking all sockets`);
-              matchingSockets.forEach(socket => {
-                socket.emit(event.type, data);
-                console.log(`[KAFKA] Emitted to socket ${socket.id} (userId: ${socket.data.userId})`);
+         if (event.type === 'GAME_ROLE_ASSIGNED') {
+          // Nếu có targetUserId (authenticated user), emit đến user cụ thể
+          if (targetUserId) {
+            console.log(`[KAFKA] Sending GAME_ROLE_ASSIGNED to userId: ${targetUserId}, role: ${event.payload?.role}`);
+            
+            // Emit to room user:${targetUserId}
+            io.to(`user:${targetUserId}`).emit(event.type, data);
+            
+            // Also emit to specific sockets in userSockets map
+            const sockets = userSockets.get(targetUserId);
+            if (sockets && sockets.size) {
+              console.log(`[KAFKA] Found ${sockets.size} socket(s) for userId ${targetUserId}`);
+              sockets.forEach((id) => {
+                io.to(id).emit(event.type, data);
+                console.log(`[KAFKA] Emitted to socket ${id}`);
               });
             } else {
-              console.error(`[KAFKA] ❌ No socket found for userId ${targetUserId}`);
+              console.warn(`[KAFKA] ⚠️ No sockets found in userSockets map for userId ${targetUserId}`);
+              // Try to find socket by checking all connected sockets
+              const allSockets = Array.from(io.sockets.sockets.values());
+              const matchingSockets = allSockets.filter(s => s.data.userId === targetUserId);
+              if (matchingSockets.length > 0) {
+                console.log(`[KAFKA] Found ${matchingSockets.length} socket(s) by checking all sockets`);
+                matchingSockets.forEach(socket => {
+                  socket.emit(event.type, data);
+                  console.log(`[KAFKA] Emitted to socket ${socket.id} (userId: ${socket.data.userId})`);
+                });
+              } else {
+                console.error(`[KAFKA] ❌ No socket found for userId ${targetUserId}`);
+              }
+            }
+            console.log('Role assigned to user:', targetUserId, event.payload.role);
+          } else {
+            // Anonymous user (userId = null) - emit đến room nếu có roomId
+            // Room service sẽ handle việc broadcast đến các sockets trong room
+            console.log(`[KAFKA] Anonymous user (userId=null), role: ${event.payload?.role}, roomId: ${roomId}`);
+            if (roomId) {
+              io.to(roomId).emit(event.type, data);
+              console.log(`[KAFKA] Broadcasted GAME_ROLE_ASSIGNED to room ${roomId}`);
             }
           }
-          console.log('Role assigned to user:', targetUserId, event.payload.role);
           return;
         }
         // Handle faction chat - only emit to users with matching faction

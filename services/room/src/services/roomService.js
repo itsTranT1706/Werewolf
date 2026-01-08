@@ -22,6 +22,14 @@ class RoomService {
       throw new Error('Max players must be between 4 and 75');
     }
 
+    // Check if user is already in another room (only for authenticated users)
+    if (hostId) {
+      const existingPlayer = await this.roomRepository.findPlayerByUserIdInAnyRoom(hostId);
+      if (existingPlayer) {
+        throw new Error('You are already in another room');
+      }
+    }
+
     const room = await this.roomRepository.create({
       name: name.trim(),
       hostDisplayname,
@@ -65,6 +73,14 @@ class RoomService {
     return room;
   }
 
+  // Check if user is already in a room
+  async isUserInRoom(roomId, userId) {
+    if (!userId) {
+      return null;
+    }
+    return await this.roomRepository.findPlayerByUserId(roomId, userId);
+  }
+
   // Get all rooms
   async getRooms(options = {}) {
     return this.roomRepository.findAll(options);
@@ -96,11 +112,18 @@ class RoomService {
       throw new Error('Game has already started');
     }
 
-    // Check if user is already in room (only for authenticated users)
+    // Check if user is already in this room or another room (only for authenticated users)
     if (userId) {
-      const existingPlayer = await this.roomRepository.findPlayerByUserId(room.id, userId);
-      if (existingPlayer) {
+      // First check if user is in this room
+      const existingPlayerInThisRoom = await this.roomRepository.findPlayerByUserId(room.id, userId);
+      if (existingPlayerInThisRoom) {
         throw new Error('You are already in this room');
+      }
+
+      // Then check if user is in another room
+      const existingPlayerInOtherRoom = await this.roomRepository.findPlayerByUserIdInAnyRoom(userId);
+      if (existingPlayerInOtherRoom) {
+        throw new Error('You are already in another room');
       }
     }
 

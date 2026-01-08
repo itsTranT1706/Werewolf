@@ -247,11 +247,12 @@ async function handleGameStart(roomId, payload, command = {}) {
             await publishEvent('evt.broadcast', {
                 traceId,
                 roomId,
-                targetUserId: player.userId, // Gửi riêng cho từng player
+                targetUserId: player.userId, // Gửi riêng cho từng player (có thể là null cho anonymous)
                 event: {
                     type: 'GAME_ROLE_ASSIGNED',
                     payload: {
                         userId: player.userId,
+                        username: player.username, // Thêm username để match anonymous users
                         role: player.assignedRole,
                         roleName: player.roleName,
                         faction: player.faction

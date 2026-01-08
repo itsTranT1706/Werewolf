@@ -74,6 +74,11 @@ export default function CreateRoomModal({ isOpen, onClose }) {
             }))
 
             // Lưu hostId (người tạo phòng) với code
+            // Lưu cả playerId của host để check với anonymous users
+            const hostPlayer = room.players?.find(p => p.isHost)
+            if (hostPlayer) {
+                localStorage.setItem(`room_${roomCode}_hostPlayerId`, hostPlayer.id)
+            }
             if (currentUserId) {
                 localStorage.setItem(`room_${roomCode}_host`, currentUserId)
                 localStorage.setItem(`room_${roomCode}_creator_userId`, currentUserId)
