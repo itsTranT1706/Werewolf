@@ -37,8 +37,8 @@ async function createBroadcastConsumer(kafka, { io, userSockets, roomFactions })
       };
 
       try {
-         // Handle GAME_ROLE_ASSIGNED - Send to specific user
-         if (event.type === 'GAME_ROLE_ASSIGNED' && targetUserId) {
+        // Handle GAME_ROLE_ASSIGNED - Send to specific user
+        if (event.type === 'GAME_ROLE_ASSIGNED' && targetUserId) {
           io.to(`user:${targetUserId}`).emit(event.type, data);
           const sockets = userSockets.get(targetUserId);
           if (sockets && sockets.size) {
@@ -47,6 +47,18 @@ async function createBroadcastConsumer(kafka, { io, userSockets, roomFactions })
           console.log('Role assigned to user:', targetUserId, event.payload.role);
           return;
         }
+
+        // Handle GAME_ROLE_ASSIGNMENT_LIST - Send to specific user (host)
+        if (event.type === 'GAME_ROLE_ASSIGNMENT_LIST' && targetUserId) {
+          io.to(`user:${targetUserId}`).emit(event.type, data);
+          const sockets = userSockets.get(targetUserId);
+          if (sockets && sockets.size) {
+            sockets.forEach((id) => io.to(id).emit(event.type, data));
+          }
+          console.log('Role assignment list sent to host:', targetUserId);
+          return;
+        }
+
         // Handle faction chat - only emit to users with matching faction
         if (event.type === 'CHAT_MESSAGE_FACTION' && roomId) {
           const faction = event.payload?.faction;
@@ -76,14 +88,17 @@ async function createBroadcastConsumer(kafka, { io, userSockets, roomFactions })
         // Handle other event types
         if (roomId) {
           io.to(roomId).emit(event.type, data);
+          console.log(`Event ${event.type} broadcast to room ${roomId}`);
         } else if (targetUserId) {
           io.to(`user:${targetUserId}`).emit(event.type, data);
           const sockets = userSockets.get(targetUserId);
           if (sockets && sockets.size) {
             sockets.forEach((id) => io.to(id).emit(event.type, data));
           }
+          console.log(`Event ${event.type} sent to user ${targetUserId}`);
         } else {
           io.emit(event.type, data);
+          console.log(`Event ${event.type} broadcast globally`);
         }
       } catch (err) {
         console.error('Failed to emit broadcast event', err);

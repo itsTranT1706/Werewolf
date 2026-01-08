@@ -1,6 +1,8 @@
 import { Kafka } from 'kafkajs'
 import { assignRoles, validateRoleAssignment } from './utils/roleAssignment.js'
 import { getFactionFromRole } from './constants/roles.js'
+import { gameStateManager } from './utils/gameStateManager.js'
+import * as gmHandlers from './handlers/gmHandlers.js'
 
 const kafka = new Kafka({
     clientId: 'gameplay-service',
@@ -51,6 +53,55 @@ async function handleCommand(command) {
         case 'ROOM_JOIN':
             // Có thể track players trong room
             console.log('Player joined room:', { roomId, userId })
+            break
+
+        // GM Commands
+        case 'GM_START_NIGHT':
+            await gmHandlers.handleGMStartNight(roomId, action.payload, command, producer)
+            break
+
+        case 'GM_CUPID_SELECT':
+            await gmHandlers.handleGMCupidSelect(roomId, action.payload, command, producer)
+            break
+
+        case 'GM_WEREWOLF_KILL':
+            await gmHandlers.handleGMWerewolfKill(roomId, action.payload, command, producer)
+            break
+
+        case 'GM_SEER_CHECK':
+            await gmHandlers.handleGMSeerCheck(roomId, action.payload, command, producer)
+            break
+
+        case 'GM_BODYGUARD_PROTECT':
+            await gmHandlers.handleGMBodyguardProtect(roomId, action.payload, command, producer)
+            break
+
+        case 'GM_WITCH_ACTION':
+            await gmHandlers.handleGMWitchAction(roomId, action.payload, command, producer)
+            break
+
+        case 'GM_END_NIGHT':
+            await gmHandlers.handleGMEndNight(roomId, action.payload, command, producer)
+            break
+
+        case 'GM_ANNOUNCE_DEATHS':
+            await gmHandlers.handleGMAnnounceDeaths(roomId, action.payload, command, producer)
+            break
+
+        case 'GM_START_DAY':
+            await gmHandlers.handleGMStartDay(roomId, action.payload, command, producer)
+            break
+
+        case 'PLAYER_VOTE':
+            await gmHandlers.handlePlayerVote(roomId, action.payload, command, producer)
+            break
+
+        case 'GM_END_VOTE':
+            await gmHandlers.handleGMEndVote(roomId, action.payload, command, producer)
+            break
+
+        case 'GM_HUNTER_SHOOT':
+            await gmHandlers.handleGMHunterShoot(roomId, action.payload, command, producer)
             break
 
         default:
@@ -171,6 +222,10 @@ async function handleGameStart(roomId, payload, command = {}) {
         playersWithRoles.forEach(p => {
             console.log(`   ${p.username}: ${p.assignedRole} (${p.roleName})`)
         })
+
+        // 3.5. Tạo game state
+        gameStateManager.createGame(roomId, players, roleIds)
+        console.log(`✅ Game state created for room ${roomId}`)
 
         // 4. Publish GAME_ROLE_ASSIGNMENT_LIST cho quản trò (host)
         const traceId = command.traceId || generateTraceId()

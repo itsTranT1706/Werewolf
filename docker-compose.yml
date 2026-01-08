@@ -119,16 +119,16 @@ services:
       - REDIS_URL=redis://redis:6379
     # Vai trò: Quản lý tạo/tham gia phòng, danh sách người chơi chờ.
 
-    #gameplay-service:
-    #  build: ./services/gameplay
-    #  ports:
-    #    - "8083:8083"
-    #  depends_on:
-    #    - kafka
-    #    - redis
-    #  environment:
-    #    - KAFKA_BROKERS=kafka:9092
-    #    - PORT=8083
+  gameplay-service:
+    build: ./services/gameplay
+    ports:
+      - "8083:8083"
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      - KAFKA_BROKERS=kafka:9092
+      - PORT=8083
     # Vai trò: State Machine chính (Điều phối Ngày/Đêm, kỹ năng nhân vật, tính toán người chết).
 
     # vote-service:
