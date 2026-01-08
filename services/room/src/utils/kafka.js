@@ -40,9 +40,33 @@ async function sendRoomEvent(producer, eventType, roomData) {
   }
 }
 
+/**
+ * Gửi command đến cmd.ingest topic cho gameplay service
+ * @param {Object} producer - Kafka producer
+ * @param {Object} command - Command object với format: { traceId, userId, roomId, action: { type, payload }, ts }
+ */
+async function sendCommandToIngest(producer, command) {
+  try {
+    await producer.send({
+      topic: 'cmd.ingest',
+      messages: [
+        {
+          key: command.roomId || command.userId || 'default',
+          value: JSON.stringify(command),
+        },
+      ],
+    });
+    console.log(`✅ Sent command to cmd.ingest: ${command.action?.type} for room ${command.roomId}`);
+  } catch (error) {
+    console.error('Error sending command to cmd.ingest:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   createKafkaClient,
   createProducer,
   createConsumer,
   sendRoomEvent,
+  sendCommandToIngest,
 };

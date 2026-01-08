@@ -70,6 +70,23 @@
                     "public": false
                 }
             ]
-        }
+        },
+        "room-service": {
+            "target": "http://room-service:8082",
+            "routes": [
+                {
+                    "path": "/api/v1/rooms",
+                    "method": "ALL",
+                    "targetPath": "/rooms",
+                    "public": true
+                },
+                {
+                    "path": "/api/v1/rooms/*",
+                    "method": "ALL",
+                    "targetPath": "/rooms/*",
+                    "public": true
+                }
+            ]
+        }  
     }
 }

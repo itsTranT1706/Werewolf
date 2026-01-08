@@ -117,6 +117,40 @@ async function handleChatSendFaction(socket, producer, payload = {}) {
   }
 }
 
+async function handleGameStart(socket, producer, payload = {}) {
+  const { roomId, players, roleSetup } = payload
+
+  if (!roomId) {
+    socket.emit('ERROR', { message: 'roomId is required' })
+    return
+  }
+
+  if (!players || players.length < 3) {
+    socket.emit('ERROR', { message: 'Cần ít nhất 3 người chơi' })
+    return
+  }
+
+  if (players.length > 75) {
+    socket.emit('ERROR', { message: 'Tối đa 75 người chơi' })
+    return
+  }
+
+  const message = buildCommandMessage({
+    userId: socket.data.userId,
+    roomId,
+    actionType: 'GAME_START',
+    payload: { players, roleSetup, availableRoles: payload.availableRoles }
+  })
+
+  try {
+    await produceCommand(producer, message)
+    socket.emit('GAME_START_REQUESTED', { roomId, message: 'Game đang được khởi tạo...' })
+  } catch (err) {
+    console.error('Failed to publish GAME_START', err)
+    socket.emit('ERROR', { message: 'Failed to start game' })
+  }
+}
+
 function setupSocket(io, producer) {
   const userSockets = new Map();
   const roomFactions = new Map(); // Map<roomId, Map<userId, faction>>
@@ -125,12 +159,17 @@ function setupSocket(io, producer) {
 
   io.on('connection', (socket) => {
     const userId = socket.data.userId;
+    console.log(`[SOCKET] New connection: socketId=${socket.id}, userId=${userId}`);
     addUserSocket(userSockets, userId, socket.id);
     socket.join(`user:${userId}`);
+    console.log(`[SOCKET] Socket ${socket.id} joined room user:${userId}, total sockets for this user: ${userSockets.get(userId)?.size || 0}`);
 
     socket.on('CHAT_SEND', (payload) => handleChatSend(socket, producer, payload));
     socket.on('CHAT_SEND_DM', (payload) => handleChatSendDm(socket, producer, payload));
     socket.on('CHAT_SEND_FACTION', (payload) => handleChatSendFaction(socket, producer, payload));
+
+    // ✅ Thêm GAME_START handler
+    socket.on('GAME_START', (payload) => handleGameStart(socket, producer, payload));
 
     // Handler để update faction info từ gameplay service
     socket.on('UPDATE_FACTION', (payload) => {

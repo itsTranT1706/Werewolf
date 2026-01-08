@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
 import GamePage from './pages/GamePage'
 import ProfilePage from './pages/ProfilePage'
+import RoomPage from './pages/RoomPage'
 import { NotificationProvider } from '@/components/ui'
 
 function App() {
@@ -19,6 +20,8 @@ function App() {
         </Route>
         <Route path="/game" element={<GamePage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/room/:roomId" element={<RoomPage />} />
+        <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>
     </>
   )

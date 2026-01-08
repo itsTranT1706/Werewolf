@@ -22,11 +22,21 @@ class RoomController {
     }
   }
 
-  // GET /api/v1/rooms/:code - Get room by code
+  // GET /api/v1/rooms/:code - Get room by code (4 digits) or ID (UUID)
   async getRoom(req, res) {
     try {
       const { code } = req.params;
-      const room = await this.roomService.getRoomByCode(code);
+
+      // Check if it's a 4-digit code or UUID
+      let room;
+      if (/^\d{4}$/.test(code)) {
+        // It's a 4-digit code
+        room = await this.roomService.getRoomByCode(code);
+      } else {
+        // Assume it's a UUID/ID
+        room = await this.roomService.getRoomById(code);
+      }
+
       res.json(room);
     } catch (error) {
       if (error.message === 'Room not found' || error.message.includes('Invalid room code')) {
@@ -73,9 +83,9 @@ class RoomController {
       res.json(result);
     } catch (error) {
       if (error.message === 'Room not found' ||
-          error.message === 'Room is full' ||
-          error.message === 'Game has already started' ||
-          error.message === 'You are already in this room') {
+        error.message === 'Room is full' ||
+        error.message === 'Game has already started' ||
+        error.message === 'You are already in this room') {
         res.status(400).json({ error: error.message });
       } else {
         res.status(500).json({ error: error.message });
@@ -97,8 +107,8 @@ class RoomController {
       res.json(result);
     } catch (error) {
       if (error.message === 'Room not found' ||
-          error.message === 'Player not found in room' ||
-          error.message.includes('Invalid room code')) {
+        error.message === 'Player not found in room' ||
+        error.message.includes('Invalid room code')) {
         res.status(404).json({ error: error.message });
       } else {
         res.status(500).json({ error: error.message });
@@ -120,7 +130,7 @@ class RoomController {
       res.json(room);
     } catch (error) {
       if (error.message === 'Only host can start the game' ||
-          error.message === 'Need at least 4 players to start the game') {
+        error.message === 'Need at least 4 players to start the game') {
         res.status(400).json({ error: error.message });
       } else {
         res.status(500).json({ error: error.message });
@@ -143,8 +153,8 @@ class RoomController {
       res.json(room);
     } catch (error) {
       if (error.message === 'Only host can update room settings' ||
-          error.message.includes('Max players must be') ||
-          error.message.includes('Room name')) {
+        error.message.includes('Max players must be') ||
+        error.message.includes('Room name')) {
         res.status(400).json({ error: error.message });
       } else {
         res.status(500).json({ error: error.message });
@@ -166,8 +176,8 @@ class RoomController {
       res.json(result);
     } catch (error) {
       if (error.message === 'Only host can kick players' ||
-          error.message === 'Player not found in room' ||
-          error.message === 'Cannot kick the host') {
+        error.message === 'Player not found in room' ||
+        error.message === 'Cannot kick the host') {
         res.status(400).json({ error: error.message });
       } else {
         res.status(500).json({ error: error.message });

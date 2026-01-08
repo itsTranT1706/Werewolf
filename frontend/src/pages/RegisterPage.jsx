@@ -26,7 +26,7 @@ export default function RegisterPage() {
 
   const validate = () => {
     const newErrors = {}
-    
+
     if (!formData.email) {
       newErrors.email = 'Vui lòng nhập email'
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -40,7 +40,7 @@ export default function RegisterPage() {
     } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
       newErrors.username = 'Chỉ được dùng chữ cái, số và dấu gạch dưới'
     }
-    
+
     if (!formData.password) {
       newErrors.password = 'Vui lòng nhập mật khẩu'
     } else if (formData.password.length < 6) {
@@ -57,7 +57,7 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!validate()) return
 
     setLoading(true)
@@ -86,103 +86,111 @@ export default function RegisterPage() {
       <MedievalPanel className="w-full">
         {/* Panel header */}
         <div className="text-center mb-6">
-        <div className="flex justify-center mb-3">
-          <img 
-            src="/assets/ui/wolf-icon.svg" 
-            alt="Wolf" 
-            className="w-16 h-16 opacity-80"
-            style={{ filter: 'brightness(0) saturate(100%) invert(73%) sepia(61%) saturate(400%) hue-rotate(359deg) brightness(95%) contrast(92%)' }}
+          <div className="flex justify-center mb-3">
+            <img
+              src="/assets/ui/wolf-icon.svg"
+              alt="Wolf"
+              className="w-16 h-16 opacity-80"
+              style={{ filter: 'brightness(0) saturate(100%) invert(73%) sepia(61%) saturate(400%) hue-rotate(359deg) brightness(95%) contrast(92%)' }}
+            />
+          </div>
+          <h2 className="font-medieval text-2xl text-gold-glow tracking-wide">
+            Tham Gia Cuộc Săn
+          </h2>
+          <p className="font-fantasy text-parchment/60 text-sm mt-1">
+            Ký vào cuộn giấy cổ để bước vào
+          </p>
+        </div>
+
+        {/* Server error */}
+        {serverError && (
+          <div className="mb-4 p-3 bg-blood-red/20 border border-blood-red/50 text-gold text-sm font-fantasy text-center">
+            {serverError}
+          </div>
+        )}
+
+        {/* Register form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <MedievalInput
+            type="email"
+            name="email"
+            placeholder="Email của bạn"
+            value={formData.email}
+            onChange={handleChange}
+            error={errors.email}
+            icon={<MailIcon className="w-5 h-5" />}
+            autoComplete="email"
           />
+
+          <MedievalInput
+            type="text"
+            name="username"
+            placeholder="Chọn tên người dùng"
+            value={formData.username}
+            onChange={handleChange}
+            error={errors.username}
+            icon={<UserIcon className="w-5 h-5" />}
+            autoComplete="username"
+          />
+
+          <MedievalInput
+            type="password"
+            name="password"
+            placeholder="Mật khẩu bí mật"
+            value={formData.password}
+            onChange={handleChange}
+            error={errors.password}
+            icon={<LockIcon className="w-5 h-5" />}
+            autoComplete="new-password"
+          />
+
+          <MedievalInput
+            type="password"
+            name="confirmPassword"
+            placeholder="Xác nhận mật khẩu"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            error={errors.confirmPassword}
+            icon={<ShieldIcon className="w-5 h-5" />}
+            autoComplete="new-password"
+          />
+
+          <div className="pt-2">
+            <MedievalButton
+              type="submit"
+              loading={loading}
+              className="w-full"
+            >
+              Ký Vào Cuộn Giấy
+            </MedievalButton>
+          </div>
+        </form>
+
+        <Divider text="hoặc" />
+
+        {/* Login link */}
+        <div className="text-center">
+          <p className="font-fantasy text-parchment/70 text-sm">
+            Đã là dân làng?{' '}
+            <Link to="/login" className="link-fantasy font-semibold">
+              Bước Vào Làng
+            </Link>
+          </p>
         </div>
-        <h2 className="font-medieval text-2xl text-gold-glow tracking-wide">
-          Tham Gia Cuộc Săn
-        </h2>
-        <p className="font-fantasy text-parchment/60 text-sm mt-1">
-          Ký vào cuộn giấy cổ để bước vào
-        </p>
-      </div>
-
-      {/* Server error */}
-      {serverError && (
-        <div className="mb-4 p-3 bg-blood-red/20 border border-blood-red/50 text-gold text-sm font-fantasy text-center">
-          {serverError}
-        </div>
-      )}
-
-      {/* Register form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <MedievalInput
-          type="email"
-          name="email"
-          placeholder="Email của bạn"
-          value={formData.email}
-          onChange={handleChange}
-          error={errors.email}
-          icon={<MailIcon className="w-5 h-5" />}
-          autoComplete="email"
-        />
-
-        <MedievalInput
-          type="text"
-          name="username"
-          placeholder="Chọn tên người dùng"
-          value={formData.username}
-          onChange={handleChange}
-          error={errors.username}
-          icon={<UserIcon className="w-5 h-5" />}
-          autoComplete="username"
-        />
-
-        <MedievalInput
-          type="password"
-          name="password"
-          placeholder="Mật khẩu bí mật"
-          value={formData.password}
-          onChange={handleChange}
-          error={errors.password}
-          icon={<LockIcon className="w-5 h-5" />}
-          autoComplete="new-password"
-        />
-
-        <MedievalInput
-          type="password"
-          name="confirmPassword"
-          placeholder="Xác nhận mật khẩu"
-          value={formData.confirmPassword}
-          onChange={handleChange}
-          error={errors.confirmPassword}
-          icon={<ShieldIcon className="w-5 h-5" />}
-          autoComplete="new-password"
-        />
-
-        <div className="pt-2">
-          <MedievalButton
-            type="submit"
-            loading={loading}
-            className="w-full"
-          >
-            Ký Vào Cuộn Giấy
-          </MedievalButton>
-        </div>
-      </form>
-
-      <Divider text="hoặc" />
-
-      {/* Login link */}
-      <div className="text-center">
-        <p className="font-fantasy text-parchment/70 text-sm">
-          Đã là dân làng?{' '}
-          <Link to="/login" className="link-fantasy font-semibold">
-            Bước Vào Làng
-          </Link>
-        </p>
-      </div>
       </MedievalPanel>
     </div>
   )
 }
 
 // Icons
+function ScrollIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 64 64" fill="currentColor">
+      <path d="M12 8c-2 0-4 2-4 4v40c0 2 2 4 4 4h4V12H12zm8 0v48h28c2 0 4-2 4-4V12c0-2-2-4-4-4H20zm4 8h20v4H24v-4zm0 8h20v4H24v-4zm0 8h16v4H24v-4z" />
+    </svg>
+  )
+}
+
 function MailIcon({ className }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
