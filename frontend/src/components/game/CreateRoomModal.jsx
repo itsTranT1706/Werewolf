@@ -3,10 +3,10 @@
  * Component để tạo phòng với maxPlayers và chọn các role có trong phòng
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ROLES, FACTION } from '@/constants/roles'
-import { roomApi } from '@/api'
+import { getRoomSocket } from '@/api/roomSocket'
 import { getOrCreateGuestUsername, getOrCreateGuestUserId } from '@/utils/guestUtils'
 
 export default function CreateRoomModal({ isOpen, onClose }) {
@@ -23,10 +23,98 @@ export default function CreateRoomModal({ isOpen, onClose }) {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
     const [displayName, setDisplayName] = useState('') // Tên hiển thị cho guest user
+    const [roomSocket, setRoomSocket] = useState(null)
 
     const villagerRoles = Object.values(ROLES).filter(r => r.faction === FACTION.VILLAGER)
     const werewolfRoles = Object.values(ROLES).filter(r => r.faction === FACTION.WEREWOLF)
     const neutralRoles = Object.values(ROLES).filter(r => r.faction === FACTION.NEUTRAL)
+
+    // Khởi tạo room socket
+    useEffect(() => {
+        const socket = getRoomSocket()
+        setRoomSocket(socket)
+
+        // Đợi socket connected
+        const handleConnect = () => {
+            console.log('✅ Room socket connected, ready to create room')
+        }
+
+        // Listen for ROOM_CREATED event
+        const handleRoomCreated = (data) => {
+            const room = data.room
+            const newRoomId = room.id
+            const roomCode = room.code
+
+            console.log(`🏗️ Room created via socket: ${newRoomId}, code: ${roomCode}`)
+
+            // Lấy userId hiện tại
+            let currentUserId = null
+            try {
+                const token = localStorage.getItem('token')
+                if (token) {
+                    const payload = JSON.parse(atob(token.split('.')[1]))
+                    currentUserId = payload.userId || payload.id
+                } else {
+                    currentUserId = getOrCreateGuestUserId()
+                }
+            } catch (err) {
+                currentUserId = getOrCreateGuestUserId()
+            }
+
+            // QUAN TRỌNG: Tất cả localStorage keys đều dùng CODE (4 số) thay vì UUID
+            if (!roomCode) {
+                console.error('⚠️ Room code is missing!')
+                return
+            }
+
+            // Lưu room settings với code
+            localStorage.setItem(`room_${roomCode}_settings`, JSON.stringify({
+                maxPlayers: room.maxPlayers,
+                availableRoles: Object.keys(selectedRoles).filter(roleId => selectedRoles[roleId])
+            }))
+
+            // Lưu hostId (người tạo phòng) với code
+            // Lưu cả playerId của host để check với anonymous users
+            const hostPlayer = room.players?.find(p => p.isHost)
+            if (hostPlayer) {
+                localStorage.setItem(`room_${roomCode}_hostPlayerId`, hostPlayer.id)
+            }
+            if (currentUserId) {
+                localStorage.setItem(`room_${roomCode}_host`, currentUserId)
+                localStorage.setItem(`room_${roomCode}_creator_userId`, currentUserId)
+            }
+
+            console.log(`💾 Saved room data to localStorage with code: ${roomCode}`)
+
+            // Navigate to room bằng CODE (4 digits) thay vì UUID
+            // Để RoomPage có thể join trực tiếp bằng code
+            navigate(`/room/${roomCode}`)
+            onClose()
+            setLoading(false)
+        }
+
+        // Listen for ERROR event
+        const handleError = (error) => {
+            console.error('Room creation error:', error)
+            setError(error.message || 'Không thể tạo phòng')
+            setLoading(false)
+        }
+
+        socket.on('connect', handleConnect)
+        socket.on('ROOM_CREATED', handleRoomCreated)
+        socket.on('ERROR', handleError)
+
+        // Nếu đã connected, log ngay
+        if (socket.connected) {
+            console.log('✅ Room socket already connected')
+        }
+
+        return () => {
+            socket.off('connect', handleConnect)
+            socket.off('ROOM_CREATED', handleRoomCreated)
+            socket.off('ERROR', handleError)
+        }
+    }, [navigate, onClose, selectedRoles])
 
     const toggleRole = (roleId) => {
         setSelectedRoles(prev => ({
@@ -35,7 +123,81 @@ export default function CreateRoomModal({ isOpen, onClose }) {
         }))
     }
 
+    // Function để gửi CREATE_ROOM event
+    const sendCreateRoomEvent = () => {
+        console.log('🔍 sendCreateRoomEvent called, socket state:', {
+            hasSocket: !!roomSocket,
+            connected: roomSocket?.connected,
+            socketId: roomSocket?.id
+        })
+
+        if (!roomSocket || !roomSocket.connected) {
+            console.error('❌ Socket not connected!', {
+                hasSocket: !!roomSocket,
+                connected: roomSocket?.connected
+            })
+            setError('Socket chưa kết nối')
+            setLoading(false)
+            return
+        }
+
+        // Đảm bảo guest userId và username được tạo TRƯỚC khi tạo phòng
+        const token = localStorage.getItem('token')
+        let displayname = null
+
+        if (!token) {
+            // Sử dụng displayName nếu có, nếu không thì dùng username từ localStorage
+            displayname = displayName.trim() || getOrCreateGuestUsername()
+            // Lưu displayName vào localStorage nếu có
+            if (displayName.trim()) {
+                localStorage.setItem('guest_username', displayName.trim())
+            }
+        } else {
+            // Lấy username từ token cho user đã đăng nhập
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]))
+                displayname = payload.username || payload.displayname || null
+            } catch (err) {
+                console.warn('Could not get username from token:', err)
+            }
+        }
+
+        // Lấy userId để gửi lên backend
+        let userId = null
+        try {
+            const token = localStorage.getItem('token')
+            if (token) {
+                const payload = JSON.parse(atob(token.split('.')[1]))
+                userId = payload.userId || payload.id
+            } else {
+                userId = getOrCreateGuestUserId()
+            }
+        } catch (err) {
+            userId = getOrCreateGuestUserId()
+        }
+
+        const roomData = {
+            name: `Phòng ${Date.now()}`, // Tên phòng mặc định
+            maxPlayers,
+            settings: {
+                availableRoles: Object.keys(selectedRoles).filter(roleId => selectedRoles[roleId])
+            },
+            displayname: displayname || 'Anonymous Host',
+            userId: userId // QUAN TRỌNG: Gửi userId để backend biết ai là host
+        }
+
+        console.log('📤 Emitting CREATE_ROOM event via SOCKET:', roomData)
+        console.log('📤 Socket ID:', roomSocket.id)
+        console.log('📤 Socket connected:', roomSocket.connected)
+        console.log('📤 UserId being sent:', userId)
+
+        // Gửi CREATE_ROOM event qua socket (KHÔNG dùng REST API)
+        roomSocket.emit('CREATE_ROOM', roomData)
+    }
+
     const handleCreate = async () => {
+        console.log('🎯 handleCreate called - Using SOCKET, NOT REST API')
+
         // Validate
         if (maxPlayers < 3 || maxPlayers > 75) {
             setError('Số người chơi phải từ 3-75')
@@ -65,116 +227,37 @@ export default function CreateRoomModal({ isOpen, onClose }) {
         setError(null)
         setLoading(true)
 
-        try {
-            // Đảm bảo guest userId và username được tạo TRƯỚC khi tạo phòng
-            const token = localStorage.getItem('token')
-            let username = null
-            let currentUserId = null
-
-            if (!token) {
-                // Tạo guest userId và username trước khi gửi request
-                currentUserId = getOrCreateGuestUserId()
-                // Sử dụng displayName nếu có, nếu không thì dùng username từ localStorage
-                username = displayName.trim() || getOrCreateGuestUsername()
-                // Lưu displayName vào localStorage nếu có
-                if (displayName.trim()) {
-                    localStorage.setItem('guest_username', displayName.trim())
-                }
-                console.log(`👤 Guest user - userId: ${currentUserId}, username: ${username}`)
-            } else {
-                // Lấy userId + username từ token cho user đã đăng nhập
-                try {
-                    const payload = JSON.parse(atob(token.split('.')[1]))
-                    currentUserId = payload.userId || payload.id
-                    // username trong token chính là username dùng ở trang hồ sơ
-                    username = payload.username || payload.displayname || null
-                    console.log(`🔐 Auth user - userId: ${currentUserId}, username: ${username}`)
-                } catch (err) {
-                    console.warn('Could not get userId/username from token:', err)
-                }
-            }
-
-            // QUAN TRỌNG: Đảm bảo userId được gửi lên backend khớp với currentUserId
-            // Lưu vào localStorage trước để client.js interceptor có thể dùng
-            if (currentUserId && !token) {
-                // Nếu là guest, đảm bảo guest_user_id trong localStorage khớp
-                localStorage.setItem('guest_user_id', currentUserId)
-            }
-
-            const roomData = {
-                maxPlayers,
-                availableRoles, // Danh sách role IDs được chọn
-                isPrivate: false,
-                username, // Gửi username cho cả guest lẫn user đăng nhập
-                userId: currentUserId // Gửi userId trong body để đảm bảo backend nhận đúng
-            }
-
-            const result = await roomApi.create(roomData)
-            const newRoomId = result.room?.id || result.roomId || `room-${Date.now()}`
-
-            console.log(`🏗️ Room created: ${newRoomId}, hostId from API: ${result.room?.hostId}, currentUserId: ${currentUserId}`)
-
-            // Lưu room settings và hostId vào localStorage
-            localStorage.setItem(`room_${newRoomId}_settings`, JSON.stringify({
-                maxPlayers,
-                availableRoles
-            }))
-
-            // Lưu hostId (ưu tiên từ API, sau đó từ currentUserId đã lấy ở trên)
-            const hostId = result.room?.hostId || currentUserId
-            if (hostId) {
-                localStorage.setItem(`room_${newRoomId}_host`, hostId)
-                console.log(`💾 Saved hostId to localStorage: ${hostId}`)
-            }
-
-            // QUAN TRỌNG: Lưu userId đã dùng khi tạo phòng để đảm bảo nhất quán
-            // Khi vào RoomPage, sẽ dùng userId này thay vì lấy từ token/guest mới
-            if (currentUserId) {
-                localStorage.setItem(`room_${newRoomId}_creator_userId`, currentUserId)
-                console.log(`💾 Saved creator userId to localStorage: ${currentUserId}`)
-            }
-
-            // Navigate to room
-            navigate(`/room/${newRoomId}`)
-            onClose()
-        } catch (err) {
-            console.warn('API không khả dụng, tạo phòng với localStorage:', err.message || err)
-            // Nếu API chưa có, vẫn tạo phòng với localStorage (fallback)
-            const newRoomId = `room-${Date.now()}`
-
-            // Lấy userId hiện tại
-            let currentUserId = null
-            try {
-                const token = localStorage.getItem('token')
-                if (token) {
-                    const payload = JSON.parse(atob(token.split('.')[1]))
-                    currentUserId = payload.userId || payload.id
-                }
-            } catch (tokenErr) {
-                console.warn('Could not get userId from token:', tokenErr)
-            }
-
-            // Lưu room settings và hostId vào localStorage
-            localStorage.setItem(`room_${newRoomId}_settings`, JSON.stringify({
-                maxPlayers,
-                availableRoles
-            }))
-
-            // Lưu hostId (người tạo phòng)
-            if (currentUserId) {
-                localStorage.setItem(`room_${newRoomId}_host`, currentUserId)
-            } else {
-                // Nếu không có userId, tạo một ID tạm thời
-                const tempUserId = `temp-user-${Date.now()}`
-                localStorage.setItem(`room_${newRoomId}_host`, tempUserId)
-            }
-
-            // Navigate to room
-            navigate(`/room/${newRoomId}`)
-            onClose()
-        } finally {
+        // Kiểm tra socket
+        if (!roomSocket) {
+            setError('Chưa khởi tạo socket. Vui lòng thử lại...')
             setLoading(false)
+            return
         }
+
+        // Đợi socket connected (tối đa 5 giây)
+        if (!roomSocket.connected) {
+            console.log('⏳ Waiting for socket connection...')
+            setError('Đang kết nối với server. Vui lòng đợi...')
+
+            // Đợi socket connect
+            const timeout = setTimeout(() => {
+                if (!roomSocket.connected) {
+                    setError('Không thể kết nối với server. Vui lòng kiểm tra room-service đang chạy (port 8082).')
+                    setLoading(false)
+                }
+            }, 5000)
+
+            roomSocket.once('connect', () => {
+                clearTimeout(timeout)
+                console.log('✅ Socket connected, proceeding with room creation')
+                sendCreateRoomEvent()
+            })
+
+            return
+        }
+
+        // Socket đã connected, tiếp tục tạo phòng
+        sendCreateRoomEvent()
     }
 
     if (!isOpen) return null
@@ -249,7 +332,7 @@ export default function CreateRoomModal({ isOpen, onClose }) {
                         {/* Phe Dân Làng */}
                         <div className="mb-4">
                             <h3 className="font-heading text-lg text-green-400 mb-3 flex items-center gap-2">
-                            
+
                                 Phe Dân Làng
                             </h3>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -276,7 +359,7 @@ export default function CreateRoomModal({ isOpen, onClose }) {
                         {/* Phe Ma Sói */}
                         <div>
                             <h3 className="font-heading text-lg text-red-400 mb-3 flex items-center gap-2">
-                            
+
                                 Phe Ma Sói
                             </h3>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -303,7 +386,7 @@ export default function CreateRoomModal({ isOpen, onClose }) {
                         {/* Phe Độc Lập */}
                         <div className="mt-6">
                             <h3 className="font-heading text-lg text-amber-300 mb-3 flex items-center gap-2">
-                             
+
                                 Phe Độc Lập
                             </h3>
                             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">

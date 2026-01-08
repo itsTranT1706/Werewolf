@@ -108,7 +108,8 @@ export const gameApi = {
         role: payload.role,
         roleName: payload.roleName,
         faction: payload.faction,
-        userId: payload.userId
+        userId: payload.userId,
+        username: payload.username // Thêm username để match anonymous users
       })
     }
 

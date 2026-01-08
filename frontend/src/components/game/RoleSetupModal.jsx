@@ -21,7 +21,7 @@ export default function RoleSetupModal({
     // Tính toán gợi ý tỉ lệ
     useEffect(() => {
         if (playerCount && isOpen) {
-            const suggested = calculateSuggestedSetup(playerCount)
+            const suggested = calculateSuggestedSetup(playerCount, availableRoles)
             setSuggestedSetup(suggested)
 
             // Nếu có initialSetup, dùng nó, không thì dùng suggested
@@ -33,33 +33,75 @@ export default function RoleSetupModal({
 
             validateSetup(suggested)
         }
-    }, [playerCount, isOpen, initialSetup])
+    }, [playerCount, isOpen, initialSetup, availableRoles])
 
-    // Tính toán gợi ý tỉ lệ
-    const calculateSuggestedSetup = (count) => {
+    // Tính toán gợi ý tỉ lệ (chỉ dùng các role có trong availableRoles)
+    const calculateSuggestedSetup = (count, availableRolesList = availableRoles) => {
         const setup = {}
+
+        // Lọc các role có trong availableRoles
+        const allVillagerRoles = Object.values(ROLES).filter(r => r.faction === FACTION.VILLAGER)
+        const allWerewolfRoles = Object.values(ROLES).filter(r => r.faction === FACTION.WEREWOLF)
+        const allNeutralRoles = Object.values(ROLES).filter(r => r.faction === FACTION.NEUTRAL)
+
+        const villagerRoles = availableRoles
+            ? allVillagerRoles.filter(r => availableRoles.includes(r.id))
+            : allVillagerRoles
+
+        const werewolfRoles = availableRoles
+            ? allWerewolfRoles.filter(r => availableRoles.includes(r.id))
+            : allWerewolfRoles
+
+        const neutralRoles = availableRoles
+            ? allNeutralRoles.filter(r => availableRoles.includes(r.id))
+            : allNeutralRoles
 
         // Số lượng Sói: 20-30% số người
         const werewolfCount = Math.max(1, Math.round(count * 0.25))
-        setup['ALPHA_WOLF'] = 1
-        if (werewolfCount > 1) {
-            setup['YOUNG_WOLF'] = werewolfCount - 1
+        
+        // Chọn Sói từ availableRoles
+        if (werewolfRoles.length > 0) {
+            const alphaWolf = werewolfRoles.find(r => r.id === 'ALPHA_WOLF')
+            const youngWolf = werewolfRoles.find(r => r.id === 'YOUNG_WOLF')
+            
+            if (alphaWolf) {
+                setup['ALPHA_WOLF'] = 1
+                if (werewolfCount > 1 && youngWolf) {
+                    setup['YOUNG_WOLF'] = werewolfCount - 1
+                } else if (werewolfCount > 1) {
+                    // Nếu không có YOUNG_WOLF, dùng role đầu tiên khác
+                    const otherWolf = werewolfRoles.find(r => r.id !== 'ALPHA_WOLF') || werewolfRoles[0]
+                    setup[otherWolf.id] = werewolfCount - 1
+                }
+            } else {
+                // Không có ALPHA_WOLF, dùng role đầu tiên
+                setup[werewolfRoles[0].id] = werewolfCount
+            }
         }
 
-        // Luôn có SEER và WITCH
-        setup['SEER'] = 1
-        setup['WITCH'] = 1
+        // Chọn các role Dân làng từ availableRoles
+        const seer = villagerRoles.find(r => r.id === 'SEER')
+        const witch = villagerRoles.find(r => r.id === 'WITCH')
+        const bodyguard = villagerRoles.find(r => r.id === 'BODYGUARD')
 
-        // Thêm BODYGUARD nếu có >= 6 người
-        if (count >= 6) {
+        if (seer) setup['SEER'] = 1
+        if (witch) setup['WITCH'] = 1
+        if (bodyguard && count >= 6) {
             setup['BODYGUARD'] = 1
         }
 
-        // Fill còn lại với VILLAGER
+        // Fill còn lại với VILLAGER (nếu có trong availableRoles)
         const usedSlots = Object.values(setup).reduce((sum, c) => sum + c, 0)
         const remaining = count - usedSlots
         if (remaining > 0) {
-            setup['VILLAGER'] = remaining
+            const villager = villagerRoles.find(r => r.id === 'VILLAGER')
+            if (villager) {
+                setup['VILLAGER'] = remaining
+            } else if (villagerRoles.length > 0) {
+                // Nếu không có VILLAGER, dùng role đầu tiên có sẵn
+                const fallbackRole = villagerRoles.find(r => !setup[r.id]) || villagerRoles[0]
+                setup[fallbackRole.id] = (setup[fallbackRole.id] || 0) + remaining
+            }
         }
 
         return setup

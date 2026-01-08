@@ -98,6 +98,12 @@ export const ROLES = {
         id: 'SERIAL_KILLER',
         name: 'Sát Nhân Hàng Loạt',
         faction: 'NEUTRAL'
+    },
+    // QUẢN TRÒ (Host)
+    MODERATOR: {
+        id: 'MODERATOR',
+        name: 'Quản Trò',
+        faction: 'NEUTRAL'
     }
 }
 

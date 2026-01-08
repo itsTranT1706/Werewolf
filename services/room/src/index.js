@@ -1,338 +1,197 @@
-/**
- * Room Service (Phiên bản đơn giản dùng Redis)
- *
- * Service này khớp với frontend hiện tại:
- * - API qua API Gateway:        /api/v1/rooms/...
- * - Đường dẫn thực trong service: /rooms, /rooms/:roomId, /rooms/:roomId/join, /rooms/:roomId/leave
- * - roomId ở đây chính là mã phòng 4 chữ số
- *
- * Lưu trữ:
- * - Redis key: room:{roomId}  -> JSON room
- * - Cấu trúc room:
- *   {
- *     id: string       // roomId (4 chữ số)
- *     maxPlayers: number
- *     availableRoles: string[]
- *     hostId: string
- *     players: [
- *       { id, userId, username, isHost, isGuest }
- *     ],
- *     createdAt: number
- *   }
- */
+const express = require('express')
+const http = require('http')
+const { Server } = require('socket.io')
 
-const express = require('express');
-const cors = require('cors');
-const { createClient } = require('redis');
+const prisma = require('./config/database')
+const { createKafkaClient, createProducer, createConsumer } = require('./utils/kafka')
+const RoomSocketHandler = require('./handlers/roomSocketHandler')
+const roomRoutes = require('./routes/roomRoutes')
 
-const PORT = process.env.PORT || 8082;
-const REDIS_URL = process.env.REDIS_URL || 'redis://redis:6379';
+const PORT = process.env.PORT || 8082
 
-// -------------------------------
-// Redis client
-// -------------------------------
-const redis = createClient({ url: REDIS_URL });
-
-redis.on('error', (err) => {
-    console.error('❌ Redis error:', err);
-});
-
-async function connectRedis() {
-    if (!redis.isOpen) {
-        await redis.connect();
-        console.log('✅ Connected to Redis at', REDIS_URL);
-    }
-}
-
-// -------------------------------
-// Helpers
-// -------------------------------
-function generateRoomId() {
-    // 4 chữ số, từ 1000–9999
-    return Math.floor(1000 + Math.random() * 9000).toString();
-}
-
-function getRoomKey(roomId) {
-    return `room:${roomId}`;
-}
-
-async function loadRoom(roomId) {
-    const json = await redis.get(getRoomKey(roomId));
-    return json ? JSON.parse(json) : null;
-}
-
-async function saveRoom(room) {
-    await redis.set(getRoomKey(room.id), JSON.stringify(room));
-}
-
-// -------------------------------
-// Express app & routes
-// -------------------------------
 async function startServer() {
-    await connectRedis();
+    // ===== KAFKA =====
+    const kafka = createKafkaClient()
+    const producer = await createProducer(kafka)
 
-    const app = express();
+    // ===== EXPRESS =====
+    const app = express()
 
-    app.use(cors());
-    app.use(express.json());
+    // Middleware
+    app.use(express.json())
 
-    // Health check
+    // Attach prisma and kafka producer to request
+    app.use((req, res, next) => {
+        req.prisma = prisma
+        req.kafkaProducer = producer
+        next()
+    })
+
     app.get('/health', (req, res) => {
-        res.json({ status: 'ok', service: 'room-service' });
-    });
+        res.json({ status: 'ok', service: 'room-service' })
+    })
 
-    /**
-     * POST /rooms
-     * Body: { maxPlayers, availableRoles, isPrivate, username, userId }
-     *
-     * - Tạo mã phòng 4 chữ số
-     * - Người tạo phòng luôn là host và tự được add vào danh sách players
-     */
-    app.post('/rooms', async (req, res) => {
-        try {
-            const {
-                maxPlayers = 12,
-                availableRoles = [],
-                isPrivate = false, // hiện tại chỉ lưu lại cho tương lai
-                username,
-                userId,
-            } = req.body || {};
+    // Mount room routes
+    app.use('/rooms', roomRoutes)
 
-            if (!Array.isArray(availableRoles) || availableRoles.length === 0) {
-                return res.status(400).json({ error: 'availableRoles is required' });
-            }
+    // ===== HTTP SERVER =====
+    const server = http.createServer(app)
 
-            // Lấy userId từ header nếu body không có
-            const effectiveUserId =
-                userId || req.headers['x-user-id'] || `guest-${Date.now()}`;
+    // ===== SOCKET.IO =====
+    const io = new Server(server, {
+        cors: {
+            origin: '*',
+            methods: ['GET', 'POST']
+        },
+        transports: ['websocket', 'polling']
+    })
+    const consumer = await createConsumer(kafka, 'room-service-group')
 
-            const displayName =
-                username ||
-                req.headers['x-username'] ||
-                `Khách_${Math.floor(Math.random() * 10000)}`;
+    // Consumer cho evt.broadcast để lắng nghe role assignments
+    const broadcastConsumer = kafka.consumer({ groupId: 'room-service-broadcast' })
+    await broadcastConsumer.connect()
+    await broadcastConsumer.subscribe({ topic: 'evt.broadcast', fromBeginning: false })
 
-            // Sinh roomId duy nhất
-            let roomId;
-            let attempts = 0;
-            do {
-                roomId = generateRoomId();
-                attempts += 1;
-                if (attempts > 50) {
-                    return res
-                        .status(500)
-                        .json({ error: 'Không thể tạo được mã phòng, vui lòng thử lại' });
+    const socketHandler = new RoomSocketHandler(prisma, producer, io)
+
+    // Lắng nghe role assignments từ gameplay service
+    await broadcastConsumer.run({
+        eachMessage: async ({ message }) => {
+            if (!message.value) return
+
+            try {
+                const event = JSON.parse(message.value.toString())
+                const { roomId, event: eventData } = event
+
+                // Lắng nghe GAME_ROLE_ASSIGNMENT_LIST để lưu role assignments
+                if (eventData?.type === 'GAME_ROLE_ASSIGNMENT_LIST' && eventData?.payload?.assignment) {
+                    console.log(`[BROADCAST] Received GAME_ROLE_ASSIGNMENT_LIST for room ${roomId}`)
+                    await socketHandler.handleRoleAssignmentList(roomId, eventData.payload.assignment)
                 }
-            } while (await loadRoom(roomId));
 
-            const now = Date.now();
+                // Lắng nghe GAME_ROLE_ASSIGNED để re-emit qua room socket (fallback)
+                if (eventData?.type === 'GAME_ROLE_ASSIGNED' && eventData?.payload && roomId) {
+                    const targetUserId = event.targetUserId || eventData.payload?.userId
+                    const targetUsername = eventData.payload?.username || eventData.payload?.displayname
+                    console.log(`[BROADCAST] Received GAME_ROLE_ASSIGNED for room ${roomId}, userId: ${targetUserId}, username: ${targetUsername}, role: ${eventData.payload?.role}`)
 
-            const hostPlayer = {
-                id: effectiveUserId,
-                userId: effectiveUserId,
-                username: displayName,
-                isHost: true,
-                isGuest: !req.headers.authorization, // nếu không có Bearer token thì coi như guest
-                joinedAt: now,
-            };
+                    // Lấy tất cả sockets trong room
+                    const allSocketsInRoom = Array.from(io.sockets.sockets.values())
+                        .filter(s => s.data.currentRoomId === roomId)
 
-            const room = {
-                id: roomId,
-                maxPlayers,
-                availableRoles,
-                isPrivate,
-                hostId: effectiveUserId,
-                players: [hostPlayer],
-                createdAt: now,
-            };
+                    console.log(`[BROADCAST] Found ${allSocketsInRoom.length} sockets in room ${roomId}`)
+                    allSocketsInRoom.forEach(s => {
+                        console.log(`  - Socket ${s.id}: userId=${s.data.userId}, playerId=${s.data.playerId}, displayname=${s.data.displayname}`)
+                    })
 
-            await saveRoom(room);
+                    // Tìm socket match: ưu tiên userId, sau đó match bằng username/displayname cho anonymous users
+                    let playerSockets = []
 
-            console.log('🏗️ Room created:', {
-                roomId,
-                hostId: room.hostId,
-                maxPlayers,
-                availableRolesCount: availableRoles.length,
-            });
+                    if (targetUserId) {
+                        // Authenticated user: match bằng userId
+                        playerSockets = allSocketsInRoom.filter(s => {
+                            if (s.data.userId === targetUserId) return true
+                            if (eventData.payload?.userId && s.data.userId === eventData.payload.userId) return true
+                            if (String(s.data.userId) === String(targetUserId)) return true
+                            if (String(s.data.userId).toLowerCase() === String(targetUserId).toLowerCase()) return true
+                            return false
+                        })
+                    } else if (targetUsername) {
+                        // Anonymous user: match bằng displayname/username
+                        playerSockets = allSocketsInRoom.filter(s => {
+                            if (!s.data.userId && s.data.displayname === targetUsername) return true
+                            if (!s.data.userId && String(s.data.displayname) === String(targetUsername)) return true
+                            return false
+                        })
+                    }
 
-            res.status(201).json({ room });
-        } catch (err) {
-            console.error('Error creating room:', err);
-            res.status(500).json({ error: 'Internal server error' });
-        }
-    });
-
-    /**
-     * GET /rooms/:roomId
-     * Lấy thông tin phòng + danh sách người chơi
-     */
-    app.get('/rooms/:roomId', async (req, res) => {
-        try {
-            const { roomId } = req.params;
-            const room = await loadRoom(roomId);
-
-            if (!room) {
-                return res.status(404).json({ error: 'Room not found' });
-            }
-
-            res.json({ room });
-        } catch (err) {
-            console.error('Error getting room:', err);
-            res.status(500).json({ error: 'Internal server error' });
-        }
-    });
-
-    /**
-     * POST /rooms/:roomId/join
-     * Body: { password?, username?, userId? }
-     *
-     * - Nếu user đã trong phòng thì chỉ trả về room (không add trùng)
-     * - Người đầu tiên join (nếu vì lý do gì đó phòng chưa có host) sẽ là host
-     */
-    app.post('/rooms/:roomId/join', async (req, res) => {
-        try {
-            const { roomId } = req.params;
-            const { username, userId } = req.body || {};
-
-            const room = await loadRoom(roomId);
-            if (!room) {
-                return res.status(404).json({ error: 'Room not found' });
-            }
-
-            const effectiveUserId =
-                userId || req.headers['x-user-id'] || `guest-${Date.now()}`;
-
-            const displayName =
-                username ||
-                req.headers['x-username'] ||
-                `Khách_${Math.floor(Math.random() * 10000)}`;
-
-            // Nếu đã tồn tại player có cùng userId thì trả về luôn (tránh trùng)
-            const existing = room.players.find(
-                (p) => String(p.userId) === String(effectiveUserId)
-            );
-            if (existing) {
-                console.log(
-                    `👥 User ${effectiveUserId} đã ở trong phòng ${roomId}, không thêm trùng`
-                );
-                return res.json({ room });
-            }
-
-            if (room.players.length >= room.maxPlayers) {
-                return res.status(400).json({ error: 'Room is full' });
-            }
-
-            const now = Date.now();
-            const newPlayer = {
-                id: effectiveUserId,
-                userId: effectiveUserId,
-                username: displayName,
-                isHost: room.players.length === 0,
-                isGuest: !req.headers.authorization,
-                joinedAt: now,
-            };
-
-            room.players.push(newPlayer);
-
-            // Nếu phòng chưa có hostId thì gán người này
-            if (!room.hostId) {
-                room.hostId = effectiveUserId;
-            }
-
-            await saveRoom(room);
-
-            console.log('👤 Player joined room:', {
-                roomId,
-                userId: effectiveUserId,
-                username: displayName,
-            });
-
-            res.json({ room });
-        } catch (err) {
-            console.error('Error joining room:', err);
-            res.status(500).json({ error: 'Internal server error' });
-        }
-    });
-
-    /**
-     * POST /rooms/:roomId/leave
-     *
-     * - Lấy userId từ header hoặc body
-     * - Nếu host rời đi, tự động gán host mới (player đầu tiên còn lại) nếu có
-     */
-    app.post('/rooms/:roomId/leave', async (req, res) => {
-        try {
-            const { roomId } = req.params;
-            const { userId } = req.body || {};
-
-            const room = await loadRoom(roomId);
-            if (!room) {
-                return res.status(404).json({ error: 'Room not found' });
-            }
-
-            const effectiveUserId =
-                userId || req.headers['x-user-id'] || req.headers['x-player-id'];
-
-            if (!effectiveUserId) {
-                return res.status(400).json({ error: 'userId is required to leave' });
-            }
-
-            const beforeCount = room.players.length;
-            room.players = room.players.filter(
-                (p) => String(p.userId) !== String(effectiveUserId)
-            );
-
-            // Nếu không có ai rời thì coi như thành công nhưng không sửa dữ liệu
-            if (room.players.length === beforeCount) {
-                return res.json({ room });
-            }
-
-            // Nếu host rời đi -> gán host mới
-            if (room.hostId && String(room.hostId) === String(effectiveUserId)) {
-                const newHost = room.players[0];
-                if (newHost) {
-                    newHost.isHost = true;
-                    room.hostId = newHost.userId;
-                } else {
-                    // Nếu không còn ai trong phòng, có thể xoá phòng luôn
-                    await redis.del(getRoomKey(roomId));
-                    console.log('🗑️ Room deleted vì không còn người chơi:', roomId);
-                    return res.json({ room: null });
+                    if (playerSockets.length > 0) {
+                        for (const playerSocket of playerSockets) {
+                            playerSocket.emit('GAME_ROLE_ASSIGNED', {
+                                payload: eventData.payload
+                            })
+                            console.log(`[BROADCAST] ✅ Re-emitted GAME_ROLE_ASSIGNED to socket ${playerSocket.id} (userId: ${playerSocket.data.userId}, displayname: ${playerSocket.data.displayname}), role: ${eventData.payload.role}`)
+                        }
+                    } else {
+                        // Fallback: nếu không tìm thấy, không emit (để tránh tất cả nhận cùng role)
+                        console.warn(`[BROADCAST] ⚠️ No socket found for userId=${targetUserId}, username=${targetUsername} in room ${roomId}`)
+                    }
                 }
+            } catch (err) {
+                console.error('[BROADCAST] Error processing broadcast event:', err)
+            }
+        }
+    })
+
+    await consumer.run({
+        eachMessage: async ({ message }) => {
+            if (!message.value) return
+
+            let command
+            try {
+                command = JSON.parse(message.value.toString())
+            } catch {
+                console.warn('Invalid Kafka message')
+                return
             }
 
-            await saveRoom(room);
-
-            console.log('🚪 Player left room:', {
-                roomId,
-                userId: effectiveUserId,
-            });
-
-            res.json({ room });
-        } catch (err) {
-            console.error('Error leaving room:', err);
-            res.status(500).json({ error: 'Internal server error' });
+            switch (command.action?.type) {
+                case 'ROOM_JOIN':
+                    await socketHandler.handleRoomJoin(command)
+                    break
+                case 'ROOM_LEAVE':
+                    await socketHandler.handleRoomLeave(command)
+                    break
+                default:
+                    console.warn('Unknown command', command.action?.type)
+            }
         }
-    });
+    })
 
-    app.listen(PORT, () => {
-        console.log(`🏰 Room service listening on port ${PORT}`);
-    });
+    // ===== SOCKET EVENTS =====
+    io.on('connection', (socket) => {
+        console.log('Client connected:', socket.id)
 
-    return { app, redis };
+        socket.on('CREATE_ROOM', (data) => socketHandler.handleCreateRoom(socket, data))
+        socket.on('JOIN_ROOM', (data) => socketHandler.handleJoinRoom(socket, data))
+        socket.on('LEAVE_ROOM', (data) => socketHandler.handleLeaveRoom(socket, data))
+        socket.on('START_GAME', (data) => {
+            console.log(`[SERVER_DEBUG] START_GAME event received from socket ${socket.id}`);
+            socketHandler.handleStartGame(socket, data);
+        })
+        socket.on('UPDATE_ROOM', (data) => socketHandler.handleUpdateRoom(socket, data))
+        socket.on('KICK_PLAYER', (data) => socketHandler.handleKickPlayer(socket, data))
+        socket.on('GET_ROOM_INFO', (data) => socketHandler.handleGetRoomInfo(socket, data))
+
+        socket.on('disconnect', () => {
+            console.log('Client disconnected:', socket.id)
+            socketHandler.handleDisconnect(socket)
+        })
+    })
+
+    server.listen(PORT, () => {
+        console.log(`Room service listening on port ${PORT}`)
+        console.log(`Socket.IO endpoint: ws://localhost:${PORT}`)
+        console.log(`Health check: http://localhost:${PORT}/health`)
+    })
+
+    return { app, prisma, producer };
 }
 
 async function stopServer(resources) {
-    const { redis: redisClient } = resources || {};
-    if (redisClient && redisClient.isOpen) {
-        await redisClient.quit();
+    const { prisma, producer } = resources;
+
+    if (producer) {
+        await producer.disconnect();
+    }
+
+    if (prisma) {
+        await prisma.$disconnect();
     }
 }
 
 if (require.main === module) {
-    startServer().catch((err) => {
-        console.error('Failed to start room service:', err);
-        process.exit(1);
-    });
+    startServer().catch(console.error);
 }
 
-module.exports = { startServer, stopServer };
+module.exports = { startServer, stopServer }

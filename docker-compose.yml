@@ -15,7 +15,7 @@ services:
     ports:
       - "2181:2181"
     healthcheck:
-      test: [ "CMD", "nc", "-z", "localhost", "2181" ]
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -38,7 +38,13 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     healthcheck:
-      test: [ "CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092" ]
+      test:
+        [
+          "CMD",
+          "kafka-broker-api-versions",
+          "--bootstrap-server",
+          "localhost:9092",
+        ]
       interval: 10s
       timeout: 10s
       retries: 10
@@ -55,14 +61,30 @@ services:
     ports:
       - "5432:5432"
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
     # Vai trò: Lưu trữ dữ liệu lâu dài (User Profile, Lịch sử trận đấu).
-
+  room_database:
+    # Room Service DB
+    image: postgres:15
+    environment:
+      POSTGRES_DB: room_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432" # Port khác để tránh conflict
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - room_postgres_data:/var/lib/postgresql/data
+    # Vai trò: Lưu trữ dữ liệu Room và Room Players
   redis:
     image: redis:latest
     ports:
@@ -111,12 +133,16 @@ services:
     ports:
       - "8082:8082"
     depends_on:
-      redis:
-        condition: service_started
-    restart: unless-stopped
+      room_database:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
     environment:
       - PORT=8082
-      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=production
+      - KAFKA_BROKERS=kafka:9092
+      - DATABASE_URL=postgresql://postgres:postgres@room_database:5432/room_service_db?schema=public
+    restart: unless-stopped
     # Vai trò: Quản lý tạo/tham gia phòng, danh sách người chơi chờ.
 
   gameplay-service:
@@ -126,9 +152,13 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
     environment:
-      - KAFKA_BROKERS=kafka:9092
       - PORT=8083
+      - REDIS_URL=redis://redis:6379
+      - KAFKA_BROKERS=kafka:9092
     # Vai trò: State Machine chính (Điều phối Ngày/Đêm, kỹ năng nhân vật, tính toán người chết).
 
     # vote-service:
@@ -184,3 +214,4 @@ networks:
 volumes:
   kafka_data:
   postgres_data:
+  room_postgres_data:
