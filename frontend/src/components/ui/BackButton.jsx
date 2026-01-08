@@ -1,11 +1,12 @@
 /**
- * Back Button - Fantasy styled navigation button
+ * Back Button - Ancient Navigation Rune
  * 
- * Used to navigate back to previous page (e.g., Game page from Profile)
- * Styled as a medieval/fantasy UI element
+ * Mystical navigation button styled as a carved rune tablet.
+ * Feels like activating an ancient waypoint.
  */
 
 import { useNavigate } from 'react-router-dom'
+import { RuneArrowLeft } from './AncientIcons'
 
 export default function BackButton({ 
   to = '/game', 
@@ -22,44 +23,42 @@ export default function BackButton({
     <button
       onClick={handleClick}
       className={`
-        group flex items-center gap-3 px-4 py-2 
-        font-fantasy text-sm text-parchment/70 
-        hover:text-gold transition-all duration-200
+        group relative flex items-center gap-3 px-5 py-2.5 
+        font-fantasy text-sm tracking-wide
+        transition-all duration-500
+        hover:scale-[1.02] active:scale-[0.98]
         ${className}
       `}
       style={{
-        background: 'linear-gradient(180deg, rgba(30,22,15,0.85) 0%, rgba(20,15,10,0.9) 100%)',
-        border: '2px solid rgba(201,162,39,0.3)',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+        background: 'linear-gradient(180deg, rgba(20,16,12,0.95) 0%, rgba(15,12,10,0.98) 100%)',
+        border: '2px solid rgba(60,50,40,0.4)',
+        color: '#8a7a6a',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = 'rgba(139,115,85,0.5)'
+        e.currentTarget.style.color = '#a89070'
+        e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.5), 0 0 15px rgba(139,115,85,0.1)'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = 'rgba(60,50,40,0.4)'
+        e.currentTarget.style.color = '#8a7a6a'
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4)'
       }}
     >
       {/* Arrow icon */}
-      <span 
-        className="transform group-hover:-translate-x-1 transition-transform duration-200"
-      >
-        <ArrowLeftIcon className="w-5 h-5" />
+      <span className="transform group-hover:-translate-x-1 transition-transform duration-300">
+        <RuneArrowLeft className="w-5 h-5" />
       </span>
 
       {/* Label */}
-      <span className="tracking-wide">{label}</span>
+      <span>{label}</span>
 
-      {/* Decorative corner accents */}
-      <span 
-        className="absolute top-0 left-0 w-2 h-2 border-t border-l border-gold/30 
-                   group-hover:border-gold/60 transition-colors"
-      />
-      <span 
-        className="absolute top-0 right-0 w-2 h-2 border-t border-r border-gold/30 
-                   group-hover:border-gold/60 transition-colors"
-      />
-      <span 
-        className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-gold/30 
-                   group-hover:border-gold/60 transition-colors"
-      />
-      <span 
-        className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-gold/30 
-                   group-hover:border-gold/60 transition-colors"
-      />
+      {/* Corner accents */}
+      <span className="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#8b7355]/30 group-hover:border-[#8b7355]/60 transition-colors" />
+      <span className="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#8b7355]/30 group-hover:border-[#8b7355]/60 transition-colors" />
+      <span className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#8b7355]/30 group-hover:border-[#8b7355]/60 transition-colors" />
+      <span className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#8b7355]/30 group-hover:border-[#8b7355]/60 transition-colors" />
     </button>
   )
 }
@@ -74,40 +73,34 @@ export function BackButtonCompact({ to = '/game', className = '' }) {
     <button
       onClick={() => navigate(to)}
       className={`
-        group relative w-10 h-10 flex items-center justify-center
-        text-parchment/60 hover:text-gold transition-all duration-200
+        group relative w-11 h-11 flex items-center justify-center
+        transition-all duration-500
+        hover:scale-105 active:scale-95
         ${className}
       `}
       style={{
-        background: 'linear-gradient(180deg, rgba(30,22,15,0.85) 0%, rgba(20,15,10,0.9) 100%)',
-        border: '2px solid rgba(201,162,39,0.3)',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+        background: 'linear-gradient(180deg, rgba(20,16,12,0.95) 0%, rgba(15,12,10,0.98) 100%)',
+        border: '2px solid rgba(60,50,40,0.4)',
+        color: '#8a7a6a',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
       }}
       title="Trở Về Làng"
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = 'rgba(139,115,85,0.5)'
+        e.currentTarget.style.color = '#a89070'
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = 'rgba(60,50,40,0.4)'
+        e.currentTarget.style.color = '#8a7a6a'
+      }}
     >
-      <ArrowLeftIcon className="w-5 h-5 transform group-hover:-translate-x-0.5 transition-transform" />
+      <RuneArrowLeft className="w-5 h-5 transform group-hover:-translate-x-0.5 transition-transform" />
       
-      {/* Hover glow */}
-      <span 
-        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
-        style={{
-          boxShadow: 'inset 0 0 10px rgba(201,162,39,0.2)',
-        }}
-      />
+      {/* Corner accents */}
+      <span className="absolute top-0 left-0 w-2 h-2 border-t border-l border-[#8b7355]/30 group-hover:border-[#8b7355]/60 transition-colors" />
+      <span className="absolute top-0 right-0 w-2 h-2 border-t border-r border-[#8b7355]/30 group-hover:border-[#8b7355]/60 transition-colors" />
+      <span className="absolute bottom-0 left-0 w-2 h-2 border-b border-l border-[#8b7355]/30 group-hover:border-[#8b7355]/60 transition-colors" />
+      <span className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-[#8b7355]/30 group-hover:border-[#8b7355]/60 transition-colors" />
     </button>
-  )
-}
-
-// Arrow icon
-function ArrowLeftIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path 
-        strokeLinecap="round" 
-        strokeLinejoin="round" 
-        strokeWidth={2} 
-        d="M10 19l-7-7m0 0l7-7m-7 7h18" 
-      />
-    </svg>
   )
 }

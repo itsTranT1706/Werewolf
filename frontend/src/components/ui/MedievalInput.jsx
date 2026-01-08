@@ -1,4 +1,12 @@
+/**
+ * Medieval Input - Dark Fantasy Styled Input
+ * 
+ * Ancient stone-carved input field with mystical accents.
+ * Feels like inscribing runes on weathered parchment.
+ */
+
 import { useState } from 'react'
+import { RuneEye, RuneEyeClosed, RuneWarning } from './AncientIcons'
 
 export default function MedievalInput({
   type = 'text',
@@ -11,19 +19,48 @@ export default function MedievalInput({
   ...props
 }) {
   const [showPassword, setShowPassword] = useState(false)
+  const [isFocused, setIsFocused] = useState(false)
   const isPassword = type === 'password'
   const inputType = isPassword ? (showPassword ? 'text' : 'password') : type
 
   return (
-    <div className="relative ">
-      {/* Input container with stone carved effect */}
-      <div className="relative ">
-        {/* Decorative left border */}
-        <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-gold/30 via-gold/60 to-gold/30" />
+    <div className="relative">
+      {/* Input container */}
+      <div 
+        className={`
+          relative transition-all duration-500
+          ${isFocused ? 'transform scale-[1.01]' : ''}
+        `}
+        style={{
+          background: 'linear-gradient(180deg, rgba(15,12,10,0.95) 0%, rgba(20,16,12,0.98) 50%, rgba(15,12,10,0.95) 100%)',
+          border: error 
+            ? '2px solid rgba(139,0,0,0.6)' 
+            : isFocused 
+              ? '2px solid rgba(139,115,85,0.5)' 
+              : '2px solid rgba(60,50,40,0.4)',
+          boxShadow: isFocused 
+            ? '0 0 20px rgba(139,115,85,0.15), inset 0 2px 8px rgba(0,0,0,0.6)'
+            : 'inset 0 2px 8px rgba(0,0,0,0.6)',
+        }}
+      >
+        {/* Left accent line */}
+        <div 
+          className="absolute left-0 top-2 bottom-2 w-0.5 transition-all duration-500"
+          style={{
+            background: isFocused 
+              ? 'linear-gradient(180deg, transparent 0%, rgba(139,115,85,0.6) 50%, transparent 100%)'
+              : 'linear-gradient(180deg, transparent 0%, rgba(80,70,60,0.3) 50%, transparent 100%)',
+          }}
+        />
         
         {/* Icon */}
         {icon && (
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-parchment/50">
+          <div 
+            className={`
+              absolute left-4 top-1/2 -translate-y-1/2 transition-colors duration-300
+              ${isFocused ? 'text-[#8b7355]' : 'text-[#5a4a3a]'}
+            `}
+          >
             {icon}
           </div>
         )}
@@ -34,13 +71,20 @@ export default function MedievalInput({
           placeholder={placeholder}
           value={value}
           onChange={onChange}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           className={`
-            input-stone w-full
-            font-semibold
+            w-full px-4 py-3.5 bg-transparent
+            font-fantasy text-[#a89070] tracking-wide
+            placeholder-[#5a4a3a] placeholder-opacity-100
+            focus:outline-none
             ${icon ? 'pl-12' : 'pl-4'}
             ${isPassword ? 'pr-12' : 'pr-4'}
-            ${error ? 'border-blood-red' : ''}
           `}
+          style={{
+            textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+            caretColor: '#8b7355',
+          }}
           {...props}
         />
 
@@ -49,45 +93,41 @@ export default function MedievalInput({
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-4 top-1/2 -translate-y-1/2 text-parchment/50 hover:text-gold transition-colors"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-[#5a4a3a] hover:text-[#8b7355] transition-colors duration-300"
             tabIndex={-1}
           >
             {showPassword ? (
-              <EyeOffIcon className="w-5 h-5" />
+              <RuneEyeClosed className="w-5 h-5" />
             ) : (
-              <EyeIcon className="w-5 h-5" />
+              <RuneEye className="w-5 h-5" />
             )}
           </button>
         )}
 
-        {/* Decorative right border */}
-        <div className="absolute right-0 top-0 bottom-0 w-1 bg-gradient-to-b from-gold/30 via-gold/60 to-gold/30" />
+        {/* Right accent line */}
+        <div 
+          className="absolute right-0 top-2 bottom-2 w-0.5 transition-all duration-500"
+          style={{
+            background: isFocused 
+              ? 'linear-gradient(180deg, transparent 0%, rgba(139,115,85,0.6) 50%, transparent 100%)'
+              : 'linear-gradient(180deg, transparent 0%, rgba(80,70,60,0.3) 50%, transparent 100%)',
+          }}
+        />
+
+        {/* Corner accents */}
+        <span className={`absolute top-0 left-0 w-2 h-2 border-t border-l transition-colors duration-300 ${isFocused ? 'border-[#8b7355]/50' : 'border-[#5a4a3a]/30'}`} />
+        <span className={`absolute top-0 right-0 w-2 h-2 border-t border-r transition-colors duration-300 ${isFocused ? 'border-[#8b7355]/50' : 'border-[#5a4a3a]/30'}`} />
+        <span className={`absolute bottom-0 left-0 w-2 h-2 border-b border-l transition-colors duration-300 ${isFocused ? 'border-[#8b7355]/50' : 'border-[#5a4a3a]/30'}`} />
+        <span className={`absolute bottom-0 right-0 w-2 h-2 border-b border-r transition-colors duration-300 ${isFocused ? 'border-[#8b7355]/50' : 'border-[#5a4a3a]/30'}`} />
       </div>
 
       {/* Error message */}
       {error && (
-        <p className="mt-1 text-blood-red text-sm font-fantasy flex items-center gap-1">
-          <span className="text-lg">⚠</span> {error}
-        </p>
+        <div className="mt-2 flex items-center gap-2 text-[#8b0000]">
+          <RuneWarning className="w-4 h-4 flex-shrink-0" />
+          <p className="font-fantasy text-sm">{error}</p>
+        </div>
       )}
     </div>
-  )
-}
-
-// Simple eye icons
-function EyeIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-    </svg>
-  )
-}
-
-function EyeOffIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-    </svg>
   )
 }

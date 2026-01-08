@@ -1,6 +1,8 @@
 /**
- * Post-login landing page
- * Full-screen immersive entry into the game world
+ * Game Page - The Cursed Village Square
+ * 
+ * Post-login landing page with dark medieval fantasy aesthetic.
+ * Feels like standing in a moonlit village square.
  */
 
 import { useState, useEffect, useMemo } from 'react'
@@ -9,7 +11,8 @@ import GameHUD from '@/components/game/GameHUD'
 import RolesModal from '@/components/game/RolesModal'
 import CreateRoomModal from '@/components/game/CreateRoomModal'
 import { profileApi, authApi } from '@/api'
-import { MedievalButton, MedievalPanel, notify } from '@/components/ui'
+import { MedievalButton, MedievalPanel, MedievalInput, notify } from '@/components/ui'
+import { RuneDoor, RuneWolf, RuneScroll, CornerAccent, RuneCopy, RuneShare } from '@/components/ui/AncientIcons'
 
 export default function GamePage() {
   const navigate = useNavigate()
@@ -24,28 +27,23 @@ export default function GamePage() {
   const [shareOpen, setShareOpen] = useState(false)
 
   useEffect(() => {
-    // Load user info for HUD
     loadUser()
 
-    // Kiểm tra query params để tự động mở modal / hiển thị thông báo lỗi
     const create = searchParams.get('create')
     const room = searchParams.get('room')
     const errorMsg = searchParams.get('error')
 
     if (create === 'true') {
       setShowCreateRoom(true)
-      // Xóa query param sau khi mở modal
       navigate('/game', { replace: true })
     }
 
     if (room) {
-      // Nếu có room param, navigate đến room
       navigate(`/room/${room}`, { replace: true })
     }
 
     if (errorMsg) {
       setGlobalError(errorMsg)
-      // Xóa error param sau khi hiển thị
       navigate('/game', { replace: true })
     }
   }, [searchParams, navigate])
@@ -55,30 +53,23 @@ export default function GamePage() {
       const data = await profileApi.getMe()
       setUser(data.result || data)
     } catch (err) {
-      // Nếu lỗi "User not found", thử init profile
       if (err.message?.includes('not found') || err.message?.includes('User not found')) {
         try {
           await initProfile()
-          // Sau khi init, load lại profile
           const data = await profileApi.getMe()
           setUser(data.result || data)
         } catch (initErr) {
-          // Nếu init cũng lỗi, chỉ log warning
           console.warn('Could not initialize profile:', initErr)
         }
       } else {
-        // Các lỗi khác, chỉ log warning
         console.warn('Could not load user profile:', err)
       }
     }
   }
 
   const initProfile = async () => {
-    // Lấy thông tin user từ token
     const token = localStorage.getItem('token')
-    if (!token) {
-      throw new Error('Not authenticated')
-    }
+    if (!token) throw new Error('Not authenticated')
 
     try {
       const payload = JSON.parse(atob(token.split('.')[1]))
@@ -86,42 +77,30 @@ export default function GamePage() {
       const username = payload.username || 'User'
       const email = payload.email || `${username}@example.com`
 
-      // Gọi API init profile
       const response = await fetch('/api/v1/user-profile/internal/init', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          id: userId,
-          username: username,
-          email: email
-        })
+        body: JSON.stringify({ id: userId, username, email })
       })
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}))
-        // Nếu profile đã tồn tại, không coi là lỗi
-        if (errorData.message?.includes('already exists')) {
-          return { success: true }
-        }
+        if (errorData.message?.includes('already exists')) return { success: true }
         throw new Error(errorData.message || 'Failed to initialize profile')
       }
 
       return await response.json()
     } catch (err) {
-      console.error('Error initializing profile:', err)
-      // Nếu lỗi là "already exists", không throw
-      if (err.message?.includes('already exists')) {
-        return { success: true }
-      }
+      if (err.message?.includes('already exists')) return { success: true }
       throw err
     }
   }
 
   const handleRoomIdChange = (e) => {
-    const value = e.target.value.replace(/\D/g, '').slice(0, 4) // Chỉ số, tối đa 4 chữ số
+    const value = e.target.value.replace(/\D/g, '').slice(0, 4)
     setRoomId(value)
     if (roomError) setRoomError('')
   }
@@ -129,17 +108,16 @@ export default function GamePage() {
   const handleFindRoom = () => {
     const token = localStorage.getItem('token')
     if (!token) {
-      // Yêu cầu đăng nhập trước, rồi quay lại đúng phòng
       navigate(`/login?redirect=${encodeURIComponent(`/room/${roomId.trim()}`)}`)
       return
     }
 
     if (!roomId.trim()) {
-      setRoomError('Vui lòng nhập ID phòng')
+      setRoomError('Vui lòng nhập mã phòng')
       return
     }
     if (roomId.length !== 4) {
-      setRoomError('ID phòng phải có đúng 4 chữ số')
+      setRoomError('Mã phòng phải có đúng 4 chữ số')
       return
     }
     setRoomError('')
@@ -166,9 +144,9 @@ export default function GamePage() {
     if (!joinLink) return
     try {
       await navigator.clipboard.writeText(joinLink)
-      notify.success('Link copied', 'Share')
+      notify.success('Đã sao chép liên kết', 'Chia Sẻ')
     } catch {
-      notify.error('Failed to copy link', 'Share')
+      notify.error('Không thể sao chép', 'Lỗi')
     }
   }
 
@@ -178,35 +156,48 @@ export default function GamePage() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden flex items-center justify-center">
-      {/* Dark fantasy background */}
-      <div
+    <div 
+      className="min-h-screen relative overflow-hidden flex items-center justify-center"
+      style={{ background: '#050508' }}
+    >
+      {/* Dark forest background */}
+      <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
           backgroundImage: `url('/assets/backgrounds/dark-forest.jpg')`,
-          filter: 'brightness(0.35) saturate(0.8)'
+          filter: 'brightness(0.2) saturate(0.6)',
         }}
       />
 
-      {/* Gradient overlays for depth */}
-      <div className="absolute inset-0 bg-gradient-to-b from-night-blue/70 via-transparent to-night-blue/80" />
-      <div className="absolute inset-0 bg-gradient-to-r from-night-blue/50 via-transparent to-night-blue/50" />
+      {/* Gradient overlays */}
+      <div 
+        className="absolute inset-0"
+        style={{
+          background: 'linear-gradient(180deg, rgba(5,5,8,0.85) 0%, transparent 30%, transparent 70%, rgba(5,5,8,0.9) 100%)',
+        }}
+      />
+      <div 
+        className="absolute inset-0"
+        style={{
+          background: 'linear-gradient(90deg, rgba(5,5,8,0.5) 0%, transparent 30%, transparent 70%, rgba(5,5,8,0.5) 100%)',
+        }}
+      />
 
-      {/* Vignette effect */}
-      <div
+      {/* Vignette */}
+      <div 
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,0.7) 100%)'
+          background: 'radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,0.7) 100%)',
         }}
       />
 
-      {/* Ambient particles/fog */}
-      <div
+      {/* Fog */}
+      <div 
         className="absolute inset-0 opacity-15 pointer-events-none"
         style={{
-          background: 'url(/assets/effects/fog.png)',
+          backgroundImage: `url('/assets/effects/fog.png')`,
           backgroundSize: 'cover',
-          animation: 'fogDrift 25s ease-in-out infinite'
+          animation: 'slowDrift 30s ease-in-out infinite',
         }}
       />
 
@@ -214,30 +205,44 @@ export default function GamePage() {
       <GameHUD username={user?.username} avatar={user?.avatarUrl} />
 
       {/* Main content */}
-      <div className="relative z-10 text-center px-4">
-        {/* Global error from redirect (ví dụ phòng không tồn tại) */}
+      <div className="relative z-10 text-center px-4 max-w-2xl mx-auto">
+        {/* Global error */}
         {globalError && (
-          <div className="mb-4 px-4 py-3 rounded border border-red-500/70 bg-red-900/60 text-red-100 text-sm font-fantasy shadow-lg max-w-md mx-auto">
-            {globalError}
+          <div 
+            className="mb-6 px-6 py-4 max-w-md mx-auto"
+            style={{
+              background: 'linear-gradient(180deg, rgba(139,0,0,0.2) 0%, rgba(80,0,0,0.25) 100%)',
+              border: '1px solid rgba(139,0,0,0.5)',
+            }}
+          >
+            <p className="font-fantasy text-sm" style={{ color: '#a05050' }}>
+              {globalError}
+            </p>
           </div>
         )}
 
         {/* Decorative top flourish */}
-        <div className="flex justify-center mb-6 opacity-60">
-          <div className="w-32 h-1 bg-gradient-to-r from-transparent via-gold to-transparent" />
+        <div className="flex justify-center mb-8">
+          <div 
+            className="w-48 h-px"
+            style={{
+              background: 'linear-gradient(90deg, transparent 0%, rgba(139,115,85,0.4) 50%, transparent 100%)',
+            }}
+          />
         </div>
 
         {/* Main title */}
         <h1
-          className="font-medieval text-6xl md:text-8xl lg:text-9xl tracking-wider"
+          className="font-medieval text-7xl md:text-8xl lg:text-9xl tracking-wider"
           style={{
-            color: '#c9a227',
+            color: '#8b7355',
             textShadow: `
-              0 0 20px rgba(201, 162, 39, 0.5),
-              0 0 40px rgba(201, 162, 39, 0.3),
-              0 0 60px rgba(201, 162, 39, 0.2),
-              0 4px 8px rgba(0, 0, 0, 0.8)
-            `
+              0 0 30px rgba(139,115,85,0.4),
+              0 0 60px rgba(139,115,85,0.2),
+              0 4px 8px rgba(0,0,0,0.9),
+              2px 2px 0 #3d2914
+            `,
+            letterSpacing: '0.15em',
           }}
         >
           Ma Sói
@@ -245,134 +250,149 @@ export default function GamePage() {
 
         {/* Subtitle */}
         <p
-          className="font-fantasy text-parchment/60 text-lg md:text-xl tracking-[0.4em] uppercase mt-4"
+          className="font-fantasy text-lg md:text-xl tracking-[0.4em] uppercase mt-4"
           style={{
-            textShadow: '0 2px 4px rgba(0, 0, 0, 0.8)'
+            color: '#6b5a4a',
+            textShadow: '0 2px 4px rgba(0,0,0,0.8)',
           }}
         >
           Cuộc Săn Bắt Đầu
         </p>
 
         {/* Decorative bottom flourish */}
-        <div className="flex justify-center mt-6 opacity-60">
-          <div className="w-32 h-1 bg-gradient-to-r from-transparent via-gold to-transparent" />
+        <div className="flex justify-center mt-8 mb-10">
+          <div 
+            className="w-48 h-px"
+            style={{
+              background: 'linear-gradient(90deg, transparent 0%, rgba(139,115,85,0.4) 50%, transparent 100%)',
+            }}
+          />
         </div>
 
         {/* Action Buttons */}
-        <div className="mt-8 flex flex-col items-center gap-4 max-w-md mx-auto">
-          <button
+        <div className="flex flex-col items-center gap-5 max-w-md mx-auto">
+          {/* Create Room */}
+          <MedievalButton
             onClick={() => {
               const token = localStorage.getItem('token')
               if (!token) {
-                // Bắt đăng nhập trước khi tạo phòng, sau login quay lại /game?create=true
                 navigate(`/login?redirect=${encodeURIComponent('/game?create=true')}`)
                 return
               }
               setShowCreateRoom(true)
             }}
-            className="w-full px-8 py-4 bg-yellow-600/30 border-2 border-yellow-400 rounded-lg text-yellow-300 font-fantasy hover:bg-yellow-600/50 transition-all shadow-lg hover:shadow-yellow-400/50 text-lg font-semibold"
-            style={{
-              textShadow: '0 0 10px rgba(255, 255, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.8)',
-              boxShadow: '0 0 20px rgba(255, 255, 0, 0.3)'
-            }}
+            className="w-full"
           >
-            🏰 Tạo Phòng
-          </button>
+            <span className="flex items-center justify-center gap-3">
+              <RuneWolf className="w-5 h-5" />
+              Tạo Phòng
+            </span>
+          </MedievalButton>
 
-          {/* Tìm Phòng */}
+          {/* Find Room */}
           <div className="w-full space-y-2">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={roomId}
-                onChange={handleRoomIdChange}
-                onKeyPress={(e) => e.key === 'Enter' && handleFindRoom()}
-                placeholder="Nhập ID phòng (4 chữ số)..."
-                maxLength={4}
-                inputMode="numeric"
-                className="flex-1 px-4 py-3 bg-wood-dark/80 border-2 border-wood-light rounded-lg text-parchment-text font-fantasy placeholder-parchment-text/50 focus:outline-none focus:border-blue-400 transition-all"
-                style={{
-                  textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
-                }}
-              />
-              <button
-                onClick={handleFindRoom}
-                className="px-6 py-3 bg-blue-600/30 border-2 border-blue-400 rounded-lg text-blue-300 font-fantasy hover:bg-blue-600/50 transition-all shadow-lg hover:shadow-blue-400/50 font-semibold whitespace-nowrap"
-                style={{
-                  textShadow: '0 0 10px rgba(59, 130, 246, 0.5), 0 2px 4px rgba(0, 0, 0, 0.8)',
-                  boxShadow: '0 0 20px rgba(59, 130, 246, 0.3)'
-                }}
-              >
-                🔍 Tìm Phòng
-              </button>
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <MedievalInput
+                  type="text"
+                  value={roomId}
+                  onChange={handleRoomIdChange}
+                  onKeyPress={(e) => e.key === 'Enter' && handleFindRoom()}
+                  placeholder="Mã phòng (4 chữ số)"
+                  maxLength={4}
+                  inputMode="numeric"
+                  icon={<RuneDoor className="w-5 h-5" />}
+                  error={roomError}
+                />
+              </div>
+              <MedievalButton onClick={handleFindRoom} className="px-6">
+                Tìm
+              </MedievalButton>
             </div>
-            {roomError && (
-              <p className="text-red-400 text-sm font-fantasy text-center" style={{ textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)' }}>
-                {roomError}
-              </p>
-            )}
           </div>
 
-          <button
+          {/* View Roles */}
+          <MedievalButton
             onClick={() => setShowRolesModal(true)}
-            className="w-full px-8 py-4 bg-purple-600/30 border-2 border-purple-400 rounded-lg text-purple-300 font-fantasy hover:bg-purple-600/50 transition-all shadow-lg hover:shadow-purple-400/50 text-lg font-semibold"
-            style={{
-              textShadow: '0 0 10px rgba(192, 132, 252, 0.5), 0 2px 4px rgba(0, 0, 0, 0.8)',
-              boxShadow: '0 0 20px rgba(192, 132, 252, 0.3)'
-            }}
+            className="w-full"
+            variant="secondary"
           >
-            🎭 Vai Trò
-          </button>
+            <span className="flex items-center justify-center gap-3">
+              <RuneScroll className="w-5 h-5" />
+              Xem Vai Trò
+            </span>
+          </MedievalButton>
         </div>
 
+        {/* Share Room Panel */}
         {shareRoomCode && (
           <div className="mt-10 flex justify-center">
             <MedievalPanel className="w-full max-w-lg text-left">
-              <div className="flex items-center justify-between gap-3 mb-4">
+              <div className="flex items-center justify-between gap-4 mb-4">
                 <div>
-                  <p className="font-fantasy text-parchment/70 text-xs uppercase tracking-[0.3em]">
-                    Room
+                  <p 
+                    className="font-fantasy text-xs uppercase tracking-[0.3em]"
+                    style={{ color: '#6a5a4a' }}
+                  >
+                    Mã Phòng
                   </p>
-                  <p className="font-medieval text-2xl text-gold-glow tracking-wide">
+                  <p 
+                    className="font-medieval text-3xl tracking-wider"
+                    style={{ color: '#8b7355' }}
+                  >
                     {shareRoomCode || '----'}
                   </p>
                 </div>
                 <MedievalButton
                   onClick={() => setShareOpen((prev) => !prev)}
                   className="px-4"
+                  variant="secondary"
                 >
-                  {shareOpen ? 'Hide Share' : 'Share'}
+                  <span className="flex items-center gap-2">
+                    <RuneShare className="w-4 h-4" />
+                    {shareOpen ? 'Ẩn' : 'Chia Sẻ'}
+                  </span>
                 </MedievalButton>
               </div>
 
               {shareOpen && (
-                <div className="mt-4 grid gap-4 md:grid-cols-[220px_1fr] items-center">
+                <div className="mt-4 grid gap-4 md:grid-cols-[180px_1fr] items-center">
                   <div className="flex items-center justify-center">
                     {qrUrl && (
                       <img
                         src={qrUrl}
                         alt="Room QR"
-                        className="w-48 h-48 rounded-lg border border-gold/40 bg-black/40 p-2"
+                        className="w-40 h-40 p-2"
+                        style={{
+                          background: 'rgba(0,0,0,0.4)',
+                          border: '1px solid rgba(139,115,85,0.3)',
+                        }}
                       />
                     )}
                   </div>
                   <div>
-                    <p className="font-fantasy text-parchment/70 text-sm mb-2">
-                      Share this link to join instantly:
+                    <p 
+                      className="font-fantasy text-sm mb-2"
+                      style={{ color: '#6a5a4a' }}
+                    >
+                      Chia sẻ liên kết để tham gia:
                     </p>
                     <a
                       href={joinLink}
-                      className="block font-fantasy text-gold/90 text-sm break-all underline"
+                      className="block font-fantasy text-sm break-all underline"
+                      style={{ color: '#8b7355' }}
                     >
                       {joinLink}
                     </a>
-                    <div className="mt-3 flex gap-2">
-                      <MedievalButton onClick={handleCopyLink} className="px-4">
-                        Copy Link
+                    <div className="mt-4 flex gap-3">
+                      <MedievalButton onClick={handleCopyLink} className="px-4" variant="secondary">
+                        <span className="flex items-center gap-2">
+                          <RuneCopy className="w-4 h-4" />
+                          Sao Chép
+                        </span>
                       </MedievalButton>
                       <MedievalButton onClick={handleEnterRoom} className="px-4">
-                        Enter Room
+                        Vào Phòng
                       </MedievalButton>
                     </div>
                   </div>
@@ -383,18 +403,18 @@ export default function GamePage() {
         )}
       </div>
 
-      {/* Corner decorations */}
-      <div className="absolute top-6 left-6 w-24 h-24 opacity-20 pointer-events-none">
-        <img src="/assets/ui/corner-ornament.png" alt="" className="w-full h-full" />
+      {/* Corner ornaments */}
+      <div className="absolute top-6 left-6 text-[#8b7355] opacity-20 pointer-events-none">
+        <CornerAccent className="w-16 h-16" position="top-left" />
       </div>
-      <div className="absolute top-6 right-6 w-24 h-24 opacity-20 pointer-events-none transform scale-x-[-1]">
-        <img src="/assets/ui/corner-ornament.png" alt="" className="w-full h-full" />
+      <div className="absolute top-6 right-6 text-[#8b7355] opacity-20 pointer-events-none">
+        <CornerAccent className="w-16 h-16" position="top-right" />
       </div>
-      <div className="absolute bottom-6 left-6 w-24 h-24 opacity-20 pointer-events-none transform scale-y-[-1]">
-        <img src="/assets/ui/corner-ornament.png" alt="" className="w-full h-full" />
+      <div className="absolute bottom-6 left-6 text-[#8b7355] opacity-20 pointer-events-none">
+        <CornerAccent className="w-16 h-16" position="bottom-left" />
       </div>
-      <div className="absolute bottom-6 right-6 w-24 h-24 opacity-20 pointer-events-none transform scale-[-1]">
-        <img src="/assets/ui/corner-ornament.png" alt="" className="w-full h-full" />
+      <div className="absolute bottom-6 right-6 text-[#8b7355] opacity-20 pointer-events-none">
+        <CornerAccent className="w-16 h-16" position="bottom-right" />
       </div>
 
       {/* Roles Modal */}

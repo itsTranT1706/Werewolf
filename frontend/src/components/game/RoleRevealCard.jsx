@@ -171,11 +171,12 @@ function RoleImage({ roleId, roleName, factionColors }) {
                 }}
             />
             
-            {/* Role image */}
+            {/* Role image - full height, positioned from near bottom */}
             <img
                 src={imagePath}
                 alt={roleName}
                 className="relative z-0 w-full h-full object-cover"
+                style={{ objectPosition: 'center calc(80%)' }}
                 onError={() => setImageError(true)}
             />
         </div>
@@ -271,14 +272,14 @@ export default function RoleRevealCard({
                         
                         {/* Role name banner */}
                         <div 
-                            className={`py-4 px-4 text-center bg-gradient-to-b ${factionColors.bg}`}
+                            className={`py-1 px-4 text-center bg-gradient-to-b ${factionColors.bg}`}
                             style={{
                                 borderTop: `1px solid ${factionColors.border}40`,
                                 borderBottom: `1px solid ${factionColors.border}40`
                             }}
                         >
                             <h2 className={`font-medieval text-2xl ${factionColors.text} tracking-wide`}>
-                                {role.name}
+                                {role.name} 
                             </h2>
                             <p className="font-fantasy text-xs text-parchment/50 mt-1">
                                 Phe {FACTION_NAMES[role.faction]}
@@ -287,11 +288,11 @@ export default function RoleRevealCard({
                         
                         {/* Bottom ornament & close button */}
                         <div className="p-4 border-t border-gold/20 flex flex-col items-center gap-3">
-                            <div className="flex items-center gap-2 text-gold/30">
+                            {/* <div className="flex items-center gap-2 text-gold/30">
                                 <span>─────</span>
                                 <span>☽</span>
                                 <span>─────</span>
-                            </div>
+                            </div> */}
                             
                             <button
                                 onClick={onClose}

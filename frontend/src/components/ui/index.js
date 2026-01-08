@@ -5,5 +5,6 @@ export { default as Divider } from './Divider'
 export { notify, NotificationProvider } from './Notification'
 export { default as BackButton, BackButtonCompact } from './BackButton'
 
-// Icons - Reusable SVG icons
+// Icons - Ancient mystical SVG icons
 export * from './Icons'
+export * from './AncientIcons'

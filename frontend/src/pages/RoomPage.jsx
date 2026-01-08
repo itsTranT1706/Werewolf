@@ -1,6 +1,6 @@
 /**
  * Room Page - Lobby và bắt đầu game
- * UI mới với thiết kế medieval
+ * Dark medieval fantasy theme - Cursed gathering hall
  */
 
 import { useState, useEffect, useMemo } from 'react'
@@ -13,6 +13,19 @@ import RoleRevealCard from '@/components/game/RoleRevealCard'
 import { ROLES, FACTION_NAMES } from '@/constants/roles'
 import { notify } from '@/components/ui'
 import { getOrCreateGuestUserId, getOrCreateGuestUsername } from '@/utils/guestUtils'
+import { 
+  RuneSkull, 
+  RuneArrowLeft, 
+  RuneForest, 
+  RuneShare, 
+  RuneCopy, 
+  RuneUser, 
+  RuneCheck, 
+  RuneEye, 
+  RuneChat, 
+  RuneSend,
+  CornerAccent 
+} from '@/components/ui/AncientIcons'
 
 export default function RoomPage() {
     const { roomId } = useParams()
@@ -468,6 +481,27 @@ export default function RoomPage() {
             console.log('🎮 Game started via socket:', data)
             setGameStarted(true)
             updateRoomState(data.room)
+            
+            // Redirect host to GM Interface
+            // Check if current user is host using the same logic as isHost state
+            const hostPlayer = data.room?.players?.find(p => p.isHost)
+            const actualHostId = hostPlayer?.userId || null
+            const actualHostPlayerId = hostPlayer?.id || null
+            
+            let isCurrentUserHost = false
+            if (actualHostId !== null) {
+                isCurrentUserHost = String(actualHostId) === String(currentUserId)
+            } else if (actualHostPlayerId && currentPlayerId) {
+                isCurrentUserHost = String(actualHostPlayerId) === String(currentPlayerId)
+            }
+            
+            if (isCurrentUserHost) {
+                console.log('🎮 Current user is host, redirecting to GM Interface...')
+                // Small delay to ensure state is updated
+                setTimeout(() => {
+                    navigate(`/gm/${roomId}`)
+                }, 500)
+            }
         }
 
         // Handle ERROR event
@@ -722,6 +756,23 @@ export default function RoomPage() {
             return
         }
 
+        // Save players and role setup to localStorage for GM Interface
+        const gmData = {
+            players: players.map(p => ({
+                id: p.id,
+                userId: p.userId,
+                username: p.username,
+                displayname: p.username,
+                isHost: p.isHost,
+                isAlive: true
+            })),
+            roleSetup: setup,
+            roomId: currentRoomId || roomId,
+            roomCode: roomCode
+        }
+        localStorage.setItem(`gm_data_${roomId}`, JSON.stringify(gmData))
+        console.log('💾 Saved GM data to localStorage:', gmData)
+
         // Gửi START_GAME event qua room socket với roleSetup
         roomSocket.emit('START_GAME', {
             roleSetup: setup // Gửi roleSetup để gameplay service sử dụng
@@ -852,28 +903,30 @@ export default function RoomPage() {
     }
 
     return (
-        <div className="min-h-screen bg-midnight text-parchment-text overflow-hidden selection:bg-blood-red selection:text-white">
+        <div className="min-h-screen bg-[#050508] text-[#d4c4a8] overflow-hidden selection:bg-[#8b0000] selection:text-white">
             <div className="fixed inset-0 vignette z-50 pointer-events-none"></div>
-            <div className="relative flex h-screen w-full flex-col bg-fog-texture bg-fixed overflow-hidden">
-                {/* Header */}
-                <header className="flex items-center justify-between border-b border-wood-light px-8 py-5 bg-[#080608]/95 backdrop-blur-md z-40 shadow-2xl">
+            <div className="relative flex h-screen w-full flex-col overflow-hidden" style={{
+                background: 'linear-gradient(180deg, #050508 0%, #0a0808 50%, #050508 100%)'
+            }}>
+                {/* Header - Ancient hall entrance */}
+                <header className="flex items-center justify-between border-b border-[#8b7355]/30 px-8 py-5 bg-[#050508]/98 backdrop-blur-md z-40 shadow-2xl">
                     <div className="flex items-center gap-5">
-                        <div className="relative flex items-center justify-center size-12 rounded-full bg-wood-dark border-2 border-wood-light shadow-glow-candle group cursor-pointer transition-all duration-700 hover:border-blood-red">
-                            <span className="material-symbols-outlined text-3xl text-blood-red/80 group-hover:text-blood-red transition-colors duration-500">skull</span>
-                            <div className="absolute inset-0 rounded-full bg-orange-900/10 animate-flicker"></div>
+                        <div className="relative flex items-center justify-center size-12 rounded-full bg-[#0a0808] border-2 border-[#8b7355]/40 shadow-[0_0_20px_rgba(139,0,0,0.2)] group cursor-pointer transition-all duration-700 hover:border-[#8b0000]/60">
+                            <RuneSkull className="w-7 h-7 text-[#8b0000]/80 group-hover:text-[#8b0000] transition-colors duration-500" />
+                            <div className="absolute inset-0 rounded-full bg-[#8b0000]/5 animate-pulse"></div>
                         </div>
                         <div>
-                            <h2 className="font-heading text-2xl font-bold tracking-widest text-parchment-text/90 drop-shadow-md">Ma Sói</h2>
-                            <p className="text-xs text-blood-red font-serif italic tracking-wider opacity-70 uppercase">Làng Bị Nguyền Rủa</p>
+                            <h2 className="font-heading text-2xl font-bold tracking-widest text-[#d4c4a8]/90 drop-shadow-md">Ma Sói</h2>
+                            <p className="text-xs text-[#8b0000]/70 font-serif italic tracking-wider uppercase">Làng Bị Nguyền Rủa</p>
                         </div>
                     </div>
                     <div className="flex gap-4">
-
                         <button
                             onClick={handleLeaveRoom}
-                            className="flex size-10 cursor-pointer items-center justify-center rounded border border-wood-light bg-wood-dark/50 text-parchment-text hover:bg-blood-dried hover:border-blood-red/50 transition-all duration-500"
+                            className="flex items-center gap-2 px-4 py-2 cursor-pointer border border-[#8b7355]/30 bg-[#0a0808]/80 text-[#8b7355] hover:bg-[#1a0f0f] hover:border-[#8b0000]/50 hover:text-[#d4c4a8] transition-all duration-500"
                         >
-                            <span className="material-symbols-outlined text-lg">Quay lại</span>
+                            <RuneArrowLeft className="w-5 h-5" />
+                            <span className="font-fantasy text-sm tracking-wider">Quay lại</span>
                         </button>
                     </div>
                 </header>
@@ -881,61 +934,63 @@ export default function RoomPage() {
                 {/* Main Content */}
                 <main className="flex-1 flex overflow-hidden">
                     <div className="flex-1 flex flex-col lg:flex-row h-full max-w-[1920px] mx-auto w-full">
-                        {/* Left Section - Players Grid */}
+                        {/* Left Section - Players Grid - Cursed gathering hall */}
                         <section className="flex flex-col flex-1 p-6 lg:p-10 overflow-y-auto custom-scrollbar relative z-10">
                             <div className="flex flex-col gap-4 mb-10">
-                                <div className="flex flex-wrap items-end justify-between gap-6 border-b border-wood-light/30 pb-6">
+                                <div className="flex flex-wrap items-end justify-between gap-6 border-b border-[#8b7355]/20 pb-6">
                                     <div>
-                                        <h1 className="font-heading text-4xl lg:text-6xl text-parchment-text drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)]">
+                                        <h1 className="font-heading text-4xl lg:text-6xl text-[#d4c4a8] drop-shadow-[0_4px_4px_rgba(0,0,0,0.8)]">
                                             Phòng {roomCode || roomId || 'Không xác định'}
                                         </h1>
-                                        <p className="text-gold-dim text-lg font-serif italic flex items-center gap-2 mt-2">
-                                            <span className="material-symbols-outlined text-base">forest</span>
+                                        <p className="text-[#c9a227]/70 text-lg font-serif italic flex items-center gap-2 mt-2">
+                                            <RuneForest className="w-5 h-5 text-[#8b7355]" />
                                             Rừng Tối
-                                            <span className="mx-2 text-wood-light text-xs">◆</span>
-                                            <span className="text-parchment-text font-bold">{players.length}/{maxPlayers || 75}</span> Linh Hồn Hiện Diện
+                                            <span className="mx-2 text-[#8b7355]/50 text-xs">◆</span>
+                                            <span className="text-[#d4c4a8] font-bold">{players.length}/{maxPlayers || 75}</span> Linh Hồn Hiện Diện
                                         </p>
                                     </div>
                                     <div
                                         className="relative group cursor-pointer"
                                         onClick={() => setShareOpen((prev) => !prev)}
                                     >
-                                        <div className="absolute inset-0 bg-blood-red/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
-                                        <div className="flex items-center gap-4 bg-wood-dark border border-wood-light px-5 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.5)] relative">
-                                            <div className="absolute -top-3 -right-3 size-8 rounded-full bg-blood-red border-2 border-blood-dried shadow-md flex items-center justify-center z-20">
-                                                <span className="material-symbols-outlined text-white/80 text-xs">share</span>
+                                        <div className="absolute inset-0 bg-[#8b0000]/10 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
+                                        <div className="flex items-center gap-4 bg-[#0a0808] border border-[#8b7355]/30 px-5 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.5)] relative">
+                                            <div className="absolute -top-3 -right-3 size-8 rounded-full bg-[#8b0000]/80 border-2 border-[#5a0000] shadow-md flex items-center justify-center z-20">
+                                                <RuneShare className="w-4 h-4 text-[#d4c4a8]/80" />
                                             </div>
                                             <div className="flex flex-col">
-                                                <span className="text-[10px] text-gold-dim uppercase font-bold tracking-[0.2em]">Mã Triệu Hồi</span>
-                                                <span className="font-heading text-2xl text-parchment-text tracking-widest">{roomCode || roomId || '8291'}</span>
+                                                <span className="text-[10px] text-[#c9a227]/70 uppercase font-bold tracking-[0.2em]">Mã Triệu Hồi</span>
+                                                <span className="font-heading text-2xl text-[#d4c4a8] tracking-widest">{roomCode || roomId || '8291'}</span>
                                             </div>
-                                            <div className="h-8 w-[1px] bg-wood-light/50 mx-1"></div>
-                                            <span
-                                                className="material-symbols-outlined text-parchment-text/50 group-hover:text-parchment-text transition-colors cursor-pointer"
+                                            <div className="h-8 w-[1px] bg-[#8b7355]/30 mx-1"></div>
+                                            <button
+                                                className="text-[#8b7355]/60 hover:text-[#d4c4a8] transition-colors cursor-pointer p-1"
                                                 onClick={(event) => {
                                                     event.stopPropagation()
                                                     navigator.clipboard.writeText(roomCode || roomId || '8291')
                                                     notify.success('Room code copied', 'Share')
                                                 }}
-                                            >sao chép</span>
+                                            >
+                                                <RuneCopy className="w-5 h-5" />
+                                            </button>
                                         </div>
                                         {shareOpen && joinLink && (
-                                            <div className="absolute right-0 top-full mt-4 w-[340px] bg-wood-dark border border-wood-light/70 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.6)] z-30">
+                                            <div className="absolute right-0 top-full mt-4 w-[340px] bg-[#0a0808] border border-[#8b7355]/40 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.6)] z-30">
                                                 <div className="flex items-center gap-4">
                                                     {qrUrl && (
                                                         <img
                                                             src={qrUrl}
                                                             alt="Room QR"
-                                                            className="w-36 h-36 rounded border border-gold/40 bg-black/40 p-1"
+                                                            className="w-36 h-36 border border-[#c9a227]/30 bg-black/40 p-1"
                                                         />
                                                     )}
                                                     <div className="min-w-0">
-                                                        <p className="text-parchment-text/70 text-xs uppercase tracking-[0.2em] mb-2">
+                                                        <p className="text-[#8b7355]/80 text-xs uppercase tracking-[0.2em] mb-2">
                                                             Share Link
                                                         </p>
                                                         <a
                                                             href={joinLink}
-                                                            className="block text-gold-dim text-xs break-all underline"
+                                                            className="block text-[#c9a227]/70 text-xs break-all underline"
                                                         >
                                                             {joinLink}
                                                         </a>
@@ -944,7 +999,7 @@ export default function RoomPage() {
                                                                 event.stopPropagation()
                                                                 handleCopyLink()
                                                             }}
-                                                            className="mt-3 px-3 py-1.5 bg-gold/80 text-wood-dark text-xs font-bold uppercase tracking-wider border border-gold-dark hover:bg-gold transition-colors"
+                                                            className="mt-3 px-3 py-1.5 bg-[#c9a227]/80 text-[#0a0808] text-xs font-bold uppercase tracking-wider border border-[#8b6914] hover:bg-[#c9a227] transition-colors"
                                                         >
                                                             Copy Link
                                                         </button>
@@ -956,7 +1011,7 @@ export default function RoomPage() {
                                 </div>
                             </div>
 
-                            {/* Players Grid */}
+                            {/* Players Grid - Cursed souls gathering */}
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-6 mb-12">
                                 {players.map((player, index) => {
                                     const status = getPlayerStatus(player)
@@ -966,13 +1021,19 @@ export default function RoomPage() {
                                     return (
                                         <div
                                             key={player.id || player.userId || index}
-                                            className={`group relative flex flex-col p-1 bg-wood-dark/80 border ${elder ? 'border-gold-dim/40 shadow-[0_0_15px_rgba(138,126,95,0.1)]' :
-                                                status === 'prepared' ? 'border-wood-light' : 'border-wood-light'
-                                                } shadow-2xl transition-all duration-500 hover:border-gold-dim hover:-translate-y-1`}
+                                            className={`group relative flex flex-col p-1 bg-[#0a0808]/90 border ${elder ? 'border-[#c9a227]/40 shadow-[0_0_20px_rgba(201,162,39,0.1)]' :
+                                                status === 'prepared' ? 'border-[#8b7355]/40' : 'border-[#8b7355]/30'
+                                                } shadow-2xl transition-all duration-500 hover:border-[#c9a227]/50 hover:-translate-y-1`}
                                         >
+                                            {/* Corner accents */}
+                                            <CornerAccent className="absolute top-0 left-0 w-3 h-3 text-[#8b7355]/30" position="top-left" />
+                                            <CornerAccent className="absolute top-0 right-0 w-3 h-3 text-[#8b7355]/30" position="top-right" />
+                                            <CornerAccent className="absolute bottom-0 left-0 w-3 h-3 text-[#8b7355]/30" position="bottom-left" />
+                                            <CornerAccent className="absolute bottom-0 right-0 w-3 h-3 text-[#8b7355]/30" position="bottom-right" />
+                                            
                                             {elder && (
-                                                <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-20 bg-wood-dark px-3 py-0.5 border border-gold-dim/40 shadow-md">
-                                                    <span className="text-[9px] font-heading text-gold-dim uppercase tracking-widest">Quản Trò</span>
+                                                <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-20 bg-[#0a0808] px-3 py-0.5 border border-[#c9a227]/40 shadow-md">
+                                                    <span className="text-[9px] font-heading text-[#c9a227] uppercase tracking-widest">Quản Trò</span>
                                                 </div>
                                             )}
                                             <div className="w-full aspect-[4/5] bg-black relative overflow-hidden sepia-[0.3] contrast-125 saturate-50 group-hover:sepia-0 group-hover:saturate-100 transition-all duration-700">
@@ -983,23 +1044,23 @@ export default function RoomPage() {
                                                 />
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40"></div>
                                                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-700">
-                                                    <span className="material-symbols-outlined text-6xl text-white/20 drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
-                                                        {role ? 'visibility_off' : 'person'}
-                                                    </span>
+                                                    {role ? (
+                                                        <RuneEyeClosed className="w-12 h-12 text-white/20 drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]" />
+                                                    ) : (
+                                                        <RuneUser className="w-12 h-12 text-white/20 drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]" />
+                                                    )}
                                                 </div>
                                                 {status === 'prepared' && (
                                                     <div className="absolute top-2 right-2">
-                                                        <span
-                                                            className="material-symbols-outlined drop-shadow-md text-lg text-green-700/80"
+                                                        <RuneCheck 
+                                                            className="w-5 h-5 text-[#6b8e6b]/80 drop-shadow-md"
                                                             title="Sẵn Sàng"
-                                                        >
-                                                            check_circle
-                                                        </span>
+                                                        />
                                                     </div>
                                                 )}
                                             </div>
-                                            <div className="p-3 text-center bg-gradient-to-t from-[#151210] to-[#1f1a16] border-t border-wood-light/20 relative">
-                                                <p className={`font-heading text-sm tracking-wide truncate ${elder ? 'text-gold-dim' : 'text-parchment-text'
+                                            <div className="p-3 text-center bg-gradient-to-t from-[#0a0808] to-[#151210] border-t border-[#8b7355]/20 relative">
+                                                <p className={`font-heading text-sm tracking-wide truncate ${elder ? 'text-[#c9a227]' : 'text-[#d4c4a8]'
                                                     } group-hover:text-white transition-colors`}>
                                                     {player.username}
                                                 </p>
@@ -1008,16 +1069,16 @@ export default function RoomPage() {
                                     )
                                 })}
 
-                                {/* Empty slots */}
+                                {/* Empty slots - Cursed graves */}
                                 {Array.from({ length: Math.max(0, maxPlayers - players.length) }).map((_, index) => (
                                     <div
                                         key={`empty-${index}`}
-                                        className="flex flex-col items-center justify-center gap-3 p-3 bg-wood-dark/30 border border-dashed border-wood-light/30 transition-colors hover:bg-wood-dark/50 hover:border-wood-light/50 group"
+                                        className="flex flex-col items-center justify-center gap-3 p-3 bg-[#0a0808]/40 border border-dashed border-[#8b7355]/20 transition-colors hover:bg-[#0a0808]/60 hover:border-[#8b7355]/40 group"
                                     >
-                                        <div className="flex items-center justify-center size-14 rounded-full bg-wood-light/20 text-wood-light group-hover:text-parchment-text/50 transition-colors">
-                                            <span className="material-symbols-outlined text-2xl">person_off</span>
+                                        <div className="flex items-center justify-center size-14 rounded-full bg-[#8b7355]/10 text-[#8b7355]/40 group-hover:text-[#8b7355]/60 transition-colors">
+                                            <RuneGrave className="w-7 h-7" />
                                         </div>
-                                        <p className="text-wood-light text-xs font-serif italic group-hover:text-parchment-text/50">Mộ Trống...</p>
+                                        <p className="text-[#8b7355]/40 text-xs font-serif italic group-hover:text-[#8b7355]/60">Mộ Trống...</p>
                                     </div>
                                 ))}
                             </div>
@@ -1041,84 +1102,89 @@ export default function RoomPage() {
                                     <button
                                         onClick={handleStartGame}
                                         disabled={loading || players.length < 3 || players.length > 75}
-                                        className="flex-1 max-w-sm h-16 bg-[#1a0f1f] border border-purple-900 hover:border-purple-600 text-purple-200 font-heading text-lg tracking-[0.2em] uppercase shadow-[0_0_20px_rgba(88,28,135,0.2)] transition-all duration-500 transform hover:-translate-y-1 active:translate-y-0 flex items-center justify-center gap-4 group relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="flex-1 max-w-sm h-16 bg-[#0a0808] border border-[#8b0000]/40 hover:border-[#8b0000]/70 text-[#d4c4a8] font-heading text-lg tracking-[0.2em] uppercase shadow-[0_0_20px_rgba(139,0,0,0.15)] transition-all duration-500 transform hover:-translate-y-1 active:translate-y-0 flex items-center justify-center gap-4 group relative overflow-hidden disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-900/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                                        <span className="z-10">{loading ? 'Đang khởi tạo...' : 'BẮt đầu đi săn'}</span>
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#8b0000]/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
+                                        <span className="z-10">{loading ? 'Đang khởi tạo...' : 'Bắt Đầu Đi Săn'}</span>
                                     </button>
                                     <button
                                         onClick={handleLeaveRoom}
-                                        className="h-16 aspect-square bg-wood-dark border border-wood-light hover:border-blood-red hover:bg-blood-dried/20 text-parchment-text flex items-center justify-center transition-all duration-300"
+                                        className="h-16 aspect-square bg-[#0a0808] border border-[#8b7355]/30 hover:border-[#8b0000]/50 hover:bg-[#1a0f0f] text-[#8b7355] hover:text-[#d4c4a8] flex items-center justify-center transition-all duration-300"
                                     >
-                                        <span className="material-symbols-outlined text-2xl">Quay lại</span>
+                                        <RuneArrowLeft className="w-6 h-6" />
                                     </button>
                                 </div>
                             )}
 
                             {/* Error Message */}
                             {error && (
-                                <div className="mt-4 p-4 bg-blood-dried border border-blood-red rounded-lg">
-                                    <p className="text-red-300">{error}</p>
+                                <div className="mt-4 p-4 bg-[#1a0808] border border-[#8b0000]/50">
+                                    <p className="text-[#d4a8a8]">{error}</p>
                                 </div>
                             )}
 
                             {/* Game Started Message */}
                             {gameStarted && (
-                                <div className="mt-4 text-center p-6 bg-wood-dark border border-gold-dim rounded-lg">
-                                    <p className="text-xl text-gold-dim font-heading">
+                                <div className="mt-4 text-center p-6 bg-[#0a0808] border border-[#c9a227]/40">
+                                    <p className="text-xl text-[#c9a227] font-heading">
                                         🎮 Game đã bắt đầu!
                                     </p>
                                 </div>
                             )}
                         </section>
 
-                        {/* Right Section - Chat Sidebar */}
-                        <aside className="w-full lg:w-[420px] xl:w-[480px] bg-wood-grain border-l border-wood-light/50 flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)] relative z-20">
-                            <div className="bg-[#15110e] px-6 py-5 border-b border-wood-light/50 flex items-center justify-between shadow-lg z-10">
-                                <h3 className="font-heading text-parchment-text text-xl flex items-center gap-3 drop-shadow-md">
-                                    <span className="material-symbols-outlined text-blood-red/70">history_edu</span>
+                        {/* Right Section - Chat Sidebar - Ancient chronicle */}
+                        <aside className="w-full lg:w-[420px] xl:w-[480px] bg-[#080606] border-l border-[#8b7355]/30 flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.5)] relative z-20">
+                            <div className="bg-[#0a0808] px-6 py-5 border-b border-[#8b7355]/30 flex items-center justify-between shadow-lg z-10">
+                                <h3 className="font-heading text-[#d4c4a8] text-xl flex items-center gap-3 drop-shadow-md">
+                                    <RuneChronicle className="w-6 h-6 text-[#8b0000]/70" />
                                     Biên Niên Sử Làng
                                 </h3>
                                 <div className="flex items-center gap-2">
-                                    <div className={`size-2 rounded-full ${socketConnected ? 'bg-green-900 animate-pulse' : 'bg-red-900'}`}></div>
-                                    <span className="text-[10px] font-serif uppercase tracking-widest text-stone-500">
+                                    <div className={`size-2 rounded-full ${socketConnected ? 'bg-[#6b8e6b] animate-pulse' : 'bg-[#8b4444]'}`}></div>
+                                    <span className="text-[10px] font-serif uppercase tracking-widest text-[#6a5a4a]">
                                         {socketConnected ? 'Đang Thì Thầm' : 'Im Lặng'}
                                     </span>
                                 </div>
                             </div>
-                            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 flex flex-col gap-6 bg-[#0c0907] relative bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')]">
-                                <div className="flex justify-center my-4">
+                            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 flex flex-col gap-6 bg-[#050508] relative">
+                                {/* Texture overlay */}
+                                <div className="absolute inset-0 opacity-5 pointer-events-none" style={{
+                                    backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E")`
+                                }} />
+                                
+                                <div className="flex justify-center my-4 relative z-10">
                                     <div className="text-center">
-                                        <span className="material-symbols-outlined text-wood-light text-xl mb-1 opacity-50">church</span>
-                                        <p className="font-serif italic text-sm text-stone-500">Làng tụ họp trong im lặng...</p>
-                                        <div className="h-px w-24 bg-gradient-to-r from-transparent via-wood-light/30 to-transparent mx-auto mt-2"></div>
+                                        <RuneChurch className="w-6 h-6 text-[#8b7355]/40 mx-auto mb-2" />
+                                        <p className="font-serif italic text-sm text-[#6a5a4a]">Làng tụ họp trong im lặng...</p>
+                                        <div className="h-px w-24 bg-gradient-to-r from-transparent via-[#8b7355]/30 to-transparent mx-auto mt-2"></div>
                                     </div>
                                 </div>
 
                                 {chatMessages.map((msg, index) => (
                                     <div
                                         key={index}
-                                        className={`flex flex-col gap-1 max-w-[90%] group ${msg.userId === currentUserId ? 'items-end ml-auto' : 'items-start'
+                                        className={`flex flex-col gap-1 max-w-[90%] group relative z-10 ${msg.userId === currentUserId ? 'items-end ml-auto' : 'items-start'
                                             }`}
                                     >
-                                        <span className={`text-[11px] text-wood-light font-heading tracking-wider ${msg.userId === currentUserId ? 'mr-2' : 'ml-2'
+                                        <span className={`text-[11px] text-[#8b7355] font-heading tracking-wider ${msg.userId === currentUserId ? 'mr-2' : 'ml-2'
                                             }`}>
                                             {msg.username}
                                         </span>
-                                        <div className={`bg-wood-dark border border-[#3e342b] text-parchment-text/90 px-5 py-3 shadow-lg relative torn-edge ${msg.userId === currentUserId ? 'bg-[#241c16] border-blood-red/20' : ''
+                                        <div className={`bg-[#0a0808] border border-[#8b7355]/30 text-[#d4c4a8]/90 px-5 py-3 shadow-lg relative ${msg.userId === currentUserId ? 'bg-[#0f0a0a] border-[#8b0000]/30' : ''
                                             }`}>
-                                            <p className="text-base font-serif italic leading-relaxed ink-blot">{msg.text}</p>
+                                            <p className="text-base font-serif italic leading-relaxed">{msg.text}</p>
                                         </div>
                                     </div>
                                 ))}
                             </div>
-                            <div className="p-6 bg-[#15110e] border-t border-wood-light/30 z-20">
+                            <div className="p-6 bg-[#0a0808] border-t border-[#8b7355]/30 z-20">
                                 <div className="relative flex items-center group">
-                                    <div className="absolute -left-1 top-1/2 -translate-y-1/2 text-wood-light opacity-50 group-focus-within:opacity-100 transition-opacity">
-                                        <span className="material-symbols-outlined text-3xl font-thin rotate-12">flight</span>
+                                    <div className="absolute -left-1 top-1/2 -translate-y-1/2 text-[#8b7355]/40 opacity-50 group-focus-within:opacity-100 transition-opacity">
+                                        <RuneQuill className="w-7 h-7 rotate-12" />
                                     </div>
                                     <input
-                                        className="w-full h-14 pl-10 pr-12 bg-transparent border-b-2 border-wood-light text-parchment-text font-serif italic text-lg placeholder-stone-600 focus:outline-none focus:border-blood-red transition-all duration-500"
+                                        className="w-full h-14 pl-10 pr-12 bg-transparent border-b-2 border-[#8b7355]/40 text-[#d4c4a8] font-serif italic text-lg placeholder-[#6a5a4a]/60 focus:outline-none focus:border-[#8b0000]/60 transition-all duration-500"
                                         placeholder="Viết tin nhắn của bạn ở đây..."
                                         type="text"
                                         value={chatInput}
@@ -1127,9 +1193,9 @@ export default function RoomPage() {
                                     />
                                     <button
                                         onClick={handleSendChat}
-                                        className="absolute right-2 p-2 text-stone-500 hover:text-parchment-text transition-colors duration-300"
+                                        className="absolute right-2 p-2 text-[#6a5a4a] hover:text-[#d4c4a8] transition-colors duration-300"
                                     >
-                                        <span className="material-symbols-outlined text-2xl">send</span>
+                                        <RuneSend className="w-6 h-6" />
                                     </button>
                                 </div>
                             </div>
@@ -1158,4 +1224,80 @@ export default function RoomPage() {
             />
         </div>
     )
+}
+
+// ============================================
+// Local Icon Components - Ancient Rune Symbols
+// ============================================
+
+function RuneEyeClosed({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      {/* Closed eye */}
+      <path d="M3 12 Q12 18 21 12" />
+      {/* Eyelashes */}
+      <path d="M6 14 L5 16" strokeWidth="1" />
+      <path d="M12 16 L12 18" strokeWidth="1" />
+      <path d="M18 14 L19 16" strokeWidth="1" />
+      {/* Strike through */}
+      <path d="M4 4 L20 20" strokeWidth="1" opacity="0.5" />
+    </svg>
+  )
+}
+
+function RuneGrave({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      {/* Tombstone shape */}
+      <path d="M6 22 L6 8 Q6 4 12 4 Q18 4 18 8 L18 22" />
+      {/* Cross on tombstone */}
+      <path d="M12 8 L12 16 M9 11 L15 11" strokeWidth="1" opacity="0.6" />
+      {/* Ground line */}
+      <path d="M4 22 L20 22" />
+    </svg>
+  )
+}
+
+function RuneChronicle({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      {/* Open book/scroll */}
+      <path d="M4 4 L4 20 Q8 18 12 20 Q16 18 20 20 L20 4 Q16 6 12 4 Q8 6 4 4 Z" />
+      {/* Center binding */}
+      <path d="M12 4 L12 20" />
+      {/* Text lines */}
+      <path d="M6 8 L10 8 M6 11 L9 11 M6 14 L10 14" strokeWidth="1" opacity="0.5" />
+      <path d="M14 8 L18 8 M15 11 L18 11 M14 14 L18 14" strokeWidth="1" opacity="0.5" />
+    </svg>
+  )
+}
+
+function RuneChurch({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      {/* Church building */}
+      <path d="M4 22 L4 12 L12 6 L20 12 L20 22 Z" />
+      {/* Steeple */}
+      <path d="M12 6 L12 2" />
+      <path d="M10 4 L14 4" strokeWidth="1" />
+      {/* Door */}
+      <path d="M9 22 L9 16 Q12 14 15 16 L15 22" />
+      {/* Window */}
+      <circle cx="12" cy="11" r="2" />
+    </svg>
+  )
+}
+
+function RuneQuill({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      {/* Feather quill */}
+      <path d="M20 4 Q16 4 12 8 L4 16 L4 20 L8 20 L16 12 Q20 8 20 4 Z" />
+      {/* Feather details */}
+      <path d="M14 10 L18 6" strokeWidth="1" opacity="0.5" />
+      <path d="M12 12 L16 8" strokeWidth="1" opacity="0.5" />
+      {/* Ink drop */}
+      <circle cx="6" cy="18" r="1" fill="currentColor" opacity="0.3" />
+    </svg>
+  )
 }

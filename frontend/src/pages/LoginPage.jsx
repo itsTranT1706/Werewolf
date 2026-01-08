@@ -1,13 +1,21 @@
+/**
+ * Login Page - Dark Ritual Entry
+ * 
+ * Ancient gateway into the cursed village.
+ * Styled to match the dark medieval fantasy aesthetic.
+ */
+
 import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { MedievalPanel, MedievalInput, MedievalButton, Divider, notify, BackButton } from '@/components/ui'
+import { RuneUser, RuneLock, RuneWolf } from '@/components/ui/AncientIcons'
 import { authApi } from '@/api'
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const [formData, setFormData] = useState({
-    identifier: '', // email or username
+    identifier: '',
     password: ''
   })
   const [errors, setErrors] = useState({})
@@ -17,7 +25,6 @@ export default function LoginPage() {
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
-    // Clear error when user types
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }))
     }
@@ -64,38 +71,59 @@ export default function LoginPage() {
   return (
     <div className="w-full max-w-md">
       {/* Back button */}
-      <div className="mb-4">
-        <BackButton to="/" label="Trở Về Trang Chủ" />
+      <div className="mb-6">
+        <BackButton to="/home" label="Trở Về Cổng" />
       </div>
 
       <MedievalPanel className="w-full">
         {/* Panel header */}
-        <div className="text-center mb-6">
-          <div className="flex justify-center mb-3">
-            <img
-              src="/assets/ui/wolf-icon.svg"
-              alt="Wolf"
-              className="w-16 h-16 opacity-80"
-              style={{ filter: 'brightness(0) saturate(100%) invert(73%) sepia(61%) saturate(400%) hue-rotate(359deg) brightness(95%) contrast(92%)' }}
-            />
+        <div className="text-center mb-8">
+          {/* Wolf sigil */}
+          <div className="flex justify-center mb-4">
+            <div 
+              className="w-20 h-20 flex items-center justify-center"
+              style={{
+                background: 'radial-gradient(circle, rgba(139,115,85,0.15) 0%, transparent 70%)',
+              }}
+            >
+              <RuneWolf className="w-16 h-16 text-[#8b7355] opacity-70" />
+            </div>
           </div>
-          <h2 className="font-medieval text-2xl text-gold-glow tracking-wide">
+          
+          <h2 
+            className="font-medieval text-3xl tracking-wider"
+            style={{
+              color: '#8b7355',
+              textShadow: '0 0 20px rgba(139,115,85,0.3), 0 2px 4px rgba(0,0,0,0.8)',
+            }}
+          >
             Bước Vào Làng
           </h2>
-          <p className="font-fantasy text-parchment/60 text-sm mt-1">
-            Đêm tối đầy những bí mật
+          <p 
+            className="font-fantasy text-sm mt-2 tracking-wide"
+            style={{ color: '#6a5a4a' }}
+          >
+            Đêm tối đầy những bí mật...
           </p>
         </div>
 
         {/* Server error */}
         {serverError && (
-          <div className="mb-4 p-3 bg-blood-red/20 border border-blood-red/50 text-gold text-sm font-fantasy text-center">
-            {serverError}
+          <div 
+            className="mb-6 p-4 text-center"
+            style={{
+              background: 'linear-gradient(180deg, rgba(139,0,0,0.15) 0%, rgba(80,0,0,0.2) 100%)',
+              border: '1px solid rgba(139,0,0,0.4)',
+            }}
+          >
+            <p className="font-fantasy text-sm" style={{ color: '#a05050' }}>
+              {serverError}
+            </p>
           </div>
         )}
 
         {/* Login form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <MedievalInput
             type="text"
             name="identifier"
@@ -103,7 +131,7 @@ export default function LoginPage() {
             value={formData.identifier}
             onChange={handleChange}
             error={errors.identifier}
-            icon={<UserIcon className="w-5 h-5" />}
+            icon={<RuneUser className="w-5 h-5" />}
             autoComplete="username"
           />
 
@@ -114,11 +142,11 @@ export default function LoginPage() {
             value={formData.password}
             onChange={handleChange}
             error={errors.password}
-            icon={<LockIcon className="w-5 h-5" />}
+            icon={<RuneLock className="w-5 h-5" />}
             autoComplete="current-password"
           />
 
-          <div className="pt-2">
+          <div className="pt-3">
             <MedievalButton
               type="submit"
               loading={loading}
@@ -133,39 +161,20 @@ export default function LoginPage() {
 
         {/* Register link */}
         <div className="text-center">
-          <p className="font-fantasy text-parchment/70 text-sm">
+          <p className="font-fantasy text-sm" style={{ color: '#6a5a4a' }}>
             Mới đến làng?{' '}
-            <Link to="/register" className="link-fantasy font-semibold">
+            <Link 
+              to="/register" 
+              className="font-semibold transition-colors duration-300 hover:underline"
+              style={{ color: '#8b7355' }}
+              onMouseEnter={(e) => e.target.style.color = '#a89070'}
+              onMouseLeave={(e) => e.target.style.color = '#8b7355'}
+            >
               Tham Gia Cuộc Săn
             </Link>
           </p>
         </div>
       </MedievalPanel>
     </div>
-  )
-}
-
-// Icons
-function WolfIcon({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 64 64" fill="currentColor">
-      <path d="M32 4c-2 0-4 1-6 3l-4 6-8-2c-2 0-3 1-3 3l2 10-6 8c-1 2 0 4 2 5l8 4v12c0 2 1 4 3 5l10 4c1 0 2 0 4-1l10-4c2-1 3-3 3-5V41l8-4c2-1 3-3 2-5l-6-8 2-10c0-2-1-3-3-3l-8 2-4-6c-2-2-4-3-6-3zm-8 24a3 3 0 110 6 3 3 0 010-6zm16 0a3 3 0 110 6 3 3 0 010-6zm-8 10c2 0 4 2 4 4h-8c0-2 2-4 4-4z" />
-    </svg>
-  )
-}
-
-function UserIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-    </svg>
-  )
-}
-
-function LockIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-    </svg>
   )
 }

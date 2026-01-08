@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route } from 'react-router-dom'
 import AuthLayout from './layouts/AuthLayout'
 import IntroPage from './pages/IntroPage'
 import HomePage from './pages/HomePage'
@@ -7,6 +7,7 @@ import RegisterPage from './pages/RegisterPage'
 import GamePage from './pages/GamePage'
 import ProfilePage from './pages/ProfilePage'
 import RoomPage from './pages/RoomPage'
+import GMInterfacePage from './pages/GMInterfacePage'
 import { NotificationProvider } from '@/components/ui'
 import { useHomeAudio } from '@/hooks/useHomeAudio'
 
@@ -32,6 +33,7 @@ function App() {
         <Route path="/game" element={<GamePage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/room/:roomId" element={<RoomPage />} />
+        <Route path="/gm/:roomId" element={<GMInterfacePage />} />
       </Routes>
     </>
   )
