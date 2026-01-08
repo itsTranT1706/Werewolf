@@ -9,7 +9,7 @@ import { ROLES, FACTION } from '@/constants/roles'
 import { getRoomSocket } from '@/api/roomSocket'
 import { getOrCreateGuestUsername, getOrCreateGuestUserId } from '@/utils/guestUtils'
 
-export default function CreateRoomModal({ isOpen, onClose }) {
+export default function CreateRoomModal({ isOpen, onClose, onRoomCreated }) {
     const navigate = useNavigate()
     const [maxPlayers, setMaxPlayers] = useState(12)
     const [selectedRoles, setSelectedRoles] = useState({
@@ -88,6 +88,12 @@ export default function CreateRoomModal({ isOpen, onClose }) {
 
             // Navigate to room bằng CODE (4 digits) thay vì UUID
             // Để RoomPage có thể join trực tiếp bằng code
+            if (onRoomCreated) {
+                onRoomCreated(roomCode)
+                onClose()
+                setLoading(false)
+                return
+            }
             navigate(`/room/${roomCode}`)
             onClose()
             setLoading(false)
@@ -114,7 +120,7 @@ export default function CreateRoomModal({ isOpen, onClose }) {
             socket.off('ROOM_CREATED', handleRoomCreated)
             socket.off('ERROR', handleError)
         }
-    }, [navigate, onClose, selectedRoles])
+    }, [navigate, onClose, onRoomCreated, selectedRoles])
 
     const toggleRole = (roleId) => {
         setSelectedRoles(prev => ({

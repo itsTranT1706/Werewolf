@@ -3,12 +3,13 @@
  * Full-screen immersive entry into the game world
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import GameHUD from '@/components/game/GameHUD'
 import RolesModal from '@/components/game/RolesModal'
 import CreateRoomModal from '@/components/game/CreateRoomModal'
 import { profileApi, authApi } from '@/api'
+import { MedievalButton, MedievalPanel, notify } from '@/components/ui'
 
 export default function GamePage() {
   const navigate = useNavigate()
@@ -19,6 +20,8 @@ export default function GamePage() {
   const [roomId, setRoomId] = useState('')
   const [roomError, setRoomError] = useState('')
   const [globalError, setGlobalError] = useState('')
+  const [shareRoomCode, setShareRoomCode] = useState('')
+  const [shareOpen, setShareOpen] = useState(false)
 
   useEffect(() => {
     // Load user info for HUD
@@ -141,6 +144,37 @@ export default function GamePage() {
     }
     setRoomError('')
     navigate(`/room/${roomId.trim()}`)
+  }
+
+  const handleRoomCreated = (roomCode) => {
+    if (!roomCode) return
+    setShareRoomCode(roomCode)
+    setShareOpen(true)
+  }
+
+  const joinLink = useMemo(() => {
+    if (!shareRoomCode) return ''
+    return `${window.location.origin}/game?room=${shareRoomCode}`
+  }, [shareRoomCode])
+
+  const qrUrl = useMemo(() => {
+    if (!joinLink) return ''
+    return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(joinLink)}`
+  }, [joinLink])
+
+  const handleCopyLink = async () => {
+    if (!joinLink) return
+    try {
+      await navigator.clipboard.writeText(joinLink)
+      notify.success('Link copied', 'Share')
+    } catch {
+      notify.error('Failed to copy link', 'Share')
+    }
+  }
+
+  const handleEnterRoom = () => {
+    if (!shareRoomCode) return
+    navigate(`/room/${shareRoomCode}`)
   }
 
   return (
@@ -291,6 +325,62 @@ export default function GamePage() {
             🎭 Vai Trò
           </button>
         </div>
+
+        {shareRoomCode && (
+          <div className="mt-10 flex justify-center">
+            <MedievalPanel className="w-full max-w-lg text-left">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div>
+                  <p className="font-fantasy text-parchment/70 text-xs uppercase tracking-[0.3em]">
+                    Room
+                  </p>
+                  <p className="font-medieval text-2xl text-gold-glow tracking-wide">
+                    {shareRoomCode || '----'}
+                  </p>
+                </div>
+                <MedievalButton
+                  onClick={() => setShareOpen((prev) => !prev)}
+                  className="px-4"
+                >
+                  {shareOpen ? 'Hide Share' : 'Share'}
+                </MedievalButton>
+              </div>
+
+              {shareOpen && (
+                <div className="mt-4 grid gap-4 md:grid-cols-[220px_1fr] items-center">
+                  <div className="flex items-center justify-center">
+                    {qrUrl && (
+                      <img
+                        src={qrUrl}
+                        alt="Room QR"
+                        className="w-48 h-48 rounded-lg border border-gold/40 bg-black/40 p-2"
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-fantasy text-parchment/70 text-sm mb-2">
+                      Share this link to join instantly:
+                    </p>
+                    <a
+                      href={joinLink}
+                      className="block font-fantasy text-gold/90 text-sm break-all underline"
+                    >
+                      {joinLink}
+                    </a>
+                    <div className="mt-3 flex gap-2">
+                      <MedievalButton onClick={handleCopyLink} className="px-4">
+                        Copy Link
+                      </MedievalButton>
+                      <MedievalButton onClick={handleEnterRoom} className="px-4">
+                        Enter Room
+                      </MedievalButton>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </MedievalPanel>
+          </div>
+        )}
       </div>
 
       {/* Corner decorations */}
@@ -317,6 +407,7 @@ export default function GamePage() {
       <CreateRoomModal
         isOpen={showCreateRoom}
         onClose={() => setShowCreateRoom(false)}
+        onRoomCreated={handleRoomCreated}
       />
     </div>
   )

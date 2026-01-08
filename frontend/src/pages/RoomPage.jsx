@@ -3,13 +3,14 @@
  * UI mới với thiết kế medieval
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { gameApi } from '@/api'
 import { getSocket } from '@/api/socket'
 import { getRoomSocket } from '@/api/roomSocket'
 import RoleSetupModal from '@/components/game/RoleSetupModal'
 import { ROLES, FACTION_NAMES } from '@/constants/roles'
+import { notify } from '@/components/ui'
 import { getOrCreateGuestUserId, getOrCreateGuestUsername } from '@/utils/guestUtils'
 
 export default function RoomPage() {
@@ -36,6 +37,27 @@ export default function RoomPage() {
     const [chatInput, setChatInput] = useState('')
     const [roomCode, setRoomCode] = useState(null) // Room code (4 digits)
     const [roomSocket, setRoomSocket] = useState(null)
+    const [shareOpen, setShareOpen] = useState(false)
+    const joinLink = useMemo(() => {
+        const code = roomCode || (/^\d{4}$/.test(roomId || '') ? roomId : '')
+        if (!code) return ''
+        return `${window.location.origin}/game?room=${code}`
+    }, [roomCode, roomId])
+
+    const qrUrl = useMemo(() => {
+        if (!joinLink) return ''
+        return `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(joinLink)}`
+    }, [joinLink])
+
+    const handleCopyLink = async () => {
+        if (!joinLink) return
+        try {
+            await navigator.clipboard.writeText(joinLink)
+            notify.success('Link copied', 'Share')
+        } catch {
+            notify.error('Failed to copy link', 'Share')
+        }
+    }
     const [currentRoomId, setCurrentRoomId] = useState(null) // Room ID (UUID) từ backend
     const [currentPlayerId, setCurrentPlayerId] = useState(null) // Player ID của user hiện tại
     const [currentDisplayname, setCurrentDisplayname] = useState(null) // Displayname của user hiện tại
@@ -873,7 +895,10 @@ export default function RoomPage() {
                                             <span className="text-parchment-text font-bold">{players.length}/{maxPlayers || 75}</span> Linh Hồn Hiện Diện
                                         </p>
                                     </div>
-                                    <div className="relative group cursor-pointer">
+                                    <div
+                                        className="relative group cursor-pointer"
+                                        onClick={() => setShareOpen((prev) => !prev)}
+                                    >
                                         <div className="absolute inset-0 bg-blood-red/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
                                         <div className="flex items-center gap-4 bg-wood-dark border border-wood-light px-5 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.5)] relative">
                                             <div className="absolute -top-3 -right-3 size-8 rounded-full bg-blood-red border-2 border-blood-dried shadow-md flex items-center justify-center z-20">
@@ -886,11 +911,46 @@ export default function RoomPage() {
                                             <div className="h-8 w-[1px] bg-wood-light/50 mx-1"></div>
                                             <span
                                                 className="material-symbols-outlined text-parchment-text/50 group-hover:text-parchment-text transition-colors cursor-pointer"
-                                                onClick={() => {
+                                                onClick={(event) => {
+                                                    event.stopPropagation()
                                                     navigator.clipboard.writeText(roomCode || roomId || '8291')
+                                                    notify.success('Room code copied', 'Share')
                                                 }}
                                             >sao chép</span>
                                         </div>
+                                        {shareOpen && joinLink && (
+                                            <div className="absolute right-0 top-full mt-4 w-[340px] bg-wood-dark border border-wood-light/70 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.6)] z-30">
+                                                <div className="flex items-center gap-4">
+                                                    {qrUrl && (
+                                                        <img
+                                                            src={qrUrl}
+                                                            alt="Room QR"
+                                                            className="w-36 h-36 rounded border border-gold/40 bg-black/40 p-1"
+                                                        />
+                                                    )}
+                                                    <div className="min-w-0">
+                                                        <p className="text-parchment-text/70 text-xs uppercase tracking-[0.2em] mb-2">
+                                                            Share Link
+                                                        </p>
+                                                        <a
+                                                            href={joinLink}
+                                                            className="block text-gold-dim text-xs break-all underline"
+                                                        >
+                                                            {joinLink}
+                                                        </a>
+                                                        <button
+                                                            onClick={(event) => {
+                                                                event.stopPropagation()
+                                                                handleCopyLink()
+                                                            }}
+                                                            className="mt-3 px-3 py-1.5 bg-gold/80 text-wood-dark text-xs font-bold uppercase tracking-wider border border-gold-dark hover:bg-gold transition-colors"
+                                                        >
+                                                            Copy Link
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
