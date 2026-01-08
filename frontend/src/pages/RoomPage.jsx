@@ -328,6 +328,11 @@ export default function RoomPage() {
             // Lưu player ID của user hiện tại
             if (player?.id) {
                 setCurrentPlayerId(player.id)
+                // Lưu playerId vào localStorage để reuse khi reload
+                if (room.id) {
+                    localStorage.setItem(`room_${room.id}_playerId`, player.id)
+                    console.log(`💾 Saved playerId to localStorage: ${player.id} for room ${room.id}`)
+                }
                 console.log(`💾 Saved currentPlayerId: ${player.id}`)
             }
 
@@ -358,6 +363,64 @@ export default function RoomPage() {
         const handlePlayerLeft = (data) => {
             console.log('➖ Player left:', data)
             updateRoomState(data.room)
+        }
+
+        // Handle NEW_HOST event (khi host rời phòng và host mới được gán)
+        const handleNewHost = (data) => {
+            console.log('👑 New host assigned:', data)
+            const { newHost, room } = data
+
+            // Tìm currentPlayerId từ state, localStorage, hoặc room.players
+            let myPlayerId = currentPlayerId
+            if (!myPlayerId && room.id) {
+                // Thử lấy từ localStorage
+                myPlayerId = localStorage.getItem(`room_${room.id}_playerId`)
+            }
+            if (!myPlayerId && room.players) {
+                // Tìm player hiện tại trong room dựa trên userId
+                const currentPlayer = room.players.find(p => {
+                    if (currentUserId) {
+                        return p.userId && String(p.userId) === String(currentUserId)
+                    }
+                    return false
+                })
+                if (currentPlayer) {
+                    myPlayerId = currentPlayer.id
+                }
+            }
+
+            // Update room state với room data mới - truyền myPlayerId để update isHost
+            updateRoomState(room, myPlayerId)
+
+            // Đảm bảo isHost state được update đúng
+            // Check lại một lần nữa để force update (vì setState là async và có thể bị override)
+            if (newHost && myPlayerId) {
+                let isNewHost = false
+                if (newHost.userId !== null && newHost.userId !== undefined) {
+                    // Authenticated user: check bằng userId
+                    isNewHost = String(newHost.userId) === String(currentUserId)
+                } else if (newHost.id) {
+                    // Anonymous user: check bằng playerId
+                    isNewHost = String(newHost.id) === String(myPlayerId)
+                }
+
+                console.log('👑 Checking if current user is new host:', {
+                    newHost: newHost ? { id: newHost.id, userId: newHost.userId, displayname: newHost.displayname } : null,
+                    currentUserId,
+                    currentPlayerId: myPlayerId,
+                    isNewHost
+                })
+
+                // Force update isHost state ngay lập tức
+                // updateRoomState đã được gọi với myPlayerId, nhưng để đảm bảo, force update một lần nữa
+                if (isNewHost) {
+                    console.log('✅ Current user is the new host, updating isHost state to true')
+                    setIsHost(true)
+                } else {
+                    console.log('ℹ️ Current user is not the new host, setting isHost to false')
+                    setIsHost(false)
+                }
+            }
         }
 
         // Handle ROOM_INFO event
@@ -406,6 +469,7 @@ export default function RoomPage() {
         socket.on('ROOM_JOINED', handleRoomJoined)
         socket.on('PLAYER_JOINED', handlePlayerJoined)
         socket.on('PLAYER_LEFT', handlePlayerLeft)
+        socket.on('NEW_HOST', handleNewHost)
         socket.on('ROOM_INFO', handleRoomInfo)
         socket.on('GAME_STARTED', handleGameStarted)
         socket.on('ERROR', handleError)
@@ -421,6 +485,7 @@ export default function RoomPage() {
             socket.off('ROOM_JOINED', handleRoomJoined)
             socket.off('PLAYER_JOINED', handlePlayerJoined)
             socket.off('PLAYER_LEFT', handlePlayerLeft)
+            socket.off('NEW_HOST', handleNewHost)
             socket.off('ROOM_INFO', handleRoomInfo)
             socket.off('GAME_STARTED', handleGameStarted)
             socket.off('ERROR', handleError)
@@ -659,8 +724,10 @@ export default function RoomPage() {
             const handleRoomLeft = () => {
                 console.log('✅ Left room successfully')
                 // Dọn localStorage
-                localStorage.removeItem(`room_${roomId}_host`)
-                localStorage.removeItem(`room_${roomId}_creator_userId`)
+                const roomIdToClean = currentRoomId || roomId
+                localStorage.removeItem(`room_${roomIdToClean}_host`)
+                localStorage.removeItem(`room_${roomIdToClean}_creator_userId`)
+                localStorage.removeItem(`room_${roomIdToClean}_playerId`)
                 navigate('/game')
             }
 
@@ -695,8 +762,10 @@ export default function RoomPage() {
                 roomSocket.off('ROOM_LEFT', handleRoomLeft)
                 if (loading) {
                     console.warn('⚠️ Leave room timeout, navigating anyway')
-                    localStorage.removeItem(`room_${roomId}_host`)
-                    localStorage.removeItem(`room_${roomId}_creator_userId`)
+                    const roomIdToClean = currentRoomId || roomId
+                    localStorage.removeItem(`room_${roomIdToClean}_host`)
+                    localStorage.removeItem(`room_${roomIdToClean}_creator_userId`)
+                    localStorage.removeItem(`room_${roomIdToClean}_playerId`)
                     navigate('/game')
                     setLoading(false)
                 }

@@ -196,9 +196,51 @@ class RoomSocketHandler {
           console.log(`Player ${socket.id} reconnected to room: ${code}`);
           return;
         }
+      } else {
+        // For anonymous users (no userId), check if player with same displayname already exists in this room
+        const existingPlayer = room.players.find(p =>
+          p.displayname === displayname.trim() &&
+          (p.userId === null || p.userId === undefined)
+        );
+
+        if (existingPlayer) {
+          // Player already exists, just update socket tracking and emit room info
+          socket.join(room.id);
+          this.socketRooms.set(socket.id, room.id);
+
+          // Add socket to room players
+          if (!this.roomPlayers.has(room.id)) {
+            this.roomPlayers.set(room.id, new Set());
+          }
+          this.roomPlayers.get(room.id).add(socket.id);
+
+          // Store room info in socket
+          socket.data.currentRoomId = room.id;
+          socket.data.playerId = existingPlayer.id;
+          socket.data.displayname = displayname.trim();
+          socket.data.isHost = existingPlayer.isHost;
+
+          // Emit success to joiner
+          socket.emit('ROOM_JOINED', {
+            room: {
+              id: room.id,
+              code: room.code,
+              name: room.name,
+              maxPlayers: room.maxPlayers,
+              currentPlayers: room.currentPlayers,
+              status: room.status,
+              settings: room.settings,
+              players: room.players
+            },
+            player: existingPlayer
+          });
+
+          console.log(`Anonymous player ${socket.id} reconnected to room: ${code} (displayname: ${displayname.trim()})`);
+          return;
+        }
       }
 
-      // Join room via service
+      // Join room via service (only if player doesn't exist)
       const result = await this.roomService.joinRoom(code, {
         displayname: displayname.trim(),
         userId: userId, // May be undefined for anonymous users
