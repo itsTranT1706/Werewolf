@@ -194,6 +194,15 @@ function setupSocket(io, producer) {
     // ✅ Thêm GAME_START handler
     socket.on('GAME_START', (payload) => handleGameStart(socket, producer, payload));
 
+    // ✅ Join game room for receiving broadcasts
+    socket.on('JOIN_GAME_ROOM', (payload) => {
+      const { roomId } = payload || {};
+      if (roomId) {
+        socket.join(roomId);
+        console.log(`[SOCKET] Socket ${socket.id} joined game room ${roomId}`);
+      }
+    });
+
     // ✅ GM Commands
     socket.on('GM_START_NIGHT', (payload) => handleGMCommand(socket, producer, 'GM_START_NIGHT', payload));
     socket.on('GM_CUPID_SELECT', (payload) => handleGMCommand(socket, producer, 'GM_CUPID_SELECT', payload));

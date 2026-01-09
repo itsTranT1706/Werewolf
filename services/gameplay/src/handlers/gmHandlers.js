@@ -39,15 +39,38 @@ function generateTraceId() {
 }
 
 /**
+ * Helper: Get game or send error
+ */
+async function getGameOrError(roomId, actionType, command, producer) {
+  const game = gameStateManager.getGame(roomId)
+  if (!game) {
+    console.error(`❌ Game not found for room ${roomId} (action: ${actionType})`)
+    await publishEvent(producer, 'evt.broadcast', {
+      traceId: command.traceId || generateTraceId(),
+      roomId,
+      targetUserId: command.userId,
+      event: {
+        type: 'GM_ERROR',
+        payload: {
+          action: actionType,
+          message: 'Game not found. Please start a game first.'
+        }
+      },
+      ts: Date.now()
+    })
+    return null
+  }
+  return game
+}
+
+/**
  * GM Start Night
  */
 export async function handleGMStartNight(roomId, payload, command, producer) {
   console.log(`🌙 GM starting night for room ${roomId}`)
 
-  const game = gameStateManager.getGame(roomId)
-  if (!game) {
-    throw new Error('Game not found')
-  }
+  const game = await getGameOrError(roomId, 'GM_START_NIGHT', command, producer)
+  if (!game) return
 
   // Reset night actions
   gameStateManager.resetNightActions(roomId)
@@ -80,10 +103,8 @@ export async function handleGMStartNight(roomId, payload, command, producer) {
 export async function handleGMCupidSelect(roomId, payload, command, producer) {
   console.log(`💘 GM setting lovers for room ${roomId}`)
 
-  const game = gameStateManager.getGame(roomId)
-  if (!game) {
-    throw new Error('Game not found')
-  }
+  const game = await getGameOrError(roomId, 'GM_CUPID_SELECT', command, producer)
+  if (!game) return
 
   const { lovers } = payload
 
@@ -159,10 +180,8 @@ export async function handleGMCupidSelect(roomId, payload, command, producer) {
 export async function handleGMWerewolfKill(roomId, payload, command, producer) {
   console.log(`🐺 GM recording werewolf kill for room ${roomId}`)
 
-  const game = gameStateManager.getGame(roomId)
-  if (!game) {
-    throw new Error('Game not found')
-  }
+  const game = await getGameOrError(roomId, 'GM_WEREWOLF_KILL', command, producer)
+  if (!game) return
 
   const { targetUserId } = payload
 
@@ -184,10 +203,8 @@ export async function handleGMWerewolfKill(roomId, payload, command, producer) {
 export async function handleGMSeerCheck(roomId, payload, command, producer) {
   console.log(`🔮 GM recording seer check for room ${roomId}`)
 
-  const game = gameStateManager.getGame(roomId)
-  if (!game) {
-    throw new Error('Game not found')
-  }
+  const game = await getGameOrError(roomId, 'GM_SEER_CHECK', command, producer)
+  if (!game) return
 
   const { targetUserId } = payload
 
@@ -232,10 +249,8 @@ export async function handleGMSeerCheck(roomId, payload, command, producer) {
 export async function handleGMBodyguardProtect(roomId, payload, command, producer) {
   console.log(`🛡️ GM recording bodyguard protection for room ${roomId}`)
 
-  const game = gameStateManager.getGame(roomId)
-  if (!game) {
-    throw new Error('Game not found')
-  }
+  const game = await getGameOrError(roomId, 'GM_BODYGUARD_PROTECT', command, producer)
+  if (!game) return
 
   const { targetUserId } = payload
 
@@ -263,10 +278,8 @@ export async function handleGMBodyguardProtect(roomId, payload, command, produce
 export async function handleGMWitchAction(roomId, payload, command, producer) {
   console.log(`🧙‍♀️ GM recording witch action for room ${roomId}`)
 
-  const game = gameStateManager.getGame(roomId)
-  if (!game) {
-    throw new Error('Game not found')
-  }
+  const game = await getGameOrError(roomId, 'GM_WITCH_ACTION', command, producer)
+  if (!game) return
 
   const { save, poisonTargetUserId } = payload
 
@@ -307,10 +320,8 @@ export async function handleGMWitchAction(roomId, payload, command, producer) {
 export async function handleGMEndNight(roomId, payload, command, producer) {
   console.log(`🌙 GM ending night for room ${roomId}`)
 
-  const game = gameStateManager.getGame(roomId)
-  if (!game) {
-    throw new Error('Game not found')
-  }
+  const game = await getGameOrError(roomId, 'GM_END_NIGHT', command, producer)
+  if (!game) return
 
   // Process night result
   const result = processNightResult(roomId)
@@ -364,10 +375,8 @@ export async function handleGMEndNight(roomId, payload, command, producer) {
 export async function handleGMAnnounceDeaths(roomId, payload, command, producer) {
   console.log(`💀 GM announcing deaths for room ${roomId}`)
 
-  const game = gameStateManager.getGame(roomId)
-  if (!game) {
-    throw new Error('Game not found')
-  }
+  const game = await getGameOrError(roomId, 'GM_ANNOUNCE_DEATHS', command, producer)
+  if (!game) return
 
   const { deaths } = payload
 
@@ -403,10 +412,8 @@ export async function handleGMAnnounceDeaths(roomId, payload, command, producer)
 export async function handleGMStartDay(roomId, payload, command, producer) {
   console.log(`☀️ GM starting day for room ${roomId}`)
 
-  const game = gameStateManager.getGame(roomId)
-  if (!game) {
-    throw new Error('Game not found')
-  }
+  const game = await getGameOrError(roomId, 'GM_START_DAY', command, producer)
+  if (!game) return
 
   const { duration } = payload
 
@@ -440,10 +447,8 @@ export async function handleGMStartDay(roomId, payload, command, producer) {
 export async function handlePlayerVote(roomId, payload, command, producer) {
   console.log(`🗳️ Player voting in room ${roomId}`)
 
-  const game = gameStateManager.getGame(roomId)
-  if (!game) {
-    throw new Error('Game not found')
-  }
+  const game = await getGameOrError(roomId, 'PLAYER_VOTE', command, producer)
+  if (!game) return
 
   const voterId = command.userId
   const { targetUserId } = payload
@@ -487,10 +492,8 @@ export async function handlePlayerVote(roomId, payload, command, producer) {
 export async function handleGMEndVote(roomId, payload, command, producer) {
   console.log(`🗳️ GM ending vote for room ${roomId}`)
 
-  const game = gameStateManager.getGame(roomId)
-  if (!game) {
-    throw new Error('Game not found')
-  }
+  const game = await getGameOrError(roomId, 'GM_END_VOTE', command, producer)
+  if (!game) return
 
   // Process vote result
   const result = processVoteResult(roomId)
@@ -569,10 +572,8 @@ export async function handleGMEndVote(roomId, payload, command, producer) {
 export async function handleGMHunterShoot(roomId, payload, command, producer) {
   console.log(`🔫 GM processing hunter shoot for room ${roomId}`)
 
-  const game = gameStateManager.getGame(roomId)
-  if (!game) {
-    throw new Error('Game not found')
-  }
+  const game = await getGameOrError(roomId, 'GM_HUNTER_SHOOT', command, producer)
+  if (!game) return
 
   const { hunterId, targetUserId } = payload
 
