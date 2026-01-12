@@ -10,9 +10,9 @@ import { CharacterIcon, CornerAccent } from '@/components/ui/AncientIcons'
 
 export default function GameHUD({ username, avatar }) {
   return (
-    <div className="absolute inset-0 pointer-events-none z-20">
+    <div className="fixed top-6 right-8 pointer-events-none z-30">
       {/* Top bar - Profile */}
-      <div className="absolute top-4 right-4 flex items-center gap-3 pointer-events-auto">
+      <div className="flex items-center gap-3 pointer-events-auto">
         <ProfileButton username={username} avatar={avatar} />
       </div>
     </div>
@@ -28,28 +28,19 @@ function ProfileButton({ username, avatar }) {
   return (
     <button
       onClick={() => navigate('/profile')}
-      className="group relative flex items-center gap-3 transition-transform duration-300 hover:scale-105 active:scale-95"
+      className="group relative flex items-center gap-3 px-3 py-2 rounded-full border transition-transform duration-300 hover:scale-105 active:scale-95 cursor-pointer hover:border-[#f1d37c]/70 hover:shadow-[0_0_20px_rgba(241,211,124,0.3)]"
+      style={{
+        background: 'linear-gradient(135deg, rgba(14,12,10,0.9) 0%, rgba(20,16,12,0.95) 100%)',
+        borderColor: 'rgba(201,162,39,0.45)',
+        boxShadow: '0 10px 24px rgba(0,0,0,0.45)',
+      }}
       title="Xem Hồ Sơ"
     >
-      {/* Username tag (shows on hover) */}
-      <div className="absolute right-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-        <div 
-          className="px-4 py-2 whitespace-nowrap font-fantasy text-sm"
-          style={{
-            background: 'linear-gradient(90deg, transparent 0%, rgba(15,12,10,0.95) 20%, rgba(15,12,10,0.95) 100%)',
-            borderRight: '2px solid rgba(139,115,85,0.4)',
-            color: '#a89070',
-          }}
-        >
-          {username || 'Lữ Khách'}
-        </div>
-      </div>
-
       {/* Avatar frame */}
       <div className="relative">
         {/* Glow effect on hover */}
         <div 
-          className="absolute -inset-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+          className="absolute -inset-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500"
           style={{
             background: 'radial-gradient(circle, rgba(139,115,85,0.3) 0%, transparent 70%)',
             filter: 'blur(6px)',
@@ -58,7 +49,7 @@ function ProfileButton({ username, avatar }) {
 
         {/* Outer frame */}
         <div 
-          className="relative w-14 h-14 p-0.5"
+          className="relative w-10 h-10 p-0.5 rounded-full"
           style={{
             background: 'linear-gradient(135deg, rgba(139,115,85,0.8) 0%, rgba(60,40,20,0.9) 50%, rgba(139,115,85,0.8) 100%)',
             boxShadow: '0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)',
@@ -66,12 +57,12 @@ function ProfileButton({ username, avatar }) {
         >
           {/* Inner border */}
           <div 
-            className="w-full h-full p-0.5"
+            className="w-full h-full p-0.5 rounded-full"
             style={{ background: 'rgba(20,16,12,0.95)' }}
           >
             {/* Avatar container */}
             <div 
-              className="w-full h-full flex items-center justify-center overflow-hidden"
+              className="w-full h-full flex items-center justify-center overflow-hidden rounded-full"
               style={{ 
                 background: 'rgba(10,8,6,0.9)',
                 boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.6)',
@@ -80,7 +71,7 @@ function ProfileButton({ username, avatar }) {
               {avatar ? (
                 <img src={avatar} alt="" className="w-full h-full object-cover" />
               ) : (
-                <CharacterIcon className="w-7 h-7 text-[#6a5a4a]" />
+                <CharacterIcon className="w-5 h-5 text-[#6a5a4a]" />
               )}
             </div>
           </div>
@@ -100,6 +91,12 @@ function ProfileButton({ username, avatar }) {
           <CornerAccent className="w-3 h-3" position="bottom-right" />
         </div>
       </div>
+      <span
+        className="font-fantasy text-sm tracking-wide"
+        style={{ color: '#f1d37c' }}
+      >
+        {username || 'L\u1eef kh\u00e1ch'}
+      </span>
     </button>
   )
 }
@@ -157,3 +154,4 @@ export function HUDButton({ icon, label, onClick, badge }) {
     </button>
   )
 }
+

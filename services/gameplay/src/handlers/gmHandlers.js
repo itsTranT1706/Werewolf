@@ -76,7 +76,9 @@ export async function handleGMStartNight(roomId, payload, command, producer) {
   gameStateManager.resetNightActions(roomId)
 
   // Move to night phase if needed
-  if (game.phase !== 'NIGHT') {
+  if (game.phase === 'DAY') {
+    gameStateManager.nextPhase(roomId)
+  } else if (game.phase !== 'NIGHT') {
     gameStateManager.updateGame(roomId, { phase: 'NIGHT' })
   }
 
@@ -195,6 +197,21 @@ export async function handleGMWerewolfKill(roomId, payload, command, producer) {
   game.lastUpdate = Date.now()
 
   console.log(`✅ Werewolf targeting: ${target.username}`)
+
+  // Notify GM that target is recorded
+  await publishEvent(producer, 'evt.broadcast', {
+    traceId: command.traceId || generateTraceId(),
+    roomId,
+    targetUserId: command.userId,
+    event: {
+      type: 'GM_WEREWOLF_TARGET_RECORDED',
+      payload: {
+        targetUserId: target.userId,
+        targetName: target.username
+      }
+    },
+    ts: Date.now()
+  })
 }
 
 /**
@@ -495,8 +512,54 @@ export async function handleGMEndVote(roomId, payload, command, producer) {
   const game = await getGameOrError(roomId, 'GM_END_VOTE', command, producer)
   if (!game) return
 
-  // Process vote result
-  const result = processVoteResult(roomId)
+  const { forcedExecution, targetUserId } = payload || {}
+  let result
+
+  if (forcedExecution) {
+    if (!targetUserId) {
+      throw new Error('Invalid vote target')
+    }
+
+    const target = gameStateManager.getPlayer(roomId, targetUserId)
+    if (!target || !target.isAlive) {
+      throw new Error('Invalid vote target')
+    }
+
+    gameStateManager.killPlayer(roomId, targetUserId, 'HANGED')
+
+    const alivePlayers = gameStateManager.getAlivePlayers(roomId)
+    const voteCounts = new Map()
+
+    for (const [voterId, voteTargetId] of game.votes.entries()) {
+      const voter = gameStateManager.getPlayer(roomId, voterId)
+      if (!voter || !voter.isAlive) continue
+
+      const voteWeight = voter.role === 'MAYOR' ? 2 : 1
+      const currentCount = voteCounts.get(voteTargetId) || 0
+      voteCounts.set(voteTargetId, currentCount + voteWeight)
+    }
+
+    const voteResults = alivePlayers.map(p => ({
+      userId: p.userId,
+      username: p.username,
+      votedFor: game.votes.get(p.userId) || null,
+      voteCount: voteCounts.get(p.userId) || 0
+    }))
+
+    result = {
+      hangedPlayer: {
+        userId: target.userId,
+        username: target.username,
+        role: target.role,
+        isLovers: target.isLovers
+      },
+      voteResults,
+      reason: 'FORCED'
+    }
+  } else {
+    // Process vote result
+    result = processVoteResult(roomId)
+  }
 
   // Broadcast result
   await publishEvent(producer, 'evt.broadcast', {
@@ -519,6 +582,28 @@ export async function handleGMEndVote(roomId, payload, command, producer) {
   })
 
   console.log(`✅ Vote result:`, result)
+
+  // Broadcast hanged player death to all
+  if (result.hangedPlayer) {
+    await publishEvent(producer, 'evt.broadcast', {
+      traceId: command.traceId || generateTraceId(),
+      roomId,
+      event: {
+        type: 'PLAYERS_DIED',
+        payload: {
+          deaths: [{
+            userId: result.hangedPlayer.userId,
+            username: result.hangedPlayer.username,
+            role: result.hangedPlayer.role,
+            cause: 'HANGED'
+          }],
+          count: 1,
+          message: `${result.hangedPlayer.username} da bi treo co.`
+        }
+      },
+      ts: Date.now()
+    })
+  }
 
   // Check if hanged player was Hunter
   if (result.hangedPlayer && result.hangedPlayer.role === 'MONSTER_HUNTER') {

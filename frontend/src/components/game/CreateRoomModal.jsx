@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Create Room Modal - Ritual Chamber Setup
  * 
  * Dark medieval fantasy styled room creation.
@@ -17,28 +17,28 @@ export default function CreateRoomModal({ isOpen, onClose, onRoomCreated }) {
   const navigate = useNavigate()
   const [maxPlayers, setMaxPlayers] = useState(12)
   const [selectedRoles, setSelectedRoles] = useState({
-    'VILLAGER': true,
-    'SEER': true,
-    'WITCH': true,
-    'BODYGUARD': true,
-    'YOUNG_WOLF': true,
-    'ALPHA_WOLF': true
+    VILLAGER: true,
+    SEER: true,
+    WITCH: true,
+    BODYGUARD: true,
+    YOUNG_WOLF: true,
+    ALPHA_WOLF: true,
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [displayName, setDisplayName] = useState('')
   const [roomSocket, setRoomSocket] = useState(null)
 
-  const villagerRoles = Object.values(ROLES).filter(r => r.faction === FACTION.VILLAGER)
-  const werewolfRoles = Object.values(ROLES).filter(r => r.faction === FACTION.WEREWOLF)
-  const neutralRoles = Object.values(ROLES).filter(r => r.faction === FACTION.NEUTRAL)
+  const villagerRoles = Object.values(ROLES).filter((r) => r.faction === FACTION.VILLAGER)
+  const werewolfRoles = Object.values(ROLES).filter((r) => r.faction === FACTION.WEREWOLF)
+  const neutralRoles = Object.values(ROLES).filter((r) => r.faction === FACTION.NEUTRAL)
 
   useEffect(() => {
     const socket = getRoomSocket()
     setRoomSocket(socket)
 
     const handleConnect = () => {
-      console.log('✅ Room socket connected')
+      console.log('Room socket connected')
     }
 
     const handleRoomCreated = (data) => {
@@ -60,16 +60,19 @@ export default function CreateRoomModal({ isOpen, onClose, onRoomCreated }) {
       }
 
       if (!roomCode) {
-        console.error('⚠️ Room code is missing!')
+        console.error('Room code is missing')
         return
       }
 
-      localStorage.setItem(`room_${roomCode}_settings`, JSON.stringify({
-        maxPlayers: room.maxPlayers,
-        availableRoles: Object.keys(selectedRoles).filter(roleId => selectedRoles[roleId])
-      }))
+      localStorage.setItem(
+        `room_${roomCode}_settings`,
+        JSON.stringify({
+          maxPlayers: room.maxPlayers,
+          availableRoles: Object.keys(selectedRoles).filter((roleId) => selectedRoles[roleId]),
+        })
+      )
 
-      const hostPlayer = room.players?.find(p => p.isHost)
+      const hostPlayer = room.players?.find((p) => p.isHost)
       if (hostPlayer) {
         localStorage.setItem(`room_${roomCode}_hostPlayerId`, hostPlayer.id)
       }
@@ -107,9 +110,9 @@ export default function CreateRoomModal({ isOpen, onClose, onRoomCreated }) {
   }, [navigate, onClose, onRoomCreated, selectedRoles])
 
   const toggleRole = (roleId) => {
-    setSelectedRoles(prev => ({
+    setSelectedRoles((prev) => ({
       ...prev,
-      [roleId]: !prev[roleId]
+      [roleId]: !prev[roleId],
     }))
   }
 
@@ -154,10 +157,10 @@ export default function CreateRoomModal({ isOpen, onClose, onRoomCreated }) {
       name: `Phòng ${Date.now()}`,
       maxPlayers,
       settings: {
-        availableRoles: Object.keys(selectedRoles).filter(roleId => selectedRoles[roleId])
+        availableRoles: Object.keys(selectedRoles).filter((roleId) => selectedRoles[roleId]),
       },
       displayname: displayname || 'Anonymous Host',
-      userId: userId
+      userId: userId,
     }
 
     roomSocket.emit('CREATE_ROOM', roomData)
@@ -169,22 +172,22 @@ export default function CreateRoomModal({ isOpen, onClose, onRoomCreated }) {
       return
     }
 
-    const availableRoles = Object.keys(selectedRoles).filter(roleId => selectedRoles[roleId])
+    const availableRoles = Object.keys(selectedRoles).filter((roleId) => selectedRoles[roleId])
     if (availableRoles.length === 0) {
-      setError('Phải chọn ít nhất 1 role')
+      setError('Phải chọn ít nhất 1 vai trò')
       return
     }
 
-    const hasWerewolf = availableRoles.some(r => werewolfRoles.find(wr => wr.id === r))
-    const hasVillager = availableRoles.some(r => villagerRoles.find(vr => vr.id === r))
+    const hasWerewolf = availableRoles.some((r) => werewolfRoles.find((wr) => wr.id === r))
+    const hasVillager = availableRoles.some((r) => villagerRoles.find((vr) => vr.id === r))
 
     if (!hasWerewolf) {
-      setError('Phải có ít nhất 1 role phe Ma Sói')
+      setError('Phải có ít nhất 1 vai trò phe Ma Sói')
       return
     }
 
     if (!hasVillager) {
-      setError('Phải có ít nhất 1 role phe Dân Làng')
+      setError('Phải có ít nhất 1 vai trò phe Dân Làng')
       return
     }
 
@@ -219,45 +222,42 @@ export default function CreateRoomModal({ isOpen, onClose, onRoomCreated }) {
   if (!isOpen) return null
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(5,5,8,0.9)' }}
+      style={{ background: 'rgba(5,5,8,0.88)' }}
     >
-      <div 
+      <div
         className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto"
         style={{
-          background: 'linear-gradient(180deg, rgba(20,16,12,0.98) 0%, rgba(15,12,10,0.99) 100%)',
-          border: '2px solid rgba(139,115,85,0.4)',
-          boxShadow: '0 0 40px rgba(139,115,85,0.15), 0 20px 60px rgba(0,0,0,0.7)',
+          background: 'linear-gradient(180deg, rgba(24,18,12,0.98) 0%, rgba(12,10,8,0.98) 100%)',
+          border: '2px solid rgba(201,162,39,0.55)',
+          boxShadow: '0 0 50px rgba(201,162,39,0.16), 0 30px 80px rgba(0,0,0,0.7)',
         }}
       >
         {/* Corner accents */}
-        <div className="absolute top-2 left-2 text-[#8b7355] opacity-40">
+        <div className="absolute top-2 left-2 text-[#d9b65a] opacity-60">
           <CornerAccent className="w-6 h-6" position="top-left" />
         </div>
-        <div className="absolute top-2 right-2 text-[#8b7355] opacity-40">
+        <div className="absolute top-2 right-2 text-[#d9b65a] opacity-60">
           <CornerAccent className="w-6 h-6" position="top-right" />
         </div>
 
         {/* Header */}
-        <div 
+        <div
           className="p-6 flex justify-between items-center"
-          style={{ borderBottom: '1px solid rgba(139,115,85,0.2)' }}
+          style={{ borderBottom: '1px solid rgba(201,162,39,0.2)' }}
         >
           <div>
-            <h2 
-              className="font-medieval text-2xl tracking-wider"
-              style={{ color: '#8b7355' }}
-            >
+            <h2 className="font-medieval text-2xl tracking-wider text-[#f0d78a]">
               Tạo Phòng Mới
             </h2>
-            <p className="font-fantasy text-sm mt-1" style={{ color: '#6a5a4a' }}>
+            <p className="font-fantasy text-sm mt-1 text-[#b9a27c]">
               Thiết lập nghi lễ săn đêm
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-[#6a5a4a] hover:text-[#8b7355] transition-colors"
+            className="text-[#a8926c] hover:text-[#f0d78a] transition-colors"
           >
             <RuneClose className="w-6 h-6" />
           </button>
@@ -265,14 +265,14 @@ export default function CreateRoomModal({ isOpen, onClose, onRoomCreated }) {
 
         {/* Error */}
         {error && (
-          <div 
+          <div
             className="mx-6 mt-4 p-4"
             style={{
-              background: 'rgba(139,0,0,0.15)',
-              border: '1px solid rgba(139,0,0,0.4)',
+              background: 'rgba(139,0,0,0.16)',
+              border: '1px solid rgba(227,93,93,0.5)',
             }}
           >
-            <p className="font-fantasy text-sm" style={{ color: '#a05050' }}>{error}</p>
+            <p className="font-fantasy text-sm text-[#f2a4a4]">{error}</p>
           </div>
         )}
 
@@ -281,10 +281,7 @@ export default function CreateRoomModal({ isOpen, onClose, onRoomCreated }) {
           {/* Display Name */}
           {!localStorage.getItem('token') && (
             <div>
-              <label 
-                className="block font-medieval text-sm tracking-wide mb-2"
-                style={{ color: '#8b7355' }}
-              >
+              <label className="block font-medieval text-sm tracking-wide mb-2 text-[#d8c08a]">
                 Tên Hiển Thị
               </label>
               <MedievalInput
@@ -300,11 +297,8 @@ export default function CreateRoomModal({ isOpen, onClose, onRoomCreated }) {
 
           {/* Max Players */}
           <div>
-            <label 
-              className="block font-medieval text-sm tracking-wide mb-3"
-              style={{ color: '#8b7355' }}
-            >
-              Số Người Chơi: <span style={{ color: '#a89070' }}>{maxPlayers}</span>
+            <label className="block font-medieval text-sm tracking-wide mb-3 text-[#d8c08a]">
+              Số Người Chơi: <span className="text-[#f0d78a]">{maxPlayers}</span>
             </label>
             <input
               type="range"
@@ -312,42 +306,33 @@ export default function CreateRoomModal({ isOpen, onClose, onRoomCreated }) {
               max="75"
               value={maxPlayers}
               onChange={(e) => setMaxPlayers(parseInt(e.target.value))}
-              className="w-full h-2 rounded-none appearance-none cursor-pointer"
-              style={{
-                background: 'linear-gradient(90deg, rgba(139,115,85,0.3) 0%, rgba(139,115,85,0.5) 100%)',
-              }}
+              className="ritual-slider w-full appearance-none cursor-pointer"
             />
             <div className="flex justify-between mt-1">
-              <span className="font-fantasy text-xs" style={{ color: '#5a4a3a' }}>3</span>
-              <span className="font-fantasy text-xs" style={{ color: '#5a4a3a' }}>75</span>
+              <span className="font-fantasy text-xs text-[#8a7554]">3</span>
+              <span className="font-fantasy text-xs text-[#8a7554]">75</span>
             </div>
           </div>
 
           {/* Roles Selection */}
           <div>
-            <label 
-              className="block font-medieval text-sm tracking-wide mb-4"
-              style={{ color: '#8b7355' }}
-            >
+            <label className="block font-medieval text-sm tracking-wide mb-4 text-[#d8c08a]">
               Chọn Vai Trò
             </label>
 
             {/* Villager Roles */}
             <div className="mb-6">
-              <h3 
-                className="font-medieval text-sm mb-3 flex items-center gap-2"
-                style={{ color: '#4a8a5a' }}
-              >
+              <h3 className="font-medieval text-sm mb-3 flex items-center gap-2 text-[#6fbf7d]">
                 Phe Dân Làng
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {villagerRoles.map(role => (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {villagerRoles.map((role) => (
                   <RoleCheckbox
                     key={role.id}
                     role={role}
                     checked={selectedRoles[role.id] || false}
                     onChange={() => toggleRole(role.id)}
-                    color="#4a8a5a"
+                    color="#6fbf7d"
                   />
                 ))}
               </div>
@@ -355,20 +340,17 @@ export default function CreateRoomModal({ isOpen, onClose, onRoomCreated }) {
 
             {/* Werewolf Roles */}
             <div className="mb-6">
-              <h3 
-                className="font-medieval text-sm mb-3 flex items-center gap-2"
-                style={{ color: '#8b4040' }}
-              >
+              <h3 className="font-medieval text-sm mb-3 flex items-center gap-2 text-[#d06b6b]">
                 Phe Ma Sói
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {werewolfRoles.map(role => (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {werewolfRoles.map((role) => (
                   <RoleCheckbox
                     key={role.id}
                     role={role}
                     checked={selectedRoles[role.id] || false}
                     onChange={() => toggleRole(role.id)}
-                    color="#8b4040"
+                    color="#d06b6b"
                   />
                 ))}
               </div>
@@ -377,20 +359,17 @@ export default function CreateRoomModal({ isOpen, onClose, onRoomCreated }) {
             {/* Neutral Roles */}
             {neutralRoles.length > 0 && (
               <div>
-                <h3 
-                  className="font-medieval text-sm mb-3 flex items-center gap-2"
-                  style={{ color: '#8b7355' }}
-                >
+                <h3 className="font-medieval text-sm mb-3 flex items-center gap-2 text-[#d1b06e]">
                   Phe Độc Lập
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {neutralRoles.map(role => (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {neutralRoles.map((role) => (
                     <RoleCheckbox
                       key={role.id}
                       role={role}
                       checked={selectedRoles[role.id] || false}
                       onChange={() => toggleRole(role.id)}
-                      color="#8b7355"
+                      color="#d1b06e"
                     />
                   ))}
                 </div>
@@ -400,9 +379,9 @@ export default function CreateRoomModal({ isOpen, onClose, onRoomCreated }) {
         </div>
 
         {/* Actions */}
-        <div 
+        <div
           className="p-6 flex justify-end gap-4"
-          style={{ borderTop: '1px solid rgba(139,115,85,0.2)' }}
+          style={{ borderTop: '1px solid rgba(201,162,39,0.2)' }}
         >
           <MedievalButton onClick={onClose} variant="secondary">
             Hủy
@@ -421,8 +400,8 @@ function RoleCheckbox({ role, checked, onChange, color }) {
     <label
       className="flex items-center gap-2 p-3 cursor-pointer transition-all duration-300"
       style={{
-        background: checked ? `${color}15` : 'rgba(15,12,10,0.6)',
-        border: `1px solid ${checked ? `${color}50` : 'rgba(60,50,40,0.4)'}`,
+        background: checked ? `${color}1a` : 'rgba(10,8,6,0.7)',
+        border: `1px solid ${checked ? `${color}70` : 'rgba(80,70,60,0.35)'}`,
       }}
     >
       <input
@@ -432,10 +411,7 @@ function RoleCheckbox({ role, checked, onChange, color }) {
         className="w-4 h-4 accent-current"
         style={{ accentColor: color }}
       />
-      <span 
-        className="font-fantasy text-sm"
-        style={{ color: checked ? color : '#8a7a6a' }}
-      >
+      <span className="font-fantasy text-sm" style={{ color: checked ? color : '#c1b19a' }}>
         {role.name}
       </span>
     </label>

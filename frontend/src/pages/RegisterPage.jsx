@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Register Page - Ancient Covenant Signing
  * 
  * Join the cursed village by signing the ancient scroll.
@@ -77,7 +77,7 @@ export default function RegisterPage() {
         username: formData.username, 
         password: formData.password 
       })
-      notify.success('Giao ước đã được ký kết!', 'Đăng Ký Thành Công')
+      notify.success('Giao ước đã được kết!', 'Đăng Ký Thành Công')
       navigate('/login', { state: { registered: true } })
     } catch (error) {
       const message = error.original?.response?.data?.error || 'Không thể gia nhập làng. Vui lòng thử lại.'
@@ -110,19 +110,10 @@ export default function RegisterPage() {
             </div>
           </div>
           
-          <h2 
-            className="font-medieval text-3xl tracking-wider"
-            style={{
-              color: '#8b7355',
-              textShadow: '0 0 20px rgba(139,115,85,0.3), 0 2px 4px rgba(0,0,0,0.8)',
-            }}
-          >
+          <h2 className="font-medieval text-3xl tracking-wider theme-title">
             Tham Gia Cuộc Săn
           </h2>
-          <p 
-            className="font-fantasy text-sm mt-2 tracking-wide"
-            style={{ color: '#6a5a4a' }}
-          >
+          <p className="font-fantasy text-sm mt-2 tracking-wide theme-subtitle">
             Ký vào cuộn giấy cổ để bước vào...
           </p>
         </div>
@@ -203,14 +194,11 @@ export default function RegisterPage() {
 
         {/* Login link */}
         <div className="text-center">
-          <p className="font-fantasy text-sm" style={{ color: '#6a5a4a' }}>
+          <p className="font-fantasy text-sm text-[#6a5a4a]">
             Đã là dân làng?{' '}
             <Link 
               to="/login" 
-              className="font-semibold transition-colors duration-300 hover:underline"
-              style={{ color: '#8b7355' }}
-              onMouseEnter={(e) => e.target.style.color = '#a89070'}
-              onMouseLeave={(e) => e.target.style.color = '#8b7355'}
+              className="font-semibold theme-link"
             >
               Bước Vào Làng
             </Link>

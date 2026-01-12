@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Medieval Input - Dark Fantasy Styled Input
  * 
  * Ancient stone-carved input field with mystical accents.
@@ -28,20 +28,11 @@ export default function MedievalInput({
       {/* Input container */}
       <div 
         className={`
-          relative transition-all duration-500
+          input-medieval relative transition-all duration-500
           ${isFocused ? 'transform scale-[1.01]' : ''}
         `}
-        style={{
-          background: 'linear-gradient(180deg, rgba(15,12,10,0.95) 0%, rgba(20,16,12,0.98) 50%, rgba(15,12,10,0.95) 100%)',
-          border: error 
-            ? '2px solid rgba(139,0,0,0.6)' 
-            : isFocused 
-              ? '2px solid rgba(139,115,85,0.5)' 
-              : '2px solid rgba(60,50,40,0.4)',
-          boxShadow: isFocused 
-            ? '0 0 20px rgba(139,115,85,0.15), inset 0 2px 8px rgba(0,0,0,0.6)'
-            : 'inset 0 2px 8px rgba(0,0,0,0.6)',
-        }}
+        data-focused={isFocused}
+        data-error={Boolean(error)}
       >
         {/* Left accent line */}
         <div 

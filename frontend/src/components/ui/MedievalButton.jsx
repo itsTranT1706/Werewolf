@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Medieval Button - Dark Fantasy Styled Button
  * 
  * Ancient stone/wood carved button with mystical glow effects.
@@ -17,20 +17,20 @@ export default function MedievalButton({
 }) {
   const variantStyles = {
     primary: {
-      background: 'linear-gradient(180deg, rgba(92,61,30,0.95) 0%, rgba(61,41,20,0.98) 50%, rgba(42,26,10,0.95) 100%)',
-      border: '2px solid rgba(139,115,85,0.4)',
-      hoverBorder: 'rgba(201,162,39,0.6)',
-      textColor: '#a89070',
-      hoverText: '#c9a227',
-      glow: 'rgba(139,115,85,0.2)',
+      background: 'linear-gradient(180deg, rgba(132,94,46,0.96) 0%, rgba(92,61,30,0.98) 55%, rgba(61,41,20,0.98) 100%)',
+      border: '2px solid rgba(201,162,39,0.55)',
+      hoverBorder: 'rgba(230,200,74,0.85)',
+      textColor: '#e6c84a',
+      hoverText: '#fff1b0',
+      glow: 'rgba(201,162,39,0.28)',
     },
     secondary: {
-      background: 'linear-gradient(180deg, rgba(40,35,30,0.95) 0%, rgba(30,25,20,0.98) 50%, rgba(20,15,10,0.95) 100%)',
-      border: '2px solid rgba(80,70,60,0.4)',
-      hoverBorder: 'rgba(139,115,85,0.5)',
-      textColor: '#8a7a6a',
-      hoverText: '#a89070',
-      glow: 'rgba(80,70,60,0.2)',
+      background: 'linear-gradient(180deg, rgba(70,70,72,0.95) 0%, rgba(45,45,48,0.97) 60%, rgba(28,28,30,0.98) 100%)',
+      border: '2px solid rgba(120,120,125,0.45)',
+      hoverBorder: 'rgba(201,162,39,0.55)',
+      textColor: '#d4c4a8',
+      hoverText: '#f0dfb6',
+      glow: 'rgba(139,115,85,0.18)',
     },
     danger: {
       background: 'linear-gradient(180deg, rgba(80,20,20,0.95) 0%, rgba(60,15,15,0.98) 50%, rgba(40,10,10,0.95) 100%)',
@@ -50,43 +50,19 @@ export default function MedievalButton({
       onClick={onClick}
       disabled={disabled || loading}
       className={`
-        group relative px-8 py-3 font-medieval tracking-[0.15em] uppercase
+        btn-medieval group relative px-8 py-3 font-medieval tracking-[0.15em] uppercase
         transition-all duration-500 overflow-hidden
         disabled:opacity-50 disabled:cursor-not-allowed
         hover:scale-[1.02] active:scale-[0.98]
         ${className}
       `}
       style={{
-        background: style.background,
-        border: style.border,
-        color: style.textColor,
-        boxShadow: `
-          0 4px 12px rgba(0,0,0,0.5),
-          inset 0 1px 0 rgba(255,255,255,0.05),
-          inset 0 -1px 0 rgba(0,0,0,0.3)
-        `,
-        textShadow: '0 2px 4px rgba(0,0,0,0.8)',
-      }}
-      onMouseEnter={(e) => {
-        if (!disabled) {
-          e.currentTarget.style.borderColor = style.hoverBorder
-          e.currentTarget.style.color = style.hoverText
-          e.currentTarget.style.boxShadow = `
-            0 6px 20px rgba(0,0,0,0.6),
-            0 0 20px ${style.glow},
-            inset 0 1px 0 rgba(255,255,255,0.08),
-            inset 0 -1px 0 rgba(0,0,0,0.3)
-          `
-        }
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = style.border.split(' ')[2]
-        e.currentTarget.style.color = style.textColor
-        e.currentTarget.style.boxShadow = `
-          0 4px 12px rgba(0,0,0,0.5),
-          inset 0 1px 0 rgba(255,255,255,0.05),
-          inset 0 -1px 0 rgba(0,0,0,0.3)
-        `
+        '--btn-bg': style.background,
+        '--btn-border': style.border,
+        '--btn-text': style.textColor,
+        '--btn-hover-border': style.hoverBorder,
+        '--btn-hover-text': style.hoverText,
+        '--btn-glow': style.glow,
       }}
       {...props}
     >

@@ -268,7 +268,7 @@ async function handleGameStart(roomId, payload, command = {}) {
         })
 
         // 3.5. Tạo game state
-        gameStateManager.createGame(roomId, players, roleIds)
+        gameStateManager.createGame(roomId, regularPlayersList, roleIds)
         console.log(`✅ Game state created for room ${roomId}`)
 
         // 4. Publish GAME_ROLE_ASSIGNMENT_LIST cho quản trò (host)

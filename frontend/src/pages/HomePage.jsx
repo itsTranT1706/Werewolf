@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Home Page - The Village Gate
  * 
  * Entry point after the intro ritual.
@@ -8,7 +8,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { MedievalPanel, MedievalInput, MedievalButton, Divider, notify } from '@/components/ui'
-import { RuneDoor, RuneWolf, CornerAccent } from '@/components/ui/AncientIcons'
+import { RuneDoor, RuneWolf } from '@/components/ui/AncientIcons'
 import CreateRoomModal from '@/components/game/CreateRoomModal'
 
 export default function HomePage() {
@@ -42,48 +42,8 @@ export default function HomePage() {
   }
 
   return (
-    <div 
-      className="min-h-screen relative overflow-hidden flex items-center justify-center"
-      style={{ background: '#050508' }}
-    >
-      {/* Dark forest background */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: `url('/assets/backgrounds/dark-forest.jpg')`,
-          filter: 'brightness(0.15) saturate(0.5)',
-        }}
-      />
-      
-      {/* Gradient overlays */}
-      <div 
-        className="absolute inset-0"
-        style={{
-          background: 'linear-gradient(180deg, rgba(5,5,8,0.9) 0%, transparent 30%, transparent 70%, rgba(5,5,8,0.95) 100%)',
-        }}
-      />
-      
-      {/* Vignette */}
-      <div 
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse at center, transparent 20%, rgba(0,0,0,0.7) 100%)',
-        }}
-      />
-
-      {/* Fog */}
-      <div 
-        className="absolute inset-0 opacity-15 pointer-events-none"
-        style={{
-          backgroundImage: `url('/assets/effects/fog.png')`,
-          backgroundSize: '200% 200%',
-          animation: 'slowDrift 40s ease-in-out infinite',
-        }}
-      />
-
-      {/* Main content */}
-      <div className="relative z-10 w-full max-w-md px-4">
-        <MedievalPanel className="w-full">
+    <div className="w-full max-w-md">
+        <MedievalPanel className="w-full home-panel-frame" variant="altar">
           {/* Panel header */}
           <div className="text-center mb-8">
             {/* Wolf sigil */}
@@ -98,20 +58,11 @@ export default function HomePage() {
               </div>
             </div>
             
-            <h2 
-              className="font-medieval text-3xl tracking-wider"
-              style={{
-                color: '#8b7355',
-                textShadow: '0 0 20px rgba(139,115,85,0.3), 0 2px 4px rgba(0,0,0,0.8)',
-              }}
-            >
+            <h2 className="font-medieval text-3xl tracking-wider home-panel-header">
               Bước Vào Làng
             </h2>
-            <p 
-              className="font-fantasy text-sm mt-2 tracking-wide"
-              style={{ color: '#6a5a4a' }}
-            >
-              Đêm tối đầy những bí mật...
+            <p className="font-fantasy text-sm mt-2 tracking-wide home-panel-subtitle">
+              Đêm tối đầy những bí mật
             </p>
           </div>
 
@@ -135,7 +86,7 @@ export default function HomePage() {
                 onClick={handleEnterRoom}
                 className="px-6 whitespace-nowrap"
               >
-                Vào
+                Vào Phòng
               </MedievalButton>
             </div>
           </div>
@@ -163,30 +114,11 @@ export default function HomePage() {
             >
               Đăng Nhập / Đăng Ký
             </MedievalButton>
-            <p 
-              className="font-fantasy text-xs mt-3 italic"
-              style={{ color: '#5a4a3a' }}
-            >
+            <p className="font-fantasy text-xs mt-3 italic text-[#5a4a3a]">
               (để lưu lịch sử trò chơi)
             </p>
           </div>
         </MedievalPanel>
-      </div>
-
-      {/* Corner ornaments */}
-      <div className="absolute top-6 left-6 text-[#8b7355] opacity-20 pointer-events-none">
-        <CornerAccent className="w-12 h-12" position="top-left" />
-      </div>
-      <div className="absolute top-6 right-6 text-[#8b7355] opacity-20 pointer-events-none">
-        <CornerAccent className="w-12 h-12" position="top-right" />
-      </div>
-      <div className="absolute bottom-6 left-6 text-[#8b7355] opacity-20 pointer-events-none">
-        <CornerAccent className="w-12 h-12" position="bottom-left" />
-      </div>
-      <div className="absolute bottom-6 right-6 text-[#8b7355] opacity-20 pointer-events-none">
-        <CornerAccent className="w-12 h-12" position="bottom-right" />
-      </div>
-
       {/* Create Room Modal */}
       <CreateRoomModal
         isOpen={showCreateRoom}

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Login Page - Dark Ritual Entry
  * 
  * Ancient gateway into the cursed village.
@@ -90,20 +90,11 @@ export default function LoginPage() {
             </div>
           </div>
           
-          <h2 
-            className="font-medieval text-3xl tracking-wider"
-            style={{
-              color: '#8b7355',
-              textShadow: '0 0 20px rgba(139,115,85,0.3), 0 2px 4px rgba(0,0,0,0.8)',
-            }}
-          >
+          <h2 className="font-medieval text-3xl tracking-wider theme-title">
             Bước Vào Làng
           </h2>
-          <p 
-            className="font-fantasy text-sm mt-2 tracking-wide"
-            style={{ color: '#6a5a4a' }}
-          >
-            Đêm tối đầy những bí mật...
+          <p className="font-fantasy text-sm mt-2 tracking-wide theme-subtitle">
+            Đắm trong bóng tối những bí mật...
           </p>
         </div>
 
@@ -161,14 +152,11 @@ export default function LoginPage() {
 
         {/* Register link */}
         <div className="text-center">
-          <p className="font-fantasy text-sm" style={{ color: '#6a5a4a' }}>
+          <p className="font-fantasy text-sm text-[#6a5a4a]">
             Mới đến làng?{' '}
             <Link 
               to="/register" 
-              className="font-semibold transition-colors duration-300 hover:underline"
-              style={{ color: '#8b7355' }}
-              onMouseEnter={(e) => e.target.style.color = '#a89070'}
-              onMouseLeave={(e) => e.target.style.color = '#8b7355'}
+              className="font-semibold theme-link"
             >
               Tham Gia Cuộc Săn
             </Link>
