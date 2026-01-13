@@ -937,10 +937,6 @@ export default function RoomPage() {
 
     const getPlayerKey = (player) => player?.userId || player?.id
 
-    const getSeerVisionResult = (roleId) => {
-        const faction = ROLES[roleId]?.faction
-        return faction === 'WEREWOLF' ? 'WEREWOLF' : 'VILLAGER'
-    }
 
     // Handle GM player selection
     const handlePlayerSelect = (player) => {
@@ -953,6 +949,30 @@ export default function RoomPage() {
     const getPlayerNightStatus = (player) => {
         const playerId = getPlayerKey(player)
         return {}
+    }
+
+    const getNightStepRoleStatus = (step) => {
+        if (!step) return null
+        const stepRoleMap = {
+            BODYGUARD: ['BODYGUARD'],
+            SEER: ['SEER'],
+            WITCH: ['WITCH'],
+            WEREWOLF: ['YOUNG_WOLF', 'ALPHA_WOLF', 'DARK_WOLF', 'PROPHET_WOLF', 'TRAITOR']
+        }
+        const roles = stepRoleMap[step]
+        if (!roles || !roleAssignment) return null
+
+        const rolePlayers = roleAssignment
+            .filter(a => roles.includes(a.role))
+            .map(a => ({ userId: a.player?.userId || a.userId, username: a.player?.username || a.username }))
+
+        if (rolePlayers.length === 0) return null
+
+        const aliveRolePlayers = rolePlayers.filter(p => !deadPlayers.includes(p.userId))
+        return {
+            active: aliveRolePlayers.length > 0,
+            names: rolePlayers.map(p => p.username).filter(Boolean)
+        }
     }
 
     // Night step ritual content for the wizard panel
@@ -1055,24 +1075,6 @@ export default function RoomPage() {
         } else if (currentNightStep === 'SEER') {
             // Send seer check command to service
             sendGMCommand('GM_SEER_CHECK', { targetUserId: selectedPlayerId })
-            
-            // Show seer result locally (service will also respond)
-            // Determine faction from roleAssignment
-            const playerRole = roleAssignment?.find(a => 
-                a.player?.userId === selectedPlayerId || 
-                a.player?.id === selectedPlayerId ||
-                a.userId === selectedPlayerId
-            )
-            const role = playerRole?.role || ''
-            const result = getSeerVisionResult(role)
-            const isEvil = result === 'WEREWOLF'
-            const selectedPlayer = players.find(p => (p.userId || p.id) === selectedPlayerId)
-            
-            setSeerResult({
-                playerName: selectedPlayer?.username || 'Unknown',
-                faction: isEvil ? 'EVIL' : 'GOOD',
-                result: result
-            })
             setSelectedPlayerId(null)
             // Don't advance yet - wait for GM to dismiss seer result
         } else if (currentNightStep === 'WITCH') {
@@ -1341,11 +1343,6 @@ export default function RoomPage() {
                 ...prev,
                 deadPlayers: [...prev.deadPlayers, ...deaths]
             }))
-            // Set narrative for GM to read
-            setNarrative({
-                deaths,
-                message: data.payload?.message
-            })
         }
 
         // Day phase started
@@ -1801,6 +1798,21 @@ export default function RoomPage() {
                                                     <span>{nightStepContent[currentNightStep]?.instruction || 'Chờ đợi...'}</span>
                                                 </p>
                                             </div>
+
+                                            {/* Role status hint for GM */}
+                                            {(() => {
+                                                const status = getNightStepRoleStatus(currentNightStep)
+                                                if (!status || status.active) return null
+                                                const roleLabel = nightStepContent[currentNightStep]?.title || 'Vai trò'
+                                                return (
+                                                    <div className="bg-[#200a0a]/60 border border-[#8b0000]/40 px-4 py-3 mb-5">
+                                                        <p className="text-[#d4a8a8] text-sm flex items-center gap-2">
+                                                            <RuneSkull className="w-4 h-4 text-[#8b0000]" />
+                                                            <span>{roleLabel} đã chết, có thể bỏ qua nghi thức.</span>
+                                                        </p>
+                                                    </div>
+                                                )
+                                            })()}
 
                                             {/* Witch Step - Special UI */}
                                             {currentNightStep === 'WITCH' && (

@@ -197,6 +197,9 @@ export async function handleGMWerewolfKill(roomId, payload, command, producer) {
   if (!target || !target.isAlive) {
     throw new Error('Invalid target')
   }
+  if (ROLES[target.role]?.faction === 'WEREWOLF') {
+    throw new Error('Cannot target werewolf')
+  }
 
   // Save werewolf target
   game.nightActions.werewolfTarget = targetUserId
@@ -236,8 +239,12 @@ export async function handleGMSeerCheck(roomId, payload, command, producer) {
     throw new Error('Invalid target')
   }
 
-  // Check role (seer vision)
-  const result = getSeerVisionResult(target.role)
+  // Check role (seer vision - alpha wolf blocks once)
+  let result = getSeerVisionResult(target.role)
+  if (target.role === 'ALPHA_WOLF' && !target.alphaWolfShieldUsed) {
+    target.alphaWolfShieldUsed = true
+    result = 'VILLAGER'
+  }
 
   // Save checked target
   game.nightActions.seerChecked = targetUserId

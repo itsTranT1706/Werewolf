@@ -61,7 +61,8 @@ export const gameStateManager = {
       role: roleIds[index],
       isAlive: true,
       isLovers: false,
-      loversWith: null
+      loversWith: null,
+      alphaWolfShieldUsed: false
     }))
 
     const game = {

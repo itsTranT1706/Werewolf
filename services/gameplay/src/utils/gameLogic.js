@@ -84,19 +84,28 @@ export function processNightResult(roomId) {
     const target = gameStateManager.getPlayer(roomId, poisonedTarget)
 
     if (target && target.isAlive) {
-      gameStateManager.killPlayer(roomId, poisonedTarget, 'POISONED')
-      deaths.push({
-        userId: target.userId,
-        username: target.username,
-        role: target.role,
-        cause: 'POISONED'
-      })
+      if (target.role === 'ALPHA_WOLF' && !target.alphaWolfShieldUsed) {
+        target.alphaWolfShieldUsed = true
+        saved.push({
+          userId: target.userId,
+          username: target.username,
+          savedBy: 'ALPHA_WOLF'
+        })
+      } else {
+        gameStateManager.killPlayer(roomId, poisonedTarget, 'POISONED')
+        deaths.push({
+          userId: target.userId,
+          username: target.username,
+          role: target.role,
+          cause: 'POISONED'
+        })
 
-      // Check lovers chain death
-      if (target.isLovers) {
-        const loverDeath = processLoversChainDeath(roomId, target.userId)
-        if (loverDeath) {
-          deaths.push(loverDeath)
+        // Check lovers chain death
+        if (target.isLovers) {
+          const loverDeath = processLoversChainDeath(roomId, target.userId)
+          if (loverDeath) {
+            deaths.push(loverDeath)
+          }
         }
       }
     }
