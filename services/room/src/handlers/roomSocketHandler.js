@@ -1,4 +1,5 @@
 const RoomService = require('../services/roomService');
+const { sendCommandToIngest } = require('../utils/kafka');
 
 class RoomSocketHandler {
   constructor(prisma, producer, io) {
@@ -22,7 +23,10 @@ class RoomSocketHandler {
   // CREATE_ROOM event handler
   async handleCreateRoom(socket, data) {
     try {
-      const { name, maxPlayers = 75, settings, displayname } = data;
+      const { name, maxPlayers = 75, settings, displayname, userId: incomingUserId } = data;
+      if (!socket.data?.userId && incomingUserId) {
+        socket.data.userId = incomingUserId;
+      }
 
       // Validate input
       if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -40,7 +44,6 @@ class RoomSocketHandler {
         return;
       }
 
-      // Create room
       const roomData = {
         name: name.trim(),
         hostDisplayname: displayname || 'Anonymous Host',
@@ -49,6 +52,23 @@ class RoomSocketHandler {
         settings,
       };
 
+      // Clean up stale room membership for this user (disconnected tabs)
+      if (roomData.hostId) {
+        const existingPlayer = await this.roomService.roomRepository.findPlayerByUserIdInAnyRoom(roomData.hostId);
+        if (existingPlayer) {
+          const existingRoomId = existingPlayer.room?.id;
+          const hasActiveSockets = existingRoomId && this.roomPlayers.has(existingRoomId)
+            && this.roomPlayers.get(existingRoomId).size > 0;
+          if (!hasActiveSockets && existingRoomId) {
+            await this.roomService.leaveRoom(existingRoomId, existingPlayer.id);
+          } else if (hasActiveSockets) {
+            socket.emit('ERROR', { message: 'You are already in another room' });
+            return;
+          }
+        }
+      }
+
+      // Create room
       const room = await this.roomService.createRoom(roomData);
 
       // Join the socket to the room
@@ -89,7 +109,10 @@ class RoomSocketHandler {
   // JOIN_ROOM event handler
   async handleJoinRoom(socket, data) {
     try {
-      const { code, displayname } = data;
+      const { code, displayname, userId: incomingUserId } = data;
+      if (!socket.data?.userId && incomingUserId) {
+        socket.data.userId = incomingUserId;
+      }
 
       // Validate input
       if (!code || typeof code !== 'string' || code.length !== 4 || !/^\d{4}$/.test(code)) {
@@ -107,16 +130,142 @@ class RoomSocketHandler {
         return;
       }
 
-      // Check if already in a room
-      if (this.socketRooms.has(socket.id)) {
-        socket.emit('ERROR', { message: 'You are already in a room' });
+      // Get room first to check if user is already in this room
+      const userId = socket.data?.userId || incomingUserId;
+      let room;
+      try {
+        room = await this.roomService.getRoomByCode(code);
+      } catch (error) {
+        socket.emit('ERROR', { message: error.message });
         return;
       }
 
-      // Join room via service
+      // Check if socket is already in this room (socket tracking)
+      if (this.socketRooms.has(socket.id)) {
+        const currentRoomId = this.socketRooms.get(socket.id);
+        if (currentRoomId === room.id) {
+          // Socket is already in this room, find player by playerId if available, otherwise by userId/displayname
+          let player = null;
+          if (socket.data?.playerId) {
+            player = room.players.find(p => p.id === socket.data.playerId);
+          }
+          if (!player && userId) {
+            player = room.players.find(p => p.userId === userId);
+          }
+          if (!player) {
+            // For anonymous users, try to find by displayname (may not be accurate if duplicates exist)
+            player = room.players.find(p => p.displayname === displayname.trim() && p.userId === null);
+          }
+
+          // Emit room info
+          socket.emit('ROOM_JOINED', {
+            room: {
+              id: room.id,
+              code: room.code,
+              name: room.name,
+              maxPlayers: room.maxPlayers,
+              currentPlayers: room.currentPlayers,
+              status: room.status,
+              settings: room.settings,
+              players: room.players
+            },
+            player: player || room.players[0] // Fallback to first player if not found
+          });
+          console.log(`Player ${socket.id} already in room: ${code}`);
+          return;
+        } else {
+          // Socket is in a different room - emit error
+          socket.emit('ERROR', { message: 'You are already in a room' });
+          return;
+        }
+      }
+
+      // Check if user is already in this room (check database for authenticated users)
+      if (userId) {
+        const existingPlayer = await this.roomService.isUserInRoom(room.id, userId);
+        if (existingPlayer) {
+          // User is already in this room, just update socket tracking and emit room info
+          socket.join(room.id);
+          this.socketRooms.set(socket.id, room.id);
+
+          // Add socket to room players
+          if (!this.roomPlayers.has(room.id)) {
+            this.roomPlayers.set(room.id, new Set());
+          }
+          this.roomPlayers.get(room.id).add(socket.id);
+
+          // Store room info in socket
+          socket.data.currentRoomId = room.id;
+          socket.data.playerId = existingPlayer.id;
+          socket.data.displayname = displayname.trim();
+          socket.data.isHost = existingPlayer.isHost;
+
+          // Emit success to joiner
+          socket.emit('ROOM_JOINED', {
+            room: {
+              id: room.id,
+              code: room.code,
+              name: room.name,
+              maxPlayers: room.maxPlayers,
+              currentPlayers: room.currentPlayers,
+              status: room.status,
+              settings: room.settings,
+              players: room.players
+            },
+            player: existingPlayer
+          });
+
+          console.log(`Player ${socket.id} reconnected to room: ${code}`);
+          return;
+        }
+      } else {
+        // For anonymous users (no userId), check if player with same displayname already exists in this room
+        const existingPlayer = room.players.find(p =>
+          p.displayname === displayname.trim() &&
+          (p.userId === null || p.userId === undefined)
+        );
+
+        if (existingPlayer) {
+          // Player already exists, just update socket tracking and emit room info
+          socket.join(room.id);
+          this.socketRooms.set(socket.id, room.id);
+
+          // Add socket to room players
+          if (!this.roomPlayers.has(room.id)) {
+            this.roomPlayers.set(room.id, new Set());
+          }
+          this.roomPlayers.get(room.id).add(socket.id);
+
+          // Store room info in socket
+          socket.data.currentRoomId = room.id;
+          socket.data.playerId = existingPlayer.id;
+          socket.data.displayname = displayname.trim();
+          socket.data.isHost = existingPlayer.isHost;
+
+          // Emit success to joiner
+          socket.emit('ROOM_JOINED', {
+            room: {
+              id: room.id,
+              code: room.code,
+              name: room.name,
+              maxPlayers: room.maxPlayers,
+              currentPlayers: room.currentPlayers,
+              status: room.status,
+              settings: room.settings,
+              players: room.players
+            },
+            player: existingPlayer
+          });
+
+          console.log(`Anonymous player ${socket.id} reconnected to room: ${code} (displayname: ${displayname.trim()})`);
+          return;
+        }
+      }
+
+      // Join room via service (only if player doesn't exist)
       const result = await this.roomService.joinRoom(code, {
         displayname: displayname.trim(),
-        userId: socket.data?.userId, // May be undefined for anonymous users
+        userId: userId, // May be undefined for anonymous users
       });
 
       // Join socket to room
@@ -155,6 +304,7 @@ class RoomSocketHandler {
         player: result.player,
         room: {
           id: result.room.id,
+          maxPlayers: result.room.maxPlayers,
           currentPlayers: result.room.currentPlayers,
           players: result.room.players
         }
@@ -260,7 +410,48 @@ class RoomSocketHandler {
       // Attempt to start the game
       const updatedRoom = await this.roomService.startGame(roomId, socket.data.userId);
 
-  
+      // Get roleSetup and availableRoles from data
+      const { roleSetup, availableRoles } = data || {};
+
+      // Prepare players list for gameplay service
+      const playersList = updatedRoom.players.map(p => ({
+        userId: p.userId,
+        username: p.displayname,
+        isHost: p.isHost
+      }));
+
+      // Find host userId
+      const hostPlayer = updatedRoom.players.find(p => p.isHost);
+      const hostUserId = hostPlayer?.userId || null;
+
+      // Generate traceId
+      const traceId = `trace-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+      // Send command to gameplay service to assign roles
+      const command = {
+        traceId,
+        userId: socket.data.userId,
+        roomId,
+        action: {
+          type: 'GAME_START',
+          payload: {
+            players: playersList,
+            hostUserId,
+            roleSetup: roleSetup || null,
+            availableRoles: availableRoles || updatedRoom.settings?.availableRoles || null
+          }
+        },
+        ts: Date.now()
+      };
+
+      try {
+        await sendCommandToIngest(this.producer, command);
+        console.log(`✅ Sent GAME_START command to gameplay service for room ${roomId}`);
+      } catch (error) {
+        console.error('❌ Failed to send GAME_START command to gameplay service:', error);
+        // Still emit GAME_STARTED event, gameplay service will handle errors
+      }
+
       // CASE 1: Thành công - đủ 4 người trở lên
       // Emit success to all players in room
       this.io.to(roomId).emit('GAME_STARTED', {
@@ -287,7 +478,7 @@ class RoomSocketHandler {
 
       // CASE 2: Thất bại - không đủ người hoặc lỗi khác
       // Emit error to the host who tried to start the game
-      socket.emit('ERROR', { 
+      socket.emit('ERROR', {
         message: error.message,
         code: 'GAME_START_FAILED'
       });
@@ -422,13 +613,16 @@ class RoomSocketHandler {
   // GET_ROOM_INFO event handler
   async handleGetRoomInfo(socket, data) {
     try {
-      const roomId = socket.data.currentRoomId;
-      if (!roomId) {
-        socket.emit('ERROR', { message: 'You are not in a room' });
+      const { code } = data;
+
+      // Validate input
+      if (!code || typeof code !== 'string' || code.length !== 4 || !/^\d{4}$/.test(code)) {
+        socket.emit('ERROR', { message: 'Invalid room code. Must be 4 digits.' });
         return;
       }
 
-      const room = await this.roomService.getRoomById(roomId);
+      // Get room by code (user doesn't need to be in the room to get info)
+      const room = await this.roomService.getRoomByCode(code);
 
       socket.emit('ROOM_INFO', {
         room: {

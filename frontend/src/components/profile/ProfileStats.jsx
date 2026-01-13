@@ -1,13 +1,16 @@
 /**
  * Profile Stats - Game statistics display
  * 
- * Shows battle record in fantasy RPG style:
+ * Dark medieval fantasy theme - Ancient battle chronicles
+ * Shows battle record in cursed tome style:
  * - Total Matches
  * - Victories
  * - Defeats
  * - Total Points
  * - Win Rate
  */
+
+import { CornerAccent } from '@/components/ui/AncientIcons'
 
 export default function ProfileStats({ profile }) {
   const winRate = profile?.totalMatch > 0 
@@ -16,97 +19,111 @@ export default function ProfileStats({ profile }) {
 
   return (
     <div className="mt-6">
-      {/* Stats grid */}
+      {/* Stats grid - Ancient battle chronicles */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
-          icon={<SwordsIcon />}
+          icon={<RuneSwordsIcon />}
           label="Tổng Trận"
           value={profile?.totalMatch || 0}
           color="default"
         />
         <StatCard
-          icon={<TrophyIcon />}
+          icon={<RuneTrophyIcon />}
           label="Chiến Thắng"
           value={profile?.winMatch || 0}
           color="gold"
         />
         <StatCard
-          icon={<SkullIcon />}
+          icon={<RuneSkullIcon />}
           label="Thất Bại"
           value={profile?.loseMatch || 0}
           color="red"
         />
         <StatCard
-          icon={<StarIcon />}
+          icon={<RuneStarIcon />}
           label="Tổng Điểm"
           value={profile?.totalPoint || 0}
           color="gold"
         />
       </div>
 
-      {/* Win Rate Bar */}
+      {/* Win Rate Bar - Cursed progress meter */}
       <div 
-        className="mt-4 p-4 rounded-lg"
+        className="mt-4 p-5 relative"
         style={{
-          background: 'linear-gradient(180deg, rgba(30,22,15,0.9) 0%, rgba(20,15,10,0.95) 100%)',
-          border: '2px solid rgba(201,162,39,0.2)',
+          background: 'linear-gradient(180deg, rgba(10,8,6,0.95) 0%, rgba(5,5,8,0.98) 100%)',
+          border: '1px solid rgba(139,115,85,0.3)',
+          boxShadow: 'inset 0 0 30px rgba(0,0,0,0.5), 0 4px 20px rgba(0,0,0,0.4)',
         }}
       >
-        <div className="flex justify-between items-center mb-2">
-          <span className="font-fantasy text-parchment/70 text-sm uppercase tracking-wider">
+        {/* Corner accents */}
+        <CornerAccent className="absolute top-1 left-1 w-3 h-3 text-[#8b7355]/40" position="top-left" />
+        <CornerAccent className="absolute top-1 right-1 w-3 h-3 text-[#8b7355]/40" position="top-right" />
+        <CornerAccent className="absolute bottom-1 left-1 w-3 h-3 text-[#8b7355]/40" position="bottom-left" />
+        <CornerAccent className="absolute bottom-1 right-1 w-3 h-3 text-[#8b7355]/40" position="bottom-right" />
+
+        <div className="flex justify-between items-center mb-3">
+          <span className="font-fantasy text-[#8b7355]/80 text-sm uppercase tracking-[0.2em]">
             Tỷ Lệ Thắng
           </span>
           <span 
             className="font-medieval text-2xl"
-            style={{ color: getWinRateColor(winRate) }}
+            style={{ 
+              color: getWinRateColor(winRate),
+              textShadow: `0 0 10px ${getWinRateColor(winRate)}40`
+            }}
           >
             {winRate}%
           </span>
         </div>
         
-        {/* Progress bar */}
+        {/* Progress bar - Ancient meter */}
         <div 
-          className="h-4 rounded-sm overflow-hidden relative"
+          className="h-5 relative overflow-hidden"
           style={{
-            background: 'rgba(0,0,0,0.4)',
-            border: '1px solid rgba(100,100,100,0.3)',
-            boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
+            background: 'rgba(0,0,0,0.6)',
+            border: '1px solid rgba(139,115,85,0.2)',
+            boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.6)',
           }}
         >
-          {/* Fill */}
+          {/* Fill with mystical glow */}
           <div 
-            className="h-full transition-all duration-700 ease-out relative"
+            className="h-full transition-all duration-1000 ease-out relative"
             style={{ 
               width: `${winRate}%`,
-              background: `linear-gradient(90deg, ${getWinRateColor(winRate)}88 0%, ${getWinRateColor(winRate)} 100%)`,
+              background: `linear-gradient(90deg, ${getWinRateColor(winRate)}60 0%, ${getWinRateColor(winRate)} 100%)`,
+              boxShadow: `0 0 15px ${getWinRateColor(winRate)}40`,
             }}
           >
             {/* Shine effect */}
             <div 
               className="absolute inset-0"
               style={{
-                background: 'linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 50%, rgba(0,0,0,0.1) 100%)',
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 50%, rgba(0,0,0,0.2) 100%)',
               }}
             />
           </div>
 
-          {/* Markers */}
+          {/* Rune markers */}
           <div className="absolute inset-0 flex">
             {[25, 50, 75].map(mark => (
               <div 
                 key={mark}
-                className="absolute top-0 bottom-0 w-px bg-parchment/20"
-                style={{ left: `${mark}%` }}
+                className="absolute top-0 bottom-0 w-px"
+                style={{ 
+                  left: `${mark}%`,
+                  background: 'linear-gradient(180deg, rgba(139,115,85,0.4) 0%, rgba(139,115,85,0.1) 100%)'
+                }}
               />
             ))}
           </div>
         </div>
 
-        {/* Labels */}
-        <div className="flex justify-between mt-1">
-          <span className="font-fantasy text-xs text-parchment/40">Tân Binh</span>
-          <span className="font-fantasy text-xs text-parchment/40">Kỳ Cựu</span>
-          <span className="font-fantasy text-xs text-parchment/40">Huyền Thoại</span>
+        {/* Labels - Ancient ranks */}
+        <div className="flex justify-between mt-2">
+          <span className="font-fantasy text-xs text-[#6a5a4a]/60 tracking-wider">Tân Binh</span>
+          <span className="font-fantasy text-xs text-[#6a5a4a]/60 tracking-wider">Kỳ Cựu</span>
+          <span className="font-fantasy text-xs text-[#c9a227]/60 tracking-wider">Huyền Thoại</span>
         </div>
       </div>
     </div>
@@ -114,24 +131,27 @@ export default function ProfileStats({ profile }) {
 }
 
 /**
- * Individual stat card
+ * Individual stat card - Ancient stone tablet style
  */
 function StatCard({ icon, label, value, color = 'default' }) {
   const colorStyles = {
     default: {
-      border: 'rgba(201,162,39,0.2)',
-      iconColor: 'text-parchment/60',
-      valueColor: 'text-parchment',
+      border: 'rgba(139,115,85,0.3)',
+      iconColor: 'text-[#8b7355]/70',
+      valueColor: 'text-[#d4c4a8]',
+      glowColor: 'rgba(139,115,85,0.1)',
     },
     gold: {
       border: 'rgba(201,162,39,0.4)',
-      iconColor: 'text-gold',
-      valueColor: 'text-gold',
+      iconColor: 'text-[#c9a227]',
+      valueColor: 'text-[#c9a227]',
+      glowColor: 'rgba(201,162,39,0.15)',
     },
     red: {
-      border: 'rgba(139,0,0,0.3)',
-      iconColor: 'text-blood-red/70',
-      valueColor: 'text-parchment',
+      border: 'rgba(139,0,0,0.4)',
+      iconColor: 'text-[#8b0000]/80',
+      valueColor: 'text-[#d4c4a8]',
+      glowColor: 'rgba(139,0,0,0.1)',
     },
   }
 
@@ -139,33 +159,39 @@ function StatCard({ icon, label, value, color = 'default' }) {
 
   return (
     <div 
-      className="relative p-4 rounded-lg text-center group hover:scale-105 transition-transform"
+      className="relative p-4 text-center group hover:scale-105 transition-all duration-500"
       style={{
-        background: 'linear-gradient(180deg, rgba(30,22,15,0.9) 0%, rgba(20,15,10,0.95) 100%)',
-        border: `2px solid ${style.border}`,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+        background: 'linear-gradient(180deg, rgba(10,8,6,0.95) 0%, rgba(5,5,8,0.98) 100%)',
+        border: `1px solid ${style.border}`,
+        boxShadow: `inset 0 0 20px rgba(0,0,0,0.4), 0 4px 15px rgba(0,0,0,0.4), 0 0 20px ${style.glowColor}`,
       }}
     >
       {/* Icon */}
-      <div className={`flex justify-center mb-2 ${style.iconColor}`}>
+      <div className={`flex justify-center mb-3 ${style.iconColor}`}>
         {icon}
       </div>
 
       {/* Value */}
-      <p className={`font-medieval text-3xl ${style.valueColor}`}>
+      <p 
+        className="font-medieval text-3xl"
+        style={{ 
+          color: style.valueColor === 'text-[#c9a227]' ? '#c9a227' : '#d4c4a8',
+          textShadow: color === 'gold' ? '0 0 10px rgba(201,162,39,0.3)' : 'none'
+        }}
+      >
         {formatNumber(value)}
       </p>
 
       {/* Label */}
-      <p className="font-fantasy text-xs text-parchment/50 uppercase tracking-wider mt-1">
+      <p className="font-fantasy text-xs text-[#6a5a4a] uppercase tracking-[0.15em] mt-2">
         {label}
       </p>
 
       {/* Corner accents */}
-      <div className="absolute top-1 left-1 w-2 h-2 border-t border-l border-gold/30" />
-      <div className="absolute top-1 right-1 w-2 h-2 border-t border-r border-gold/30" />
-      <div className="absolute bottom-1 left-1 w-2 h-2 border-b border-l border-gold/30" />
-      <div className="absolute bottom-1 right-1 w-2 h-2 border-b border-r border-gold/30" />
+      <CornerAccent className="absolute top-1 left-1 w-3 h-3 text-[#8b7355]/30" position="top-left" />
+      <CornerAccent className="absolute top-1 right-1 w-3 h-3 text-[#8b7355]/30" position="top-right" />
+      <CornerAccent className="absolute bottom-1 left-1 w-3 h-3 text-[#8b7355]/30" position="bottom-left" />
+      <CornerAccent className="absolute bottom-1 right-1 w-3 h-3 text-[#8b7355]/30" position="bottom-right" />
     </div>
   )
 }
@@ -179,40 +205,69 @@ function formatNumber(num) {
 
 function getWinRateColor(rate) {
   if (rate >= 70) return '#c9a227' // Gold - Legend
-  if (rate >= 50) return '#4ade80' // Green - Good
-  if (rate >= 30) return '#facc15' // Yellow - Average
-  return '#ef4444' // Red - Needs improvement
+  if (rate >= 50) return '#6b8e6b' // Muted green - Good
+  if (rate >= 30) return '#a89060' // Amber - Average
+  return '#8b4444' // Muted red - Needs improvement
 }
 
-// Icons
-function SwordsIcon() {
+// Ancient Rune Icons - Hand-crafted mystical symbols
+function RuneSwordsIcon() {
   return (
-    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M6.92 5H5L14 14l-1.5 1.5 1.5 1.5 1.5-1.5L17 17l-3 3-1.5-1.5L11 20l-3-3 1.5-1.5L8 14l1.5-1.5L8 11l3-3-1.5-1.5L11 5l3 3-1.5 1.5L14 11l-1.5 1.5L14 14l5-5V5h-1.92l-5 5L6.92 5z"/>
+    <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5">
+      {/* Crossed swords with runic styling */}
+      <path d="M6 6 L26 26 M6 26 L26 6" strokeWidth="2" />
+      {/* Sword hilts */}
+      <path d="M4 4 L8 8 M4 8 L8 4" />
+      <path d="M24 4 L28 8 M24 8 L28 4" />
+      <path d="M4 24 L8 28 M4 28 L8 24" />
+      <path d="M24 24 L28 28 M24 28 L28 24" />
+      {/* Center rune */}
+      <circle cx="16" cy="16" r="3" strokeDasharray="2 1" />
     </svg>
   )
 }
 
-function TrophyIcon() {
+function RuneTrophyIcon() {
   return (
-    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/>
+    <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5">
+      {/* Chalice/trophy shape */}
+      <path d="M10 4 L22 4 L20 16 Q16 20 12 16 L10 4 Z" />
+      {/* Handles */}
+      <path d="M10 6 Q4 8 6 14 Q8 16 10 14" />
+      <path d="M22 6 Q28 8 26 14 Q24 16 22 14" />
+      {/* Base */}
+      <path d="M12 20 L12 24 L8 28 L24 28 L20 24 L20 20" />
+      {/* Mystical symbol inside */}
+      <circle cx="16" cy="10" r="2" fill="currentColor" opacity="0.3" />
     </svg>
   )
 }
 
-function SkullIcon() {
+function RuneSkullIcon() {
   return (
-    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M12 2C6.48 2 2 6.48 2 12v8h4v-2h2v2h8v-2h2v2h4v-8c0-5.52-4.48-10-10-10zM8 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm8 0c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>
+    <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5">
+      {/* Skull shape */}
+      <path d="M16 4 Q6 6 6 16 L6 20 L10 20 L10 26 L12 26 L12 20 L20 20 L20 26 L22 26 L22 20 L26 20 L26 16 Q26 6 16 4 Z" />
+      {/* Eye sockets */}
+      <circle cx="11" cy="13" r="2.5" />
+      <circle cx="21" cy="13" r="2.5" />
+      {/* Nose */}
+      <path d="M16 15 L14 18 L18 18 Z" fill="currentColor" opacity="0.3" />
+      {/* Teeth marks */}
+      <path d="M12 22 L12 24 M16 22 L16 24 M20 22 L20 24" strokeWidth="1" opacity="0.5" />
     </svg>
   )
 }
 
-function StarIcon() {
+function RuneStarIcon() {
   return (
-    <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+    <svg className="w-8 h-8" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.5">
+      {/* Five-pointed star with runic styling */}
+      <path d="M16 2 L19 12 L30 12 L21 18 L24 28 L16 22 L8 28 L11 18 L2 12 L13 12 Z" />
+      {/* Inner circle */}
+      <circle cx="16" cy="15" r="4" strokeDasharray="2 1" />
+      {/* Center dot */}
+      <circle cx="16" cy="15" r="1.5" fill="currentColor" opacity="0.4" />
     </svg>
   )
 }

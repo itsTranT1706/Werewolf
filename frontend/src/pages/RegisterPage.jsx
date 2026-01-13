@@ -1,6 +1,14 @@
+﻿/**
+ * Register Page - Ancient Covenant Signing
+ * 
+ * Join the cursed village by signing the ancient scroll.
+ * Styled to match the dark medieval fantasy aesthetic.
+ */
+
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { MedievalPanel, MedievalInput, MedievalButton, Divider, BackButton } from '@/components/ui'
+import { MedievalPanel, MedievalInput, MedievalButton, Divider, BackButton, notify } from '@/components/ui'
+import { RuneUser, RuneLock, RuneMail, RuneShield, RuneScroll } from '@/components/ui/AncientIcons'
 import { authApi } from '@/api'
 
 export default function RegisterPage() {
@@ -26,7 +34,7 @@ export default function RegisterPage() {
 
   const validate = () => {
     const newErrors = {}
-    
+
     if (!formData.email) {
       newErrors.email = 'Vui lòng nhập email'
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -40,7 +48,7 @@ export default function RegisterPage() {
     } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
       newErrors.username = 'Chỉ được dùng chữ cái, số và dấu gạch dưới'
     }
-    
+
     if (!formData.password) {
       newErrors.password = 'Vui lòng nhập mật khẩu'
     } else if (formData.password.length < 6) {
@@ -57,20 +65,24 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!validate()) return
 
     setLoading(true)
     setServerError('')
 
     try {
-      await authApi.register({ email: formData.email, username: formData.username, password: formData.password })
-      // Redirect to login after successful registration
+      await authApi.register({ 
+        email: formData.email, 
+        username: formData.username, 
+        password: formData.password 
+      })
+      notify.success('Giao ước đã được kết!', 'Đăng Ký Thành Công')
       navigate('/login', { state: { registered: true } })
     } catch (error) {
-      console.log(error.original?.response?.data?.error)
       const message = error.original?.response?.data?.error || 'Không thể gia nhập làng. Vui lòng thử lại.'
       setServerError(message)
+      notify.error(message, 'Đăng Ký Thất Bại')
     } finally {
       setLoading(false)
     }
@@ -79,138 +91,120 @@ export default function RegisterPage() {
   return (
     <div className="w-full max-w-md">
       {/* Back button */}
-      <div className="mb-4">
-        <BackButton to="/" label="Trở Về Trang Chủ" />
+      <div className="mb-6">
+        <BackButton to="/" label="Trở Về Cổng" />
       </div>
 
       <MedievalPanel className="w-full">
         {/* Panel header */}
-        <div className="text-center mb-6">
-        <div className="flex justify-center mb-3">
-          <img 
-            src="/assets/ui/wolf-icon.svg" 
-            alt="Wolf" 
-            className="w-16 h-16 opacity-80"
-            style={{ filter: 'brightness(0) saturate(100%) invert(73%) sepia(61%) saturate(400%) hue-rotate(359deg) brightness(95%) contrast(92%)' }}
-          />
+        <div className="text-center mb-8">
+          {/* Scroll sigil */}
+          <div className="flex justify-center mb-4">
+            <div 
+              className="w-20 h-20 flex items-center justify-center"
+              style={{
+                background: 'radial-gradient(circle, rgba(139,115,85,0.15) 0%, transparent 70%)',
+              }}
+            >
+              <RuneScroll className="w-14 h-14 text-[#8b7355] opacity-70" />
+            </div>
+          </div>
+          
+          <h2 className="font-medieval text-3xl tracking-wider theme-title">
+            Tham Gia Cuộc Săn
+          </h2>
+          <p className="font-fantasy text-sm mt-2 tracking-wide theme-subtitle">
+            Ký vào cuộn giấy cổ để bước vào...
+          </p>
         </div>
-        <h2 className="font-medieval text-2xl text-gold-glow tracking-wide">
-          Tham Gia Cuộc Săn
-        </h2>
-        <p className="font-fantasy text-parchment/60 text-sm mt-1">
-          Ký vào cuộn giấy cổ để bước vào
-        </p>
-      </div>
 
-      {/* Server error */}
-      {serverError && (
-        <div className="mb-4 p-3 bg-blood-red/20 border border-blood-red/50 text-gold text-sm font-fantasy text-center">
-          {serverError}
-        </div>
-      )}
-
-      {/* Register form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <MedievalInput
-          type="email"
-          name="email"
-          placeholder="Email của bạn"
-          value={formData.email}
-          onChange={handleChange}
-          error={errors.email}
-          icon={<MailIcon className="w-5 h-5" />}
-          autoComplete="email"
-        />
-
-        <MedievalInput
-          type="text"
-          name="username"
-          placeholder="Chọn tên người dùng"
-          value={formData.username}
-          onChange={handleChange}
-          error={errors.username}
-          icon={<UserIcon className="w-5 h-5" />}
-          autoComplete="username"
-        />
-
-        <MedievalInput
-          type="password"
-          name="password"
-          placeholder="Mật khẩu bí mật"
-          value={formData.password}
-          onChange={handleChange}
-          error={errors.password}
-          icon={<LockIcon className="w-5 h-5" />}
-          autoComplete="new-password"
-        />
-
-        <MedievalInput
-          type="password"
-          name="confirmPassword"
-          placeholder="Xác nhận mật khẩu"
-          value={formData.confirmPassword}
-          onChange={handleChange}
-          error={errors.confirmPassword}
-          icon={<ShieldIcon className="w-5 h-5" />}
-          autoComplete="new-password"
-        />
-
-        <div className="pt-2">
-          <MedievalButton
-            type="submit"
-            loading={loading}
-            className="w-full"
+        {/* Server error */}
+        {serverError && (
+          <div 
+            className="mb-6 p-4 text-center"
+            style={{
+              background: 'linear-gradient(180deg, rgba(139,0,0,0.15) 0%, rgba(80,0,0,0.2) 100%)',
+              border: '1px solid rgba(139,0,0,0.4)',
+            }}
           >
-            Ký Vào Cuộn Giấy
-          </MedievalButton>
+            <p className="font-fantasy text-sm" style={{ color: '#a05050' }}>
+              {serverError}
+            </p>
+          </div>
+        )}
+
+        {/* Register form */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <MedievalInput
+            type="email"
+            name="email"
+            placeholder="Email của bạn"
+            value={formData.email}
+            onChange={handleChange}
+            error={errors.email}
+            icon={<RuneMail className="w-5 h-5" />}
+            autoComplete="email"
+          />
+
+          <MedievalInput
+            type="text"
+            name="username"
+            placeholder="Chọn tên người dùng"
+            value={formData.username}
+            onChange={handleChange}
+            error={errors.username}
+            icon={<RuneUser className="w-5 h-5" />}
+            autoComplete="username"
+          />
+
+          <MedievalInput
+            type="password"
+            name="password"
+            placeholder="Mật khẩu bí mật"
+            value={formData.password}
+            onChange={handleChange}
+            error={errors.password}
+            icon={<RuneLock className="w-5 h-5" />}
+            autoComplete="new-password"
+          />
+
+          <MedievalInput
+            type="password"
+            name="confirmPassword"
+            placeholder="Xác nhận mật khẩu"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            error={errors.confirmPassword}
+            icon={<RuneShield className="w-5 h-5" />}
+            autoComplete="new-password"
+          />
+
+          <div className="pt-3">
+            <MedievalButton
+              type="submit"
+              loading={loading}
+              className="w-full"
+            >
+              Ký Vào Cuộn Giấy
+            </MedievalButton>
+          </div>
+        </form>
+
+        <Divider text="hoặc" />
+
+        {/* Login link */}
+        <div className="text-center">
+          <p className="font-fantasy text-sm text-[#6a5a4a]">
+            Đã là dân làng?{' '}
+            <Link 
+              to="/login" 
+              className="font-semibold theme-link"
+            >
+              Bước Vào Làng
+            </Link>
+          </p>
         </div>
-      </form>
-
-      <Divider text="hoặc" />
-
-      {/* Login link */}
-      <div className="text-center">
-        <p className="font-fantasy text-parchment/70 text-sm">
-          Đã là dân làng?{' '}
-          <Link to="/login" className="link-fantasy font-semibold">
-            Bước Vào Làng
-          </Link>
-        </p>
-      </div>
       </MedievalPanel>
     </div>
-  )
-}
-
-// Icons
-function MailIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-    </svg>
-  )
-}
-
-function UserIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-    </svg>
-  )
-}
-
-function LockIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-    </svg>
-  )
-}
-
-function ShieldIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-    </svg>
   )
 }

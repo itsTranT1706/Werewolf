@@ -10,6 +10,7 @@
  */
 
 import axios from 'axios'
+import { getOrCreateGuestUserId } from '@/utils/guestUtils'
 
 // Configuration from environment
 // Use '/api/v1' for Vite proxy in development, or full URL in production
@@ -35,6 +36,23 @@ client.interceptors.request.use(
     const token = localStorage.getItem('token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+
+      // Extract userId from token and add to header
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        const userId = payload.userId || payload.id
+        if (userId) {
+          config.headers['x-user-id'] = userId
+        }
+      } catch (err) {
+        // Ignore if token parsing fails
+      }
+    } else {
+      // Nếu không có token, đảm bảo có guest userId và gửi nó
+      const guestUserId = getOrCreateGuestUserId()
+      if (guestUserId) {
+        config.headers['x-user-id'] = guestUserId
+      }
     }
     return config
   },
@@ -49,17 +67,17 @@ client.interceptors.response.use(
   (error) => {
     // Normalize error structure
     const normalizedError = normalizeError(error)
-    
+
     // Handle 401 globally - clear token and redirect
     if (normalizedError.status === 401) {
       localStorage.removeItem('token')
       // Only redirect if not already on auth pages
-      if (!window.location.pathname.startsWith('/login') && 
-          !window.location.pathname.startsWith('/register')) {
+      if (!window.location.pathname.startsWith('/login') &&
+        !window.location.pathname.startsWith('/register')) {
         window.location.href = '/login'
       }
     }
-    
+
     return Promise.reject(normalizedError)
   }
 )
@@ -80,7 +98,7 @@ function normalizeError(error) {
 
   // Server responded with error
   const { status, data } = error.response
-  
+
   return {
     status,
     code: data?.code || `HTTP_${status}`,

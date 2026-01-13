@@ -200,11 +200,34 @@ class RoomRepository {
     });
   }
 
+  // Find player by userId in any room (only WAITING rooms)
+  async findPlayerByUserIdInAnyRoom(userId) {
+    return this.prisma.roomPlayer.findFirst({
+      where: {
+        userId,
+        room: {
+          status: 'WAITING',
+        },
+      },
+      include: {
+        room: true,
+      },
+    });
+  }
+
   // Get room players
   async getRoomPlayers(roomId) {
     return this.prisma.roomPlayer.findMany({
       where: { roomId },
       orderBy: { joinedAt: 'asc' },
+    });
+  }
+
+  // Update player
+  async updatePlayer(roomId, playerId, updateData) {
+    return this.prisma.roomPlayer.update({
+      where: { id: playerId },
+      data: updateData,
     });
   }
 }
