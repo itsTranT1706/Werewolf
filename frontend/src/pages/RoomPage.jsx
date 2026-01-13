@@ -201,9 +201,8 @@ export default function RoomPage() {
             setHostId(actualHostId || null)
             setHostPlayerId(hostPlayerId || null)
 
-            // Check host: Chỉ update isHost nếu myPlayerId được truyền vào (từ ROOM_JOINED)
-            // Để tránh reset isHost khi PLAYER_JOINED event được trigger
-            if (myPlayerId != null) { // Use loose equality to check both null and undefined
+            // Check host when we have enough info to avoid stale isHost state
+            if (actualHostId !== null || playerIdToCheck) {
                 // Check host: Với anonymous users (userId = null), check bằng playerId
                 let isHostUser = false
                 if (actualHostId !== null) {
@@ -1190,38 +1189,16 @@ export default function RoomPage() {
 
     // Handle execution confirmation - send to service and update locally
     const handleConfirmExecution = () => {
-        if (!executionPending) return
+        if (!executionPending || !isHost || gameStatus !== 'DAY') return
 
-        const { playerId, playerName } = executionPending
+        const { playerId } = executionPending
 
         // Send vote end command to service
         sendGMCommand('GM_END_VOTE', { 
             forcedExecution: true,
             targetUserId: playerId 
         })
-        
-        // Update locally - mark player as dead
-        setGameState(prev => ({
-            ...prev,
-            deadPlayers: [...prev.deadPlayers, { userId: playerId, username: playerName, cause: 'bị hành quyết' }]
-        }))
-        
-        // Check if executed player is Hunter
-        const playerRole = roleAssignment?.find(a => 
-            a.player?.userId === playerId || 
-            a.player?.id === playerId ||
-            a.userId === playerId
-        )
-        const isHunter = playerRole?.role === 'MONSTER_HUNTER'
-        
-        if (isHunter) {
-            // Hunter gets revenge shot
-            setHunterCanShoot({
-                hunterId: playerId,
-                hunterName: playerName
-            })
-        }
-        
+
         setExecutionPending(null)
         setSelectedPlayerId(null)
     }
