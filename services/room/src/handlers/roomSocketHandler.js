@@ -23,7 +23,10 @@ class RoomSocketHandler {
   // CREATE_ROOM event handler
   async handleCreateRoom(socket, data) {
     try {
-      const { name, maxPlayers = 75, settings, displayname } = data;
+      const { name, maxPlayers = 75, settings, displayname, userId: incomingUserId } = data;
+      if (!socket.data?.userId && incomingUserId) {
+        socket.data.userId = incomingUserId;
+      }
 
       // Validate input
       if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -41,7 +44,6 @@ class RoomSocketHandler {
         return;
       }
 
-      // Create room
       const roomData = {
         name: name.trim(),
         hostDisplayname: displayname || 'Anonymous Host',
@@ -50,6 +52,23 @@ class RoomSocketHandler {
         settings,
       };
 
+      // Clean up stale room membership for this user (disconnected tabs)
+      if (roomData.hostId) {
+        const existingPlayer = await this.roomService.roomRepository.findPlayerByUserIdInAnyRoom(roomData.hostId);
+        if (existingPlayer) {
+          const existingRoomId = existingPlayer.room?.id;
+          const hasActiveSockets = existingRoomId && this.roomPlayers.has(existingRoomId)
+            && this.roomPlayers.get(existingRoomId).size > 0;
+          if (!hasActiveSockets && existingRoomId) {
+            await this.roomService.leaveRoom(existingRoomId, existingPlayer.id);
+          } else if (hasActiveSockets) {
+            socket.emit('ERROR', { message: 'You are already in another room' });
+            return;
+          }
+        }
+      }
+
+      // Create room
       const room = await this.roomService.createRoom(roomData);
 
       // Join the socket to the room
@@ -90,7 +109,10 @@ class RoomSocketHandler {
   // JOIN_ROOM event handler
   async handleJoinRoom(socket, data) {
     try {
-      const { code, displayname } = data;
+      const { code, displayname, userId: incomingUserId } = data;
+      if (!socket.data?.userId && incomingUserId) {
+        socket.data.userId = incomingUserId;
+      }
 
       // Validate input
       if (!code || typeof code !== 'string' || code.length !== 4 || !/^\d{4}$/.test(code)) {
@@ -109,7 +131,7 @@ class RoomSocketHandler {
       }
 
       // Get room first to check if user is already in this room
-      const userId = socket.data?.userId;
+      const userId = socket.data?.userId || incomingUserId;
       let room;
       try {
         room = await this.roomService.getRoomByCode(code);
@@ -282,6 +304,7 @@ class RoomSocketHandler {
         player: result.player,
         room: {
           id: result.room.id,
+          maxPlayers: result.room.maxPlayers,
           currentPlayers: result.room.currentPlayers,
           players: result.room.players
         }

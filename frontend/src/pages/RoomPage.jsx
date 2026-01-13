@@ -168,7 +168,7 @@ export default function RoomPage() {
         const updateRoomState = (room, myPlayerId = null) => {
             if (!room || isUnmounted) return
 
-            setMaxPlayers(room.maxPlayers || 12)
+            setMaxPlayers(prev => (room.maxPlayers ?? prev ?? 12))
             setAvailableRoles(room.settings?.availableRoles || room.availableRoles || null)
             setRoomCode(room.code || null)
 
@@ -936,16 +936,23 @@ export default function RoomPage() {
     // Check if GM mode is active (host + game not in lobby)
     const isGMMode = isHost && gameStatus !== 'LOBBY'
 
+    const getPlayerKey = (player) => player?.userId || player?.id
+
+    const getSeerVisionResult = (roleId) => {
+        const faction = ROLES[roleId]?.faction
+        return faction === 'WEREWOLF' ? 'WEREWOLF' : 'VILLAGER'
+    }
+
     // Handle GM player selection
     const handlePlayerSelect = (player) => {
         if (!isGMMode) return
-        const playerId = player.id || player.userId
+        const playerId = getPlayerKey(player)
         setSelectedPlayerId(prev => prev === playerId ? null : playerId)
     }
 
     // Get player night status for GM view
     const getPlayerNightStatus = (player) => {
-        const playerId = player.id || player.userId
+        const playerId = getPlayerKey(player)
         return {}
     }
 
@@ -1039,7 +1046,7 @@ export default function RoomPage() {
             // Send werewolf kill command to service
             sendGMCommand('GM_WEREWOLF_KILL', { targetUserId: selectedPlayerId })
             // Store bitten player for Witch step display
-            const bittenPlayerData = players.find(p => (p.id || p.userId) === selectedPlayerId)
+            const bittenPlayerData = players.find(p => (p.userId || p.id) === selectedPlayerId)
             if (bittenPlayerData) {
                 setBittenPlayer({ playerId: selectedPlayerId, playerName: bittenPlayerData.username })
             }
@@ -1058,14 +1065,14 @@ export default function RoomPage() {
                 a.userId === selectedPlayerId
             )
             const role = playerRole?.role || ''
-            const evilRoles = ['YOUNG_WOLF', 'ALPHA_WOLF', 'DARK_WOLF', 'PROPHET_WOLF', 'TRAITOR']
-            const isEvil = evilRoles.includes(role)
-            const selectedPlayer = players.find(p => (p.id || p.userId) === selectedPlayerId)
+            const result = getSeerVisionResult(role)
+            const isEvil = result === 'WEREWOLF'
+            const selectedPlayer = players.find(p => (p.userId || p.id) === selectedPlayerId)
             
             setSeerResult({
                 playerName: selectedPlayer?.username || 'Unknown',
                 faction: isEvil ? 'EVIL' : 'GOOD',
-                result: isEvil ? 'WEREWOLF' : 'VILLAGER'
+                result: result
             })
             setSelectedPlayerId(null)
             // Don't advance yet - wait for GM to dismiss seer result
@@ -1162,7 +1169,7 @@ export default function RoomPage() {
 
     // Check if a player is dead (from service state)
     const isPlayerDead = (player) => {
-        const playerId = player.id || player.userId
+        const playerId = getPlayerKey(player)
         return deadPlayers.includes(playerId)
     }
 
@@ -1170,7 +1177,7 @@ export default function RoomPage() {
     const handleInitiateExecution = () => {
         if (!selectedPlayerId || !isHost || gameStatus !== 'DAY') return
 
-        const player = players.find(p => (p.id || p.userId) === selectedPlayerId)
+        const player = players.find(p => (p.userId || p.id) === selectedPlayerId)
         if (!player || isPlayerDead(player)) return
 
         // Just show confirmation modal - don't check role locally
@@ -1228,7 +1235,7 @@ export default function RoomPage() {
     const handleHunterRevengeConfirm = () => {
         if (!hunterCanShoot || !selectedPlayerId) return
 
-        const targetPlayer = players.find(p => (p.id || p.userId) === selectedPlayerId)
+        const targetPlayer = players.find(p => (p.userId || p.id) === selectedPlayerId)
         if (!targetPlayer) return
 
         // Send hunter shoot command to service
@@ -1607,14 +1614,14 @@ export default function RoomPage() {
                                     const status = getPlayerStatus(player)
                                     const role = getPlayerRole(player)
                                     const elder = isElder(player)
-                                    const playerId = player.id || player.userId
+                                    const playerId = getPlayerKey(player)
                                     const isSelected = isGMMode && selectedPlayerId === playerId
                                     const nightStatus = getPlayerNightStatus(player)
                                     const isDead = isPlayerDead(player)
 
                                     return (
                                         <div
-                                            key={player.id || player.userId || index}
+                                            key={player.userId || player.id || index}
                                             onClick={() => !isDead && handlePlayerSelect(player)}
                                             className={`group relative flex flex-col p-1 bg-[#0a0808]/90 border ${
                                                 isDead ? 'border-[#3a3a3a]/50 opacity-60' :
@@ -1843,11 +1850,11 @@ export default function RoomPage() {
                                                         {/* Healing Potion */}
                                                         <button
                                                             onClick={() => setWitchAction('HEAL')}
-                                                            disabled={witchPotions.healingUsed || !bittenPlayer}
+                                                            disabled={witchPotions.saveUsed || !bittenPlayer}
                                                             className={`w-full p-4 border transition-all duration-300 flex items-center gap-4 ${
                                                                 witchAction === 'HEAL'
                                                                     ? 'bg-[#0a200a]/80 border-[#4ade80]/60 shadow-[0_0_15px_rgba(74,222,128,0.2)]'
-                                                                    : witchPotions.healingUsed || !bittenPlayer
+                                                                    : witchPotions.saveUsed || !bittenPlayer
                                                                         ? 'bg-[#0a0808]/40 border-[#4a3060]/20 opacity-50 cursor-not-allowed'
                                                                         : 'bg-[#0a0808]/60 border-[#4a3060]/30 hover:border-[#4ade80]/40 hover:bg-[#0a200a]/40'
                                                             }`}
@@ -1862,7 +1869,7 @@ export default function RoomPage() {
                                                                     Thuốc Cứu Mạng
                                                                 </p>
                                                                 <p className="text-[#6a5a4a] text-xs">
-                                                                    {witchPotions.healingUsed ? 'Đã sử dụng' : bittenPlayer ? `Cứu ${bittenPlayer.playerName}` : 'Không có ai cần cứu'}
+                                                                    {witchPotions.saveUsed ? 'Đã sử dụng' : bittenPlayer ? `Cứu ${bittenPlayer.playerName}` : 'Không có ai cần cứu'}
                                                                 </p>
                                                             </div>
                                                             {witchAction === 'HEAL' && <RuneCheck className="w-5 h-5 text-[#4ade80]" />}
@@ -1938,7 +1945,7 @@ export default function RoomPage() {
                                                     <p className="text-[#d4a8a8] text-sm flex items-center gap-2">
                                                         <RuneTarget className="w-4 h-4 text-[#8b0000]" />
                                                         <span>Đã chọn: <span className="text-[#d4c4a8] font-heading">
-                                                            {players.find(p => (p.id || p.userId) === selectedPlayerId)?.username || 'Unknown'}
+                                                            {players.find(p => (p.userId || p.id) === selectedPlayerId)?.username || 'Unknown'}
                                                         </span></span>
                                                     </p>
                                                 </div>
@@ -2061,7 +2068,7 @@ export default function RoomPage() {
                                                     <p className="text-[#d4a8a8] text-sm flex items-center gap-2">
                                                         <RuneTarget className="w-4 h-4 text-[#8b0000]" />
                                                         <span>Đã chọn: <span className="text-[#d4c4a8] font-heading">
-                                                            {players.find(p => (p.id || p.userId) === selectedPlayerId)?.username || 'Unknown'}
+                                                            {players.find(p => (p.userId || p.id) === selectedPlayerId)?.username || 'Unknown'}
                                                         </span></span>
                                                     </p>
                                                 </div>
@@ -2451,7 +2458,7 @@ export default function RoomPage() {
                                     <p className="text-[#d4a8a8] text-sm flex items-center justify-center gap-2">
                                         <RuneTarget className="w-4 h-4 text-[#8b0000]" />
                                         <span>Mục tiêu: <span className="text-[#d4c4a8] font-heading">
-                                            {players.find(p => (p.id || p.userId) === selectedPlayerId)?.username || 'Unknown'}
+                                            {players.find(p => (p.userId || p.id) === selectedPlayerId)?.username || 'Unknown'}
                                         </span></span>
                                     </p>
                                 </div>

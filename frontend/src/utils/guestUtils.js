@@ -3,6 +3,10 @@
  * Hỗ trợ tạo username và userId cho người chơi không đăng nhập
  */
 
+// DEV ONLY: set true to generate a separate guest per tab (sessionStorage).
+// Comment this out or set to false to restore normal behavior.
+const USE_TAB_GUEST_ID = true
+
 /**
  * Generate random Vietnamese username for guest player
  * @returns {string} Random username
@@ -43,11 +47,12 @@ export function generateGuestUserId() {
  */
 export function getOrCreateGuestUserId() {
     const key = 'guest_user_id'
-    let guestId = localStorage.getItem(key)
+    const storage = USE_TAB_GUEST_ID ? sessionStorage : localStorage
+    let guestId = storage.getItem(key)
 
     if (!guestId) {
         guestId = generateGuestUserId()
-        localStorage.setItem(key, guestId)
+        storage.setItem(key, guestId)
     }
 
     return guestId
@@ -59,11 +64,12 @@ export function getOrCreateGuestUserId() {
  */
 export function getOrCreateGuestUsername() {
     const key = 'guest_username'
-    let username = localStorage.getItem(key)
+    const storage = USE_TAB_GUEST_ID ? sessionStorage : localStorage
+    let username = storage.getItem(key)
 
     if (!username) {
         username = generateGuestUsername()
-        localStorage.setItem(key, username)
+        storage.setItem(key, username)
     }
 
     return username

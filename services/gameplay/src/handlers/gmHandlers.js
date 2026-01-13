@@ -5,6 +5,7 @@
  */
 
 import { gameStateManager } from '../utils/gameStateManager.js'
+import { ROLES } from '../constants/roles.js'
 import {
   processNightResult,
   processHunterShoot,
@@ -36,6 +37,11 @@ async function publishEvent(producer, topic, event) {
  */
 function generateTraceId() {
   return `trace-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+}
+
+function getSeerVisionResult(roleId) {
+  const faction = ROLES[roleId]?.faction
+  return faction === 'WEREWOLF' ? 'WEREWOLF' : 'VILLAGER'
 }
 
 /**
@@ -230,9 +236,8 @@ export async function handleGMSeerCheck(roomId, payload, command, producer) {
     throw new Error('Invalid target')
   }
 
-  // Check role
-  const isWerewolf = ['TRAITOR', 'YOUNG_WOLF', 'DARK_WOLF', 'ALPHA_WOLF', 'PROPHET_WOLF'].includes(target.role)
-  const result = isWerewolf ? 'WEREWOLF' : 'VILLAGER'
+  // Check role (seer vision)
+  const result = getSeerVisionResult(target.role)
 
   // Save checked target
   game.nightActions.seerChecked = targetUserId
@@ -277,13 +282,14 @@ export async function handleGMBodyguardProtect(roomId, payload, command, produce
   }
 
   // Validate: không được bảo vệ cùng người 2 đêm liên tiếp
-  if (game.lastProtected === targetUserId) {
+  if (game.lastProtected === targetUserId && game.lastProtectedNight === game.day - 1) {
     throw new Error('Cannot protect same person 2 nights in a row')
   }
 
   // Save protection
   game.nightActions.protectedPlayer = targetUserId
   game.lastProtected = targetUserId
+  game.lastProtectedNight = game.day
   game.lastUpdate = Date.now()
 
   console.log(`✅ Bodyguard protecting: ${target.username}`)
@@ -329,6 +335,19 @@ export async function handleGMWitchAction(roomId, payload, command, producer) {
 
   game.lastUpdate = Date.now()
   console.log(`✅ Witch action recorded`)
+
+  await publishEvent(producer, 'evt.broadcast', {
+    traceId: command.traceId || generateTraceId(),
+    roomId,
+    targetUserId: command.userId,
+    event: {
+      type: 'WITCH_SKILLS_UPDATE',
+      payload: {
+        witchSkills: game.witchSkills
+      }
+    },
+    ts: Date.now()
+  })
 }
 
 /**

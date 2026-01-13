@@ -78,6 +78,7 @@ export const gameStateManager = {
       },
       lovers: [],
       lastProtected: null,
+      lastProtectedNight: null,
       witchSkills: {
         saveUsed: false,
         poisonUsed: false
