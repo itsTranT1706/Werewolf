@@ -199,11 +199,12 @@ services:
     restart: unless-stopped
     environment:
       - PORT=8086
-      - DB_HOST=database
-      - DB_PORT=5432
-      - DB_NAME=profile_service_db
-      - DB_USERNAME=postgres
-      - DB_PASSWORD=postgres
+      # - DB_HOST=database
+      # - DB_PORT=5432
+      # - DB_NAME=profile_service_db
+      # - DB_USERNAME=postgres
+      # - DB_PASSWORD=postgres
+      - DATABASE_URL=postgresql://postgres:postgres@database:5432/profile_service_db?schema=public
     # Vai trò: Xử lý REST request cho Ranking, Stats, Avatar. Không cần Kafka cho các tác vụ Read.
 
     # --- QUẢN LÝ VOLUME & NETWORK ---
