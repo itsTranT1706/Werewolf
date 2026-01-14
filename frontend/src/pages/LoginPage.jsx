@@ -1,12 +1,21 @@
+﻿/**
+ * Login Page - Dark Ritual Entry
+ * 
+ * Ancient gateway into the cursed village.
+ * Styled to match the dark medieval fantasy aesthetic.
+ */
+
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { MedievalPanel, MedievalInput, MedievalButton, Divider, notify, BackButton } from '@/components/ui'
+import { RuneUser, RuneLock, RuneWolf } from '@/components/ui/AncientIcons'
 import { authApi } from '@/api'
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [formData, setFormData] = useState({
-    identifier: '', // email or username
+    identifier: '',
     password: ''
   })
   const [errors, setErrors] = useState({})
@@ -16,7 +25,6 @@ export default function LoginPage() {
   const handleChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
-    // Clear error when user types
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }))
     }
@@ -25,11 +33,11 @@ export default function LoginPage() {
 
   const validate = () => {
     const newErrors = {}
-    
+
     if (!formData.identifier) {
       newErrors.identifier = 'Vui lòng nhập email hoặc tên người dùng'
     }
-    
+
     if (!formData.password) {
       newErrors.password = 'Vui lòng nhập mật khẩu'
     }
@@ -40,7 +48,7 @@ export default function LoginPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!validate()) return
 
     setLoading(true)
@@ -49,7 +57,8 @@ export default function LoginPage() {
     try {
       await authApi.login(formData.identifier, formData.password)
       notify.success('Chào mừng trở lại, lữ khách!', 'Đăng Nhập Thành Công')
-      navigate('/game')
+      const redirectTo = searchParams.get('redirect') || '/game'
+      navigate(redirectTo, { replace: true })
     } catch (error) {
       const message = error.message || 'Không thể vào làng. Vui lòng thử lại.'
       setServerError(message)
@@ -62,100 +71,98 @@ export default function LoginPage() {
   return (
     <div className="w-full max-w-md">
       {/* Back button */}
-      <div className="mb-4">
-        <BackButton to="/" label="Trở Về Trang Chủ" />
+      <div className="mb-6">
+        <BackButton to="/home" label="Trở Về Cổng" />
       </div>
 
       <MedievalPanel className="w-full">
         {/* Panel header */}
-        <div className="text-center mb-6">
-        <div className="flex justify-center mb-3">
-          <img 
-            src="/assets/ui/wolf-icon.svg" 
-            alt="Wolf" 
-            className="w-16 h-16 opacity-80"
-            style={{ filter: 'brightness(0) saturate(100%) invert(73%) sepia(61%) saturate(400%) hue-rotate(359deg) brightness(95%) contrast(92%)' }}
-          />
+        <div className="text-center mb-8">
+          {/* Wolf sigil */}
+          <div className="flex justify-center mb-4">
+            <div 
+              className="w-20 h-20 flex items-center justify-center"
+              style={{
+                background: 'radial-gradient(circle, rgba(139,115,85,0.15) 0%, transparent 70%)',
+              }}
+            >
+              <RuneWolf className="w-16 h-16 text-[#8b7355] opacity-70" />
+            </div>
+          </div>
+          
+          <h2 className="font-medieval text-3xl tracking-wider theme-title">
+            Bước Vào Làng
+          </h2>
+          <p className="font-fantasy text-sm mt-2 tracking-wide theme-subtitle">
+            Đắm trong bóng tối những bí mật...
+          </p>
         </div>
-        <h2 className="font-medieval text-2xl text-gold-glow tracking-wide">
-          Bước Vào Làng
-        </h2>
-        <p className="font-fantasy text-parchment/60 text-sm mt-1">
-          Đêm tối đầy những bí mật
-        </p>
-      </div>
 
-      {/* Server error */}
-      {serverError && (
-        <div className="mb-4 p-3 bg-blood-red/20 border border-blood-red/50 text-gold text-sm font-fantasy text-center">
-          {serverError}
-        </div>
-      )}
-
-      {/* Login form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <MedievalInput
-          type="text"
-          name="identifier"
-          placeholder="Email hoặc Tên người dùng"
-          value={formData.identifier}
-          onChange={handleChange}
-          error={errors.identifier}
-          icon={<UserIcon className="w-5 h-5" />}
-          autoComplete="username"
-        />
-
-        <MedievalInput
-          type="password"
-          name="password"
-          placeholder="Mật khẩu bí mật"
-          value={formData.password}
-          onChange={handleChange}
-          error={errors.password}
-          icon={<LockIcon className="w-5 h-5" />}
-          autoComplete="current-password"
-        />
-
-        <div className="pt-2">
-          <MedievalButton
-            type="submit"
-            loading={loading}
-            className="w-full"
+        {/* Server error */}
+        {serverError && (
+          <div 
+            className="mb-6 p-4 text-center"
+            style={{
+              background: 'linear-gradient(180deg, rgba(139,0,0,0.15) 0%, rgba(80,0,0,0.2) 100%)',
+              border: '1px solid rgba(139,0,0,0.4)',
+            }}
           >
-            Vào Làng
-          </MedievalButton>
+            <p className="font-fantasy text-sm" style={{ color: '#a05050' }}>
+              {serverError}
+            </p>
+          </div>
+        )}
+
+        {/* Login form */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <MedievalInput
+            type="text"
+            name="identifier"
+            placeholder="Email hoặc Tên người dùng"
+            value={formData.identifier}
+            onChange={handleChange}
+            error={errors.identifier}
+            icon={<RuneUser className="w-5 h-5" />}
+            autoComplete="username"
+          />
+
+          <MedievalInput
+            type="password"
+            name="password"
+            placeholder="Mật khẩu bí mật"
+            value={formData.password}
+            onChange={handleChange}
+            error={errors.password}
+            icon={<RuneLock className="w-5 h-5" />}
+            autoComplete="current-password"
+          />
+
+          <div className="pt-3">
+            <MedievalButton
+              type="submit"
+              loading={loading}
+              className="w-full"
+            >
+              Vào Làng
+            </MedievalButton>
+          </div>
+        </form>
+
+        <Divider text="hoặc" />
+
+        {/* Register link */}
+        <div className="text-center">
+          <p className="font-fantasy text-sm text-[#6a5a4a]">
+            Mới đến làng?{' '}
+            <Link 
+              to="/register" 
+              className="font-semibold theme-link"
+            >
+              Tham Gia Cuộc Săn
+            </Link>
+          </p>
         </div>
-      </form>
-
-      <Divider text="hoặc" />
-
-      {/* Register link */}
-      <div className="text-center">
-        <p className="font-fantasy text-parchment/70 text-sm">
-          Mới đến làng?{' '}
-          <Link to="/register" className="link-fantasy font-semibold">
-            Tham Gia Cuộc Săn
-          </Link>
-        </p>
-      </div>
       </MedievalPanel>
     </div>
-  )
-}
-
-// Icons
-function UserIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-    </svg>
-  )
-}
-
-function LockIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-    </svg>
   )
 }

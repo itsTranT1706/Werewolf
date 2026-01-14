@@ -90,9 +90,9 @@ export default function ProfileTab({ onLogout }) {
 
   if (error) {
     return (
-      <ProfileError 
-        message={error} 
-        onRetry={loadProfile} 
+      <ProfileError
+        message={error}
+        onRetry={loadProfile}
       />
     )
   }
@@ -119,7 +119,7 @@ export default function ProfileTab({ onLogout }) {
           <ProfileStats profile={profile} />
 
           {/* Profile Info Panel */}
-          <ProfileInfo 
+          <ProfileInfo
             profile={profile}
             isEditing={isEditing}
             editData={editData}
@@ -130,7 +130,7 @@ export default function ProfileTab({ onLogout }) {
 
         {/* Right column - Rank Panel (30-35%) */}
         <div className="lg:w-1/3">
-          <RankPanel 
+          <RankPanel
             rank={{
               mode: 'Ranked Solo/Duo',
               tier: getRankTier(profile?.totalPoint),
@@ -207,7 +207,7 @@ function ProfileSkeleton() {
 function ProfileError({ message, onRetry }) {
   return (
     <div className="w-full max-w-4xl mx-auto">
-      <div 
+      <div
         className="p-12 text-center rounded-lg border-2"
         style={{
           background: 'linear-gradient(180deg, rgba(30,20,15,0.95) 0%, rgba(20,15,10,0.98) 100%)',
