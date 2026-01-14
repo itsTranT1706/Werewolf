@@ -78,6 +78,23 @@ export default function RoomPage() {
             notify.error('Failed to copy link', 'Share')
         }
     }
+
+    const handleOpenChronicle = () => {
+        if (!roomId || !gameOver) return
+        const payload = {
+            gameOver,
+            chronicleEvents,
+            allPlayers: gameOver?.allPlayers || [],
+            startTime: gameStartTime,
+            endTime: gameEndTime,
+            day: gameStateRef.current.day,
+            roomCode
+        }
+        if (chronicleStorageKey) {
+            sessionStorage.setItem(chronicleStorageKey, JSON.stringify(payload))
+        }
+        navigate(`/room/${roomId}/chronicle`, { state: payload })
+    }
     const [currentRoomId, setCurrentRoomId] = useState(null) // Room ID (UUID) từ backend
     const [currentPlayerId, setCurrentPlayerId] = useState(null) // Player ID của user hiện tại
     const [currentDisplayname, setCurrentDisplayname] = useState(null) // Displayname của user hiện tại
@@ -113,6 +130,9 @@ export default function RoomPage() {
     const [hunterCanShoot, setHunterCanShoot] = useState(null) // { hunterId, hunterName }
     const [voteResult, setVoteResult] = useState(null) // { hangedPlayer, voteResults, message }
     const [gameOver, setGameOver] = useState(null) // { winner, message, allPlayers }
+    const [chronicleEvents, setChronicleEvents] = useState([])
+    const [gameStartTime, setGameStartTime] = useState(null)
+    const [gameEndTime, setGameEndTime] = useState(null)
     const [executionPending, setExecutionPending] = useState(null) // { playerId, playerName } - Pending execution confirmation
 
     // Bitten player info from service (for Witch step)
@@ -128,16 +148,46 @@ export default function RoomPage() {
     const currentNightStep = gameState.currentStep
     const deadPlayers = gameState.deadPlayers.map(d => d.userId || d.playerId)
     const witchPotions = gameState.witchSkills
+    const gameStateRef = useRef(gameState)
+    const chronicleStorageKey = roomId ? `match_chronicle_${roomId}` : null
+    const chronicleIndexRef = useRef(0)
 
-    // Debug CUPID rendering
-    console.log('🔍 CUPID Debug:', {
-        isHost,
-        gameStatus,
-        currentNightStep,
-        gameState,
-        roleSetup,
-        shouldShowNightWizard: isHost && gameStatus === 'NIGHT' && currentNightStep
-    })
+    useEffect(() => {
+        gameStateRef.current = gameState
+    }, [gameState])
+
+    const getPlayerName = (player) =>
+        player?.username || player?.displayname || player?.name || player?.playerName || 'M?Tt ng’?i ch’i'
+
+    const addChronicleEntries = (entries) => {
+        if (!entries || entries.length === 0) return
+        const timestamp = Date.now()
+        const baseIndex = chronicleIndexRef.current
+        setChronicleEvents((prev) => [
+            ...prev,
+            ...entries.map((entry, index) => ({
+                id: `chron-${timestamp}-${index}-${Math.random().toString(36).slice(2, 8)}`,
+                timestamp,
+                sequence: baseIndex + index,
+                ...entry
+            }))
+        ])
+        chronicleIndexRef.current = baseIndex + entries.length
+    }
+
+    useEffect(() => {
+        if (!chronicleStorageKey || !gameOver) return
+        const payload = {
+            gameOver,
+            chronicleEvents,
+            allPlayers: gameOver?.allPlayers || [],
+            startTime: gameStartTime,
+            endTime: gameEndTime,
+            day: gameState.day,
+            roomCode
+        }
+        sessionStorage.setItem(chronicleStorageKey, JSON.stringify(payload))
+    }, [chronicleStorageKey, gameOver, chronicleEvents, gameStartTime, gameEndTime, gameState.day, roomCode])
 
     // Get current user ID (hoặc guest ID nếu chưa đăng nhập)
     // QUAN TRỌNG: Ưu tiên dùng userId đã lưu khi tạo phòng để đảm bảo nhất quán
@@ -543,6 +593,12 @@ export default function RoomPage() {
             console.log('🎮 Game started via socket:', data)
             setGameStarted(true)
             updateRoomState(data.room)
+            setChronicleEvents([])
+            setGameStartTime(Date.now())
+            setGameEndTime(null)
+            if (chronicleStorageKey) {
+                sessionStorage.removeItem(chronicleStorageKey)
+            }
 
             // Join game room on API Gateway socket for receiving game events
             const apiSocket = getSocket()
@@ -556,9 +612,9 @@ export default function RoomPage() {
             // This enables GM mode (isGMMode = isHost && gameStatus !== 'LOBBY')
             // First night (day 1) ALWAYS starts with CUPID step
             const firstStep = 'CUPID' // Day 1 always starts with CUPID
-            
+
             console.log('🎯 Initial night step (Day 1):', { firstStep })
-            
+
             setGameState(prev => ({
                 ...prev,
                 phase: 'NIGHT',
@@ -878,6 +934,25 @@ export default function RoomPage() {
             // Listen for ROOM_LEFT event
             const handleRoomLeft = () => {
                 console.log('✅ Left room successfully')
+                // Reset all game state
+                setGameState({
+                    phase: 'LOBBY',
+                    day: 0,
+                    currentStep: null,
+                    alivePlayers: [],
+                    deadPlayers: [],
+                    witchSkills: { saveUsed: false, poisonUsed: false },
+                    pendingAction: null,
+                })
+                setGameStarted(false)
+                setMyRole(null)
+                setRoleAssignment(null)
+                setRoleSetup(null)
+                roleSetupRef.current = null
+                setSelectedLovers([])
+                setLoversInfo(null)
+                setMyLoverInfo(null)
+                
                 // Dọn localStorage
                 const roomIdToClean = currentRoomId || roomId
                 localStorage.removeItem(`room_${roomIdToClean}_host`)
@@ -1189,6 +1264,15 @@ export default function RoomPage() {
         } else if (currentNightStep === 'BODYGUARD') {
             // Send bodyguard protect command to service
             sendGMCommand('GM_BODYGUARD_PROTECT', { targetUserId: selectedPlayerId })
+            if (selectedPlayerId) {
+                const targetPlayer = players.find(p => (p.userId || p.id) === selectedPlayerId)
+                addChronicleEntries([{
+                    phase: 'NIGHT',
+                    day: gameStateRef.current.day || 1,
+                    type: 'guard',
+                    text: `Bảo vệ đã bảo vệ ${getPlayerName(targetPlayer)}.`
+                }])
+            }
             setSelectedPlayerId(null)
             // Advance to next step (service will confirm or we use this as fallback)
             advanceNightStep('BODYGUARD')
@@ -1200,12 +1284,29 @@ export default function RoomPage() {
             if (bittenPlayerData) {
                 setBittenPlayer({ playerId: selectedPlayerId, playerName: bittenPlayerData.username })
             }
+            if (selectedPlayerId) {
+                addChronicleEntries([{
+                    phase: 'NIGHT',
+                    day: gameStateRef.current.day || 1,
+                    type: 'wolf',
+                    text: `Ma sói chọn cắn ${getPlayerName(bittenPlayerData)}.`
+                }])
+            }
             setSelectedPlayerId(null)
             // Advance to next step
             advanceNightStep('WEREWOLF')
         } else if (currentNightStep === 'SEER') {
             // Send seer check command to service
             sendGMCommand('GM_SEER_CHECK', { targetUserId: selectedPlayerId })
+            if (selectedPlayerId) {
+                const targetPlayer = players.find(p => (p.userId || p.id) === selectedPlayerId)
+                addChronicleEntries([{
+                    phase: 'NIGHT',
+                    day: gameStateRef.current.day || 1,
+                    type: 'seer',
+                    text: `Tiên tri soi ${getPlayerName(targetPlayer)}.`
+                }])
+            }
             setSelectedPlayerId(null)
             // Don't advance yet - wait for GM to dismiss seer result
         } else if (currentNightStep === 'WITCH') {
@@ -1219,6 +1320,13 @@ export default function RoomPage() {
                     witchSkills: { ...prev.witchSkills, saveUsed: true }
                 }))
                 setWitchHealedThisNight(true)
+                const targetName = bittenPlayer?.playerName || 'nạn nhân bị cắn'
+                addChronicleEntries([{
+                    phase: 'NIGHT',
+                    day: gameStateRef.current.day || 1,
+                    type: 'witch',
+                    text: `Phù thủy đã cứu ${targetName}.`
+                }])
             } else if (witchAction === 'POISON' && selectedPlayerId) {
                 payload.poisonTargetUserId = selectedPlayerId
                 // Update witch skills locally
@@ -1226,6 +1334,20 @@ export default function RoomPage() {
                     ...prev,
                     witchSkills: { ...prev.witchSkills, poisonUsed: true }
                 }))
+                const targetPlayer = players.find(p => (p.userId || p.id) === selectedPlayerId)
+                addChronicleEntries([{
+                    phase: 'NIGHT',
+                    day: gameStateRef.current.day || 1,
+                    type: 'witch',
+                    text: `Phù thủy đã đầu độc ${getPlayerName(targetPlayer)}.`
+                }])
+            } else if (witchAction === 'NOTHING') {
+                addChronicleEntries([{
+                    phase: 'NIGHT',
+                    day: gameStateRef.current.day || 1,
+                    type: 'witch',
+                    text: 'Phù thủy đã bỏ qua đêm nay.'
+                }])
             }
             // 'NOTHING' sends empty payload
 
@@ -1422,15 +1544,24 @@ export default function RoomPage() {
             const day = data.payload?.day || 1
             // First night (day 1) ALWAYS starts with CUPID, other nights start with BODYGUARD
             const firstStep = day === 1 ? 'CUPID' : 'BODYGUARD'
-            
+
             console.log('🎯 Night step check:', { day, firstStep })
-            
+
             setGameState(prev => ({
                 ...prev,
                 phase: 'NIGHT',
                 day: day,
                 currentStep: firstStep
             }))
+            const nightDay = data.payload?.day || gameStateRef.current.day || 1
+            addChronicleEntries([
+                {
+                    phase: 'NIGHT',
+                    day: nightDay,
+                    type: 'phase',
+                    text: `Đêm thứ ${nightDay} bắt đầu.`
+                }
+            ])
             setBittenPlayer(null)
             setNightResult(null)
             setWitchHealedThisNight(false) // Reset witch heal tracking for new night
@@ -1439,6 +1570,15 @@ export default function RoomPage() {
         // GM receives seer result
         const handleGMSeerResult = (data) => {
             console.log('🔮 Seer result received:', data)
+            if (data.payload?.checkedPlayer && data.payload?.result) {
+                const resultName = FACTION_NAMES[data.payload.result] || data.payload.result
+                addChronicleEntries([{
+                    phase: 'NIGHT',
+                    day: gameStateRef.current.day || 1,
+                    type: 'seer',
+                    text: `Tiên tri thấy ${data.payload.checkedPlayer} thuộc phe ${resultName}.`
+                }])
+            }
             setSeerResult({
                 playerName: data.payload?.checkedPlayer,
                 result: data.payload?.result, // 'WEREWOLF' or 'VILLAGER'
@@ -1475,6 +1615,50 @@ export default function RoomPage() {
                 message: narrativeMessage
             })
 
+            const nightDay = data.payload?.day || gameStateRef.current.day || 1
+            const chronicleEntries = []
+            if (data.payload?.message) {
+                chronicleEntries.push({
+                    phase: 'NIGHT',
+                    day: nightDay,
+                    type: 'story',
+                    text: data.payload.message
+                })
+            }
+            if (deaths.length > 0) {
+                chronicleEntries.push({
+                    phase: 'NIGHT',
+                    day: nightDay,
+                    type: 'death',
+                    text: `Đêm đó, ${deaths.map(getPlayerName).join(', ')} đã chết.`
+                })
+            }
+            if (saved.length > 0) {
+                chronicleEntries.push({
+                    phase: 'NIGHT',
+                    day: nightDay,
+                    type: 'save',
+                    text: `Phù thủy đã cứu ${saved.map(getPlayerName).join(', ')}.`
+                })
+            }
+            if (data.payload?.protected?.length > 0) {
+                chronicleEntries.push({
+                    phase: 'NIGHT',
+                    day: nightDay,
+                    type: 'protect',
+                    text: `Bảo vệ đã che chở ${data.payload.protected.map(getPlayerName).join(', ')}.`
+                })
+            }
+            if (chronicleEntries.length === 0) {
+                chronicleEntries.push({
+                    phase: 'NIGHT',
+                    day: nightDay,
+                    type: 'story',
+                    text: 'Đêm qua không ai chết.'
+                })
+            }
+            addChronicleEntries(chronicleEntries)
+
             // Night steps complete, show transition panel
             setGameState(prev => ({ ...prev, currentStep: null }))
         }
@@ -1498,6 +1682,15 @@ export default function RoomPage() {
                 day: data.payload?.day || prev.day,
                 currentStep: null
             }))
+            const dayNumber = data.payload?.day || gameStateRef.current.day || 1
+            addChronicleEntries([
+                {
+                    phase: 'DAY',
+                    day: dayNumber,
+                    type: 'phase',
+                    text: `Ngày thứ ${dayNumber} bắt đầu.`
+                }
+            ])
         }
 
         // Vote result
@@ -1508,6 +1701,30 @@ export default function RoomPage() {
                 voteResults: data.payload?.voteResults,
                 message: data.payload?.message
             })
+            const dayNumber = data.payload?.day || gameStateRef.current.day || 1
+            const hangedPlayer = data.payload?.hangedPlayer
+            const rawMessage = data.payload?.message
+            const sanitizedMessage = rawMessage
+                ? rawMessage
+                    .replace(/undefined/gi, '')
+                    .replace(/phiếu/gi, '')
+                    .replace(/\bvới\b/gi, '')
+                    .replace(/\s{2,}/g, ' ')
+                    .trim()
+                : ''
+            const message = sanitizedMessage || (
+                hangedPlayer
+                    ? `Dân làng quyết định treo cổ ${getPlayerName(hangedPlayer)}.`
+                    : 'Không ai bị treo cổ.'
+            )
+            addChronicleEntries([
+                {
+                    phase: 'DAY',
+                    day: dayNumber,
+                    type: 'vote',
+                    text: message
+                }
+            ])
         }
 
         // Hunter can shoot
@@ -1527,6 +1744,18 @@ export default function RoomPage() {
                 ...prev,
                 deadPlayers: [...prev.deadPlayers, ...deaths]
             }))
+            if (deaths.length > 0) {
+                const phase = gameStateRef.current.phase === 'NIGHT' ? 'NIGHT' : 'DAY'
+                const dayNumber = gameStateRef.current.day || 1
+                addChronicleEntries([
+                    {
+                        phase,
+                        day: dayNumber,
+                        type: 'hunter',
+                        text: `Thợ săn trả thù, bắn hạ ${deaths.map(getPlayerName).join(', ')}.`
+                    }
+                ])
+            }
             // Check for chain hunter
             if (data.payload?.chainHunter) {
                 setHunterCanShoot({
@@ -1539,12 +1768,51 @@ export default function RoomPage() {
         // Game over
         const handleGameOver = (data) => {
             console.log('🏁 Game over:', data)
-            setGameState(prev => ({ ...prev, phase: 'ENDED' }))
+            const endTime = Date.now()
+            setGameEndTime(endTime)
+            addChronicleEntries([
+                {
+                    phase: 'END',
+                    day: gameStateRef.current.day || 1,
+                    type: 'end',
+                    text: data.payload?.message || 'Trận đấu đã kết thúc.'
+                }
+            ])
             setGameOver({
                 winner: data.payload?.winner,
                 message: data.payload?.message,
                 allPlayers: data.payload?.allPlayers
             })
+            
+            // Reset game state to LOBBY for next game
+            setTimeout(() => {
+                setGameState({
+                    phase: 'LOBBY',
+                    day: 0,
+                    currentStep: null,
+                    alivePlayers: [],
+                    deadPlayers: [],
+                    witchSkills: { saveUsed: false, poisonUsed: false },
+                    pendingAction: null,
+                })
+                setGameStarted(false)
+                setMyRole(null)
+                setRoleAssignment(null)
+                setRoleSetup(null)
+                roleSetupRef.current = null
+                setSelectedLovers([])
+                setLoversInfo(null)
+                setMyLoverInfo(null)
+                setBittenPlayer(null)
+                setNightResult(null)
+                setSeerResult(null)
+                setHunterCanShoot(null)
+                setVoteResult(null)
+                setExecutionPending(null)
+                setSelectedPlayerId(null)
+                setWitchAction(null)
+                setWitchHealedThisNight(false)
+            }, 5000) // Reset after 5 seconds to allow viewing game over screen
         }
 
         // Step progression from service
@@ -1569,14 +1837,14 @@ export default function RoomPage() {
         const handleLoversSelected = (data) => {
             console.log('💘 Lovers selected:', data)
             const { lover1, lover2 } = data.payload || {}
-            
+
             // Only show notification if current player is one of the lovers
             const myPlayerId = playersList.find(p => p.userId === userId)?.id
             const isLover = myPlayerId && (
-                lover1?.playerId === myPlayerId || 
+                lover1?.playerId === myPlayerId ||
                 lover2?.playerId === myPlayerId
             )
-            
+
             if (isLover) {
                 // Show notification modal only for the 2 lovers
                 setMyLoverInfo(data.payload)
@@ -2680,14 +2948,14 @@ export default function RoomPage() {
                                                     key={playerId}
                                                     onClick={() => setSelectedPlayerId(playerId)}
                                                     className={`w-full px-4 py-3 border transition-all duration-300 text-left flex items-center gap-3 ${isSelected
-                                                            ? 'bg-[#8b0000]/20 border-[#8b0000]/60 shadow-[0_0_10px_rgba(139,0,0,0.3)]'
-                                                            : 'bg-[#1a150a]/40 border-[#8b7355]/30 hover:border-[#c9a227]/50 hover:bg-[#1a150a]/60'
+                                                        ? 'bg-[#8b0000]/20 border-[#8b0000]/60 shadow-[0_0_10px_rgba(139,0,0,0.3)]'
+                                                        : 'bg-[#1a150a]/40 border-[#8b7355]/30 hover:border-[#c9a227]/50 hover:bg-[#1a150a]/60'
                                                         }`}
                                                 >
                                                     {/* Selection indicator */}
                                                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isSelected
-                                                            ? 'border-[#8b0000] bg-[#8b0000]'
-                                                            : 'border-[#8b7355]/50'
+                                                        ? 'border-[#8b0000] bg-[#8b0000]'
+                                                        : 'border-[#8b7355]/50'
                                                         }`}>
                                                         {isSelected && (
                                                             <RuneTarget className="w-3 h-3 text-white" />
@@ -2806,13 +3074,21 @@ export default function RoomPage() {
                                 </p>
                             </div>
 
-                            {/* Return button */}
-                            <button
-                                onClick={() => navigate('/game')}
-                                className="w-full h-14 bg-[#0a0808] border border-[#8b7355]/50 hover:border-[#c9a227]/60 text-[#d4c4a8] font-heading tracking-[0.15em] uppercase transition-all duration-500 hover:shadow-[0_0_20px_rgba(201,162,39,0.2)]"
-                            >
-                                Quay Về Sảnh Chính
-                            </button>
+                            <div className="flex flex-col gap-4">
+                                <button
+                                    onClick={handleOpenChronicle}
+                                    className="w-full h-14 bg-[#120f0a] border border-[#c9a227]/50 hover:border-[#e6c84a] text-[#e6c84a] font-heading tracking-[0.18em] uppercase transition-all duration-500 hover:shadow-[0_0_25px_rgba(201,162,39,0.35)] flex items-center justify-center gap-3"
+                                >
+                                    <RuneChronicle className="w-5 h-5" />
+                                    Biên Niên Sử Trận Đấu
+                                </button>
+                                <button
+                                    onClick={() => navigate('/game')}
+                                    className="w-full h-14 bg-[#0a0808] border border-[#8b7355]/50 hover:border-[#c9a227]/60 text-[#d4c4a8] font-heading tracking-[0.15em] uppercase transition-all duration-500 hover:shadow-[0_0_20px_rgba(201,162,39,0.2)]"
+                                >
+                                    Quay Về Sảnh Chính
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2860,7 +3136,7 @@ export default function RoomPage() {
                             {/* Love bond explanation */}
                             <div className="bg-[#1a0a15]/60 border border-[#ff69b4]/20 p-4 mb-6">
                                 <p className="text-[#d4c4a8]/80 text-sm font-serif italic leading-relaxed">
-                                    💘 Hai bạn sống chết có nhau. Nếu một người chết, người kia sẽ tự sát theo. 
+                                    💘 Hai bạn sống chết có nhau. Nếu một người chết, người kia sẽ tự sát theo.
                                     Hai bạn thắng cùng nhau bất kể phe nào.
                                 </p>
                             </div>

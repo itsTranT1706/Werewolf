@@ -281,7 +281,21 @@ export function checkWinCondition(roomId) {
 
   const alivePlayers = gameStateManager.getAlivePlayers(roomId)
 
-  // Count factions
+  // Check if both lovers are alive
+  const loversAlive = game.lovers.length === 2 &&
+    game.lovers.every(loverId => alivePlayers.some(p => p.userId === loverId))
+
+  // If both lovers are alive and they are the only ones left (or with 1 other person)
+  if (loversAlive && alivePlayers.length <= 3) {
+    // Lovers win if they are the last 2, or if there's 1 more person besides them
+    const nonLoverCount = alivePlayers.filter(p => !game.lovers.includes(p.userId)).length
+    if (nonLoverCount <= 1) {
+      console.log('💕 Lovers win condition met!')
+      return 'LOVERS'
+    }
+  }
+
+  // Count factions (EXCLUDING lovers - they are a separate faction)
   const factionCounts = {
     VILLAGER: 0,
     WEREWOLF: 0,
@@ -289,11 +303,16 @@ export function checkWinCondition(roomId) {
   }
 
   for (const player of alivePlayers) {
+    // Skip lovers - they don't count toward any faction while both are alive
+    if (loversAlive && game.lovers.includes(player.userId)) {
+      continue
+    }
+
     const faction = getFactionForPlayer(player.role)
     factionCounts[faction]++
   }
 
-  console.log('📊 Faction counts:', factionCounts)
+  console.log('📊 Faction counts (excluding lovers):', factionCounts, 'Lovers alive:', loversAlive, 'Total alive:', alivePlayers.length)
 
   // Werewolves win if no villagers left
   if (factionCounts.VILLAGER === 0 && factionCounts.WEREWOLF > 0) {

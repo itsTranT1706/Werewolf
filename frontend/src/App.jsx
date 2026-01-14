@@ -7,6 +7,7 @@ import RegisterPage from './pages/RegisterPage'
 import GamePage from './pages/GamePage'
 import ProfilePage from './pages/ProfilePage'
 import RoomPage from './pages/RoomPage'
+import MatchChroniclePage from './pages/MatchChroniclePage'
 import { NotificationProvider } from '@/components/ui'
 import { useHomeAudio } from '@/hooks/useHomeAudio'
 
@@ -31,6 +32,7 @@ function App() {
         {/* Game routes */}
         <Route path="/game" element={<GamePage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/room/:roomId/chronicle" element={<MatchChroniclePage />} />
         <Route path="/room/:roomId" element={<RoomPage />} />
       </Routes>
     </>

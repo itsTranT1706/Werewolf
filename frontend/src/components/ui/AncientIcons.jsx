@@ -391,13 +391,13 @@ export function CornerAccent({ className = "w-4 h-4", position = "top-left" }) {
     'bottom-left': 'scale(1, -1)',
     'bottom-right': 'scale(-1, -1)',
   }
-  
+
   return (
-    <svg 
-      className={className} 
-      viewBox="0 0 16 16" 
-      fill="none" 
-      stroke="currentColor" 
+    <svg
+      className={className}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
       strokeWidth="1"
       style={{ transform: transforms[position] }}
     >
