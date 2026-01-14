@@ -184,6 +184,26 @@ class RoomController {
       }
     }
   }
+
+  // PATCH /api/v1/rooms/:id/players/:playerId - Update player displayname
+  async updatePlayerDisplayname(req, res) {
+    try {
+      const { id, playerId } = req.params;
+      const { displayname } = req.body;
+
+      const result = await this.roomService.updatePlayerDisplayname(id, playerId, displayname);
+      res.json(result);
+    } catch (error) {
+      if (error.message === 'Display name is required' ||
+        error.message === 'Display name must be less than 50 characters' ||
+        error.message === 'Player not found in room' ||
+        error.message === 'Room not found') {
+        res.status(400).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: error.message });
+      }
+    }
+  }
 }
 
 module.exports = RoomController;

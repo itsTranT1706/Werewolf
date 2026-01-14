@@ -306,8 +306,9 @@ async function handleGameStart(roomId, payload, command = {}) {
                 event: {
                     type: 'GAME_ROLE_ASSIGNED',
                     payload: {
-                        userId: player.userId,
-                        username: player.username, // Thêm username để match anonymous users
+                        playerId: player.playerId,     // Database ID (always exists)
+                        userId: player.userId,         // Auth ID (can be null for guests)
+                        username: player.username,     // Display name for matching
                         role: player.assignedRole,
                         roleName: player.roleName,
                         faction: player.faction
@@ -316,7 +317,7 @@ async function handleGameStart(roomId, payload, command = {}) {
                 ts: Date.now()
             })
 
-            console.log(`📤 Sent role assignment to ${player.username}: ${player.assignedRole}`)
+            console.log(`📤 Sent role assignment to ${player.username} (playerId: ${player.playerId}): ${player.assignedRole}`)
         }
 
         // 6. Publish GAME_STARTED event cho tất cả

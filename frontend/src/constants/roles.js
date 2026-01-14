@@ -22,6 +22,7 @@ export const FACTION_NAMES = {
 export const ROLE_IMAGES = {
     VILLAGER: '/assets/role-images/danthuong.png',
     BODYGUARD: '/assets/role-images/baove.png',
+    CUPID: '/assets/role-images/cupid.png',
     WATCHMAN: '/assets/role-images/nguoicanhgac.png',
     SEER: '/assets/role-images/thayboi.png',
     DETECTIVE: '/assets/role-images/thamtu.png',
@@ -54,6 +55,7 @@ export function getRoleImage(roleId) {
  */
 export const ROLE_ICONS = {
     BODYGUARD: '🛡️',
+    CUPID: '💘',
     WATCHMAN: '🔔',
     SEER: '👁️',
     DETECTIVE: '🔍',
@@ -97,6 +99,14 @@ export const ROLES = {
         name: 'Bảo Vệ',
         faction: 'VILLAGER',
         description: 'Bạn có thể chọn một người chơi để bảo vệ mỗi đêm. Người được bảo vệ không thể bị giết vào đêm đó, thay vào đó bạn sẽ bị tấn công thay họ. Vì bạn rất khỏe nên sẽ không thể bị chết trong lần tấn công đầu tiên nhưng sẽ chết trong lần tấn công thứ hai. Mỗi đêm bạn sẽ tự bảo vệ chính mình.',
+        aura: 'Thiện',
+        isClassic: true
+    },
+    CUPID: {
+        id: 'CUPID',
+        name: 'Thần Tình Yêu',
+        faction: 'VILLAGER',
+        description: 'Vào đêm đầu tiên, bạn chọn hai người chơi để trở thành cặp đôi. Họ sẽ biết nhau và thắng cùng nhau. Nếu một người chết, người kia sẽ tự sát theo. Bạn không biết ai là cặp đôi sau khi chọn.',
         aura: 'Thiện',
         isClassic: true
     },

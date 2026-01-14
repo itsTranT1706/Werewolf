@@ -3,30 +3,34 @@
  * Dark medieval fantasy theme - Cursed gathering hall
  */
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { gameApi } from '@/api'
 import { getSocket } from '@/api/socket'
 import { getRoomSocket } from '@/api/roomSocket'
 import RoleSetupModal from '@/components/game/RoleSetupModal'
 import RoleRevealCard from '@/components/game/RoleRevealCard'
+import EditNameModal from '@/components/game/EditNameModal'
 import { ROLES, FACTION_NAMES } from '@/constants/roles'
 import { notify } from '@/components/ui'
 import { getOrCreateGuestUserId, getOrCreateGuestUsername } from '@/utils/guestUtils'
-import { 
-  RuneSkull, 
-  RuneArrowLeft, 
-  RuneForest, 
-  RuneShare, 
-  RuneCopy, 
-  RuneUser, 
-  RuneCheck, 
-  RuneEye, 
-  RuneChat, 
-  RuneSend,
-  RuneMoon,
-  CornerAccent 
+import {
+    RuneSkull,
+    RuneArrowLeft,
+    RuneForest,
+    RuneShare,
+    RuneCopy,
+    RuneUser,
+    RuneCheck,
+    RuneEye,
+    RuneChat,
+    RuneSend,
+    RuneMoon,
+    CornerAccent
 } from '@/components/ui/AncientIcons'
+
+// Import icon edit (nếu chưa có trong AncientIcons, dùng icon thay thế)
+import { Edit2 } from 'lucide-react'
 
 export default function RoomPage() {
     const { roomId } = useParams()
@@ -45,6 +49,7 @@ export default function RoomPage() {
     const [hostPlayerId, setHostPlayerId] = useState(null)  // playerId của quản trò (cho anonymous users)
     const [showRoleSetup, setShowRoleSetup] = useState(false)
     const [roleSetup, setRoleSetup] = useState(null)
+    const roleSetupRef = useRef(null) // Ref để lưu roleSetup ngay lập tức
     const [roleAssignment, setRoleAssignment] = useState(null)
     const [maxPlayers, setMaxPlayers] = useState(12)
     const [availableRoles, setAvailableRoles] = useState(null)
@@ -76,13 +81,15 @@ export default function RoomPage() {
     const [currentRoomId, setCurrentRoomId] = useState(null) // Room ID (UUID) từ backend
     const [currentPlayerId, setCurrentPlayerId] = useState(null) // Player ID của user hiện tại
     const [currentDisplayname, setCurrentDisplayname] = useState(null) // Displayname của user hiện tại
+    const [showEditNameModal, setShowEditNameModal] = useState(false) // Modal chỉnh sửa tên
+
 
     // ============================================
     // Game State - Driven by Game Service
     // The frontend NEVER calculates game outcomes.
     // All state below is populated from service responses.
     // ============================================
-    
+
     // Core game state from service
     const [gameState, setGameState] = useState({
         phase: 'LOBBY',           // 'LOBBY' | 'NIGHT' | 'DAY' | 'ENDED'
@@ -93,12 +100,12 @@ export default function RoomPage() {
         witchSkills: { saveUsed: false, poisonUsed: false },
         pendingAction: null,      // What action the GM needs to take next
     })
-    
+
     // UI state (local only - for rendering)
     const [selectedPlayerId, setSelectedPlayerId] = useState(null) // GM selected player for actions
     const [witchAction, setWitchAction] = useState(null) // 'HEAL' | 'POISON' | 'NOTHING' | null
     const [witchHealedThisNight, setWitchHealedThisNight] = useState(false) // Track if witch healed this night
-    
+
     // Service response displays (populated by service, cleared after display)
     const [seerResult, setSeerResult] = useState(null) // { playerName, result: 'WEREWOLF' | 'VILLAGER' }
     const [nightResult, setNightResult] = useState(null) // { deaths: [], saved: [], message: string }
@@ -107,15 +114,30 @@ export default function RoomPage() {
     const [voteResult, setVoteResult] = useState(null) // { hangedPlayer, voteResults, message }
     const [gameOver, setGameOver] = useState(null) // { winner, message, allPlayers }
     const [executionPending, setExecutionPending] = useState(null) // { playerId, playerName } - Pending execution confirmation
-    
+
     // Bitten player info from service (for Witch step)
     const [bittenPlayer, setBittenPlayer] = useState(null) // { playerId, playerName }
-    
+
+    // Cupid lovers tracking - GM can see both, players only see their own lover
+    const [selectedLovers, setSelectedLovers] = useState([]) // Array of 2 playerIds for GM selection
+    const [loversInfo, setLoversInfo] = useState(null) // { lover1, lover2 } - set after GM confirms
+    const [myLoverInfo, setMyLoverInfo] = useState(null) // { yourLover: { userId, username }, message } - player's lover notification
+
     // Derived state for convenience
     const gameStatus = gameState.phase
     const currentNightStep = gameState.currentStep
     const deadPlayers = gameState.deadPlayers.map(d => d.userId || d.playerId)
     const witchPotions = gameState.witchSkills
+
+    // Debug CUPID rendering
+    console.log('🔍 CUPID Debug:', {
+        isHost,
+        gameStatus,
+        currentNightStep,
+        gameState,
+        roleSetup,
+        shouldShowNightWizard: isHost && gameStatus === 'NIGHT' && currentNightStep
+    })
 
     // Get current user ID (hoặc guest ID nếu chưa đăng nhập)
     // QUAN TRỌNG: Ưu tiên dùng userId đã lưu khi tạo phòng để đảm bảo nhất quán
@@ -521,7 +543,7 @@ export default function RoomPage() {
             console.log('🎮 Game started via socket:', data)
             setGameStarted(true)
             updateRoomState(data.room)
-            
+
             // Join game room on API Gateway socket for receiving game events
             const apiSocket = getSocket()
             const gameRoomId = data.room?.id || currentRoomId || roomId
@@ -529,16 +551,34 @@ export default function RoomPage() {
                 console.log(`🔗 Joining game room ${gameRoomId} on API Gateway socket`)
                 apiSocket.emit('JOIN_GAME_ROOM', { roomId: gameRoomId })
             }
-            
+
             // Transition to NIGHT phase with first step
             // This enables GM mode (isGMMode = isHost && gameStatus !== 'LOBBY')
+            // First night (day 1) ALWAYS starts with CUPID step
+            const firstStep = 'CUPID' // Day 1 always starts with CUPID
+            
+            console.log('🎯 Initial night step (Day 1):', { firstStep })
+            
             setGameState(prev => ({
                 ...prev,
                 phase: 'NIGHT',
                 day: 1,
-                currentStep: 'BODYGUARD'
+                currentStep: firstStep
             }))
             setLoading(false)
+        }
+
+        // Handle PLAYER_NAME_UPDATED event
+        const handlePlayerNameUpdated = (data) => {
+            console.log('✏️ Player name updated:', data)
+            updateRoomState(data.room)
+
+            // Update currentDisplayname if it's the current user
+            if (data.player?.id === currentPlayerId) {
+                setCurrentDisplayname(data.player.displayname)
+                console.log(`💾 Updated currentDisplayname: ${data.player.displayname}`)
+                notify.success('Đã cập nhật tên thành công', 'Success')
+            }
         }
 
         // Handle ERROR event
@@ -566,6 +606,7 @@ export default function RoomPage() {
         socket.on('NEW_HOST', handleNewHost)
         socket.on('ROOM_INFO', handleRoomInfo)
         socket.on('GAME_STARTED', handleGameStarted)
+        socket.on('PLAYER_NAME_UPDATED', handlePlayerNameUpdated)
         socket.on('ERROR', handleError)
 
         // Join room nếu đã connected
@@ -582,6 +623,7 @@ export default function RoomPage() {
             socket.off('NEW_HOST', handleNewHost)
             socket.off('ROOM_INFO', handleRoomInfo)
             socket.off('GAME_STARTED', handleGameStarted)
+            socket.off('PLAYER_NAME_UPDATED', handlePlayerNameUpdated)
             socket.off('ERROR', handleError)
         }
     }, [roomId, currentUserId])
@@ -616,31 +658,40 @@ export default function RoomPage() {
         // Listen từ API Gateway socket (gameApi)
         const unsubscribeRole = gameApi.onRoleAssigned((data) => {
             console.log('🎭 Nhận vai trò từ API Gateway:', data)
-            console.log(`   Current userId: ${currentUserId}, Role userId: ${data.userId}`)
+            console.log(`   Current playerId: ${currentPlayerId}, userId: ${currentUserId}, Role playerId: ${data.playerId}, userId: ${data.userId}`)
 
             // Get current user's displayname từ state hoặc localStorage
             const userDisplayname = currentDisplayname || localStorage.getItem('guestUsername') || null
 
-            // Match logic:
-            // 1. Nếu có userId (authenticated): match bằng userId
-            // 2. Nếu không có userId (anonymous): match bằng username/displayname
+            // Match logic (priority order):
+            // 1. Match by playerId (most reliable - always exists)
+            // 2. Match by userId (for authenticated users)
+            // 3. Match by username/displayname (for anonymous users)
             let shouldAccept = false
 
-            if (data.userId) {
+            if (data.playerId && currentPlayerId) {
+                // Best case: match by playerId
+                shouldAccept = String(currentPlayerId) === String(data.playerId)
+                console.log(`   Matching by playerId: ${shouldAccept}`)
+            } else if (data.userId && currentUserId) {
                 // Authenticated user: match bằng userId
                 shouldAccept = String(currentUserId) === String(data.userId)
-            } else {
+                console.log(`   Matching by userId: ${shouldAccept}`)
+            } else if (data.username && userDisplayname) {
                 // Anonymous user: match bằng username/displayname
-                shouldAccept = userDisplayname && data.username &&
-                    String(userDisplayname) === String(data.username)
+                shouldAccept = String(userDisplayname) === String(data.username)
+                console.log(`   Matching by username: ${shouldAccept}`)
             }
 
             if (shouldAccept) {
                 console.log('✅ Setting role:', data.role)
-                setMyRole(data)
+                setMyRole({
+                    ...data,
+                    acknowledged: false  // Ensure modal shows
+                })
                 gameApi.updateFaction(roomId, data.faction)
             } else {
-                console.warn(`⚠️ Role assignment mismatch: userId=${data.userId}, username=${data.username}, userDisplayname=${userDisplayname}`)
+                console.warn(`⚠️ Role assignment mismatch: playerId=${data.playerId}, userId=${data.userId}, username=${data.username}, currentPlayerId=${currentPlayerId}, currentUserId=${currentUserId}, userDisplayname=${userDisplayname}`)
             }
         })
 
@@ -653,26 +704,22 @@ export default function RoomPage() {
             // Get current user's displayname từ state hoặc localStorage
             const userDisplayname = currentDisplayname || localStorage.getItem('guestUsername') || null
 
-            // Match logic: tương tự như handleRoomRoleAssigned
+            // Match logic: priority by playerId > userId > username
             let shouldAccept = false
 
-            if (roleData.userId) {
-                // Authenticated user: match bằng userId
+            if (roleData.playerId && currentPlayerId) {
+                shouldAccept = String(currentPlayerId) === String(roleData.playerId)
+            } else if (roleData.userId && currentUserId) {
                 shouldAccept = String(currentUserId) === String(roleData.userId)
-            } else {
-                // Anonymous user: match bằng username/displayname
-                shouldAccept = userDisplayname && roleData.username &&
-                    String(userDisplayname) === String(roleData.username)
+            } else if (roleData.username && userDisplayname) {
+                shouldAccept = String(userDisplayname) === String(roleData.username)
             }
 
             if (shouldAccept) {
                 console.log('✅ Setting role from direct socket:', roleData.role)
                 setMyRole({
-                    role: roleData.role,
-                    roleName: roleData.roleName,
-                    faction: roleData.faction,
-                    userId: roleData.userId,
-                    username: roleData.username
+                    ...roleData,
+                    acknowledged: false  // Ensure modal shows
                 })
                 gameApi.updateFaction(roomId, roleData.faction)
             }
@@ -685,43 +732,44 @@ export default function RoomPage() {
         const handleRoomRoleAssigned = (data) => {
             console.log('🎭 Nhận vai trò từ Room socket:', data)
             const roleData = {
+                playerId: data.payload.playerId,
+                userId: data.payload.userId,
+                username: data.payload.username,
                 role: data.payload.role,
                 roleName: data.payload.roleName,
-                faction: data.payload.faction,
-                userId: data.payload.userId,
-                username: data.payload.username
+                faction: data.payload.faction
             }
 
             // Get current user's displayname từ state hoặc localStorage
             const userDisplayname = currentDisplayname || localStorage.getItem('guestUsername') || null
 
-            console.log(`   Current userId: ${currentUserId}, Role userId: ${roleData.userId}`)
+            console.log(`   Current playerId: ${currentPlayerId}, userId: ${currentUserId}, Role playerId: ${roleData.playerId}, userId: ${roleData.userId}`)
             console.log(`   Current displayname: ${userDisplayname}, Role username: ${roleData.username}`)
 
-            // Match logic:
-            // 1. Nếu có userId (authenticated): match bằng userId
-            // 2. Nếu không có userId (anonymous): match bằng username/displayname
+            // Match logic: priority by playerId > userId > username
             let shouldAccept = false
 
-            if (roleData.userId) {
-                // Authenticated user: match bằng userId
+            if (roleData.playerId && currentPlayerId) {
+                shouldAccept = String(currentPlayerId) === String(roleData.playerId)
+            } else if (roleData.userId && currentUserId) {
                 shouldAccept = String(currentUserId) === String(roleData.userId)
-            } else {
-                // Anonymous user: match bằng username/displayname
-                shouldAccept = userDisplayname && roleData.username &&
-                    String(userDisplayname) === String(roleData.username)
+            } else if (roleData.username && userDisplayname) {
+                shouldAccept = String(userDisplayname) === String(roleData.username)
             }
 
             if (shouldAccept) {
                 console.log('✅ Role matches current user, setting role:', roleData.role)
-                setMyRole(roleData)
+                setMyRole({
+                    ...roleData,
+                    acknowledged: false  // Ensure modal shows
+                })
                 // Update faction nếu có API Gateway socket
                 const apiSocket = getSocket()
                 if (apiSocket && apiSocket.connected) {
                     gameApi.updateFaction(roomId, roleData.faction)
                 }
             } else {
-                console.log(`ℹ️ Role assignment for different user (userId: ${roleData.userId}, username: ${roleData.username}), ignoring`)
+                console.log(`ℹ️ Role assignment for different user (playerId: ${roleData.playerId}, userId: ${roleData.userId}, username: ${roleData.username}), ignoring`)
             }
         }
 
@@ -789,7 +837,10 @@ export default function RoomPage() {
     }
 
     const handleRoleSetupConfirm = (setup) => {
+        console.log('🎮 Role setup confirmed:', setup)
+        console.log('🎯 CUPID in setup?', setup.CUPID, typeof setup.CUPID)
         setRoleSetup(setup)
+        roleSetupRef.current = setup // Lưu vào ref để dùng ngay
         setShowRoleSetup(false)
         setError(null)
         setLoading(true)
@@ -881,6 +932,31 @@ export default function RoomPage() {
         }
     }
 
+    const handleSaveNewName = (newName) => {
+        if (!roomSocket || !roomSocket.connected) {
+            notify.error('Chưa kết nối với server', 'Error')
+            return
+        }
+
+        if (!currentRoomId || !currentPlayerId) {
+            notify.error('Thiếu thông tin phòng hoặc người chơi', 'Error')
+            return
+        }
+
+        // Emit socket event to update player name
+        roomSocket.emit('UPDATE_PLAYER_NAME', {
+            roomId: currentRoomId,
+            playerId: currentPlayerId,
+            displayname: newName
+        })
+
+        console.log('📤 Emitting UPDATE_PLAYER_NAME', {
+            roomId: currentRoomId,
+            playerId: currentPlayerId,
+            displayname: newName
+        })
+    }
+
     const handleSendChat = () => {
         if (!chatInput.trim()) return
         // TODO: Gửi chat message qua socket
@@ -940,9 +1016,41 @@ export default function RoomPage() {
 
     // Handle GM player selection
     const handlePlayerSelect = (player) => {
-        if (!isGMMode) return
+        // Allow selection if:
+        // 1. In GM mode (normal gameplay)
+        // 2. Hunter can shoot (special case)
+        if (!isGMMode && !hunterCanShoot) return
+
         const playerId = getPlayerKey(player)
-        setSelectedPlayerId(prev => prev === playerId ? null : playerId)
+        const isDead = isPlayerDead(player)
+        const isHost = isElder(player)
+
+        // Prevent selecting dead players or host/moderator
+        if (isDead || isHost) return
+
+        // When Hunter is shooting, prevent selecting themselves
+        if (hunterCanShoot && playerId === hunterCanShoot.hunterId) {
+            console.log('🏹 Hunter cannot shoot themselves')
+            return
+        }
+
+        // CUPID step: Multi-select mode (exactly 2 players)
+        if (currentNightStep === 'CUPID') {
+            setSelectedLovers(prev => {
+                if (prev.includes(playerId)) {
+                    // Deselect
+                    return prev.filter(id => id !== playerId)
+                } else if (prev.length < 2) {
+                    // Select (max 2)
+                    return [...prev, playerId]
+                }
+                // Already have 2, ignore
+                return prev
+            })
+        } else {
+            // Single select mode for other steps
+            setSelectedPlayerId(prev => prev === playerId ? null : playerId)
+        }
     }
 
     // Get player night status for GM view
@@ -977,6 +1085,12 @@ export default function RoomPage() {
 
     // Night step ritual content for the wizard panel
     const nightStepContent = {
+        CUPID: {
+            title: 'Nghi Thức Tình Yêu',
+            icon: 'heart',
+            description: 'Gọi Thần Tình Yêu dậy. Hãy chọn 2 người để trở thành cặp đôi.',
+            instruction: 'Chọn chính xác 2 người chơi còn sống'
+        },
         BODYGUARD: {
             title: 'Nghi Thức Bảo Vệ',
             icon: 'shield',
@@ -1035,16 +1149,21 @@ export default function RoomPage() {
 
     // Advance to next night step (called after service confirms or as fallback)
     const advanceNightStep = (fromStep) => {
-        const stepOrder = ['BODYGUARD', 'WEREWOLF', 'SEER', 'WITCH', null]
+        const stepOrder = ['CUPID', 'BODYGUARD', 'WEREWOLF', 'SEER', 'WITCH', null]
         const currentIndex = stepOrder.indexOf(fromStep)
         const nextStep = currentIndex >= 0 ? stepOrder[currentIndex + 1] : null
-        
+
         console.log(`➡️ Advancing from ${fromStep} to ${nextStep}`)
         setGameState(prev => ({
             ...prev,
             currentStep: nextStep
         }))
-        
+
+        // Reset selectedLovers when entering CUPID step
+        if (nextStep === 'CUPID') {
+            setSelectedLovers([])
+        }
+
         // Reset witch action when entering witch step
         if (nextStep === 'WITCH') {
             setWitchAction(null)
@@ -1053,9 +1172,21 @@ export default function RoomPage() {
 
     // Handle night wizard confirmation - sends command to service
     const handleNightStepConfirm = () => {
-        console.log('🌙 Night step confirmed:', currentNightStep, 'Selected player:', selectedPlayerId)
+        console.log('🌙 Night step confirmed:', currentNightStep, 'Selected player(s):', selectedPlayerId, 'Selected lovers:', selectedLovers)
 
-        if (currentNightStep === 'BODYGUARD') {
+        if (currentNightStep === 'CUPID') {
+            // Send cupid select lovers command to service
+            sendGMCommand('GM_CUPID_SELECT', { lovers: selectedLovers })
+            // Store lovers info locally for GM reference
+            const lover1 = players.find(p => (p.userId || p.id) === selectedLovers[0])
+            const lover2 = players.find(p => (p.userId || p.id) === selectedLovers[1])
+            if (lover1 && lover2) {
+                setLoversInfo({ lover1, lover2 })
+            }
+            setSelectedLovers([])
+            // Advance to next step
+            advanceNightStep('CUPID')
+        } else if (currentNightStep === 'BODYGUARD') {
             // Send bodyguard protect command to service
             sendGMCommand('GM_BODYGUARD_PROTECT', { targetUserId: selectedPlayerId })
             setSelectedPlayerId(null)
@@ -1097,7 +1228,7 @@ export default function RoomPage() {
                 }))
             }
             // 'NOTHING' sends empty payload
-            
+
             sendGMCommand('GM_WITCH_ACTION', payload)
             setWitchAction(null)
             setSelectedPlayerId(null)
@@ -1118,7 +1249,7 @@ export default function RoomPage() {
         console.log('☀️ Requesting transition to DAY phase...')
         // Send command to service - it will resolve deaths and send GM_NIGHT_RESULT
         sendGMCommand('GM_END_NIGHT', {})
-        
+
         // Service will respond with GM_NIGHT_RESULT event containing actual deaths
         // The event listener will update nightResult state
         // For now, just show loading state or wait for service response
@@ -1131,12 +1262,12 @@ export default function RoomPage() {
         if (nightResult?.deaths?.length > 0) {
             sendGMCommand('GM_ANNOUNCE_DEATHS', { deaths: nightResult.deaths })
         }
-        
+
         setNarrative(null)
         setBittenPlayer(null)
         setWitchHealedThisNight(false) // Reset for next night
         setNightResult(null)
-        
+
         // Transition to DAY phase
         setGameState(prev => ({
             ...prev,
@@ -1152,20 +1283,27 @@ export default function RoomPage() {
         console.log('🌙 Starting new night...')
         // Send command to service
         sendGMCommand('GM_START_NIGHT', {})
-        
+
+        const nextDay = (gameState.day || 0) + 1
+        // First night (day 1) ALWAYS starts with CUPID, other nights start with BODYGUARD
+        const firstStep = nextDay === 1 ? 'CUPID' : 'BODYGUARD'
+
+        console.log('🎯 Start night check:', { nextDay, firstStep })
+
         // Transition to NIGHT phase with first step
         setGameState(prev => ({
             ...prev,
             phase: 'NIGHT',
-            day: prev.day + 1,
-            currentStep: 'BODYGUARD'
+            day: nextDay,
+            currentStep: firstStep
         }))
-        
+
         // Reset night-related state
         setBittenPlayer(null)
         setWitchHealedThisNight(false)
         setNightResult(null)
         setSelectedPlayerId(null)
+        setSelectedLovers([])
     }
 
     // Check if a player is dead (from service state)
@@ -1196,9 +1334,9 @@ export default function RoomPage() {
         const { playerId } = executionPending
 
         // Send vote end command to service
-        sendGMCommand('GM_END_VOTE', { 
+        sendGMCommand('GM_END_VOTE', {
             forcedExecution: true,
-            targetUserId: playerId 
+            targetUserId: playerId
         })
 
         setExecutionPending(null)
@@ -1226,21 +1364,21 @@ export default function RoomPage() {
         // Update locally - mark target as dead
         setGameState(prev => ({
             ...prev,
-            deadPlayers: [...prev.deadPlayers, { 
-                userId: selectedPlayerId, 
-                username: targetPlayer.username, 
-                cause: 'bị Thợ Săn bắn' 
+            deadPlayers: [...prev.deadPlayers, {
+                userId: selectedPlayerId,
+                username: targetPlayer.username,
+                cause: 'bị Thợ Săn bắn'
             }]
         }))
 
         // Check if shot player is also a Hunter (chain reaction)
-        const targetRole = roleAssignment?.find(a => 
-            a.player?.userId === selectedPlayerId || 
+        const targetRole = roleAssignment?.find(a =>
+            a.player?.userId === selectedPlayerId ||
             a.player?.id === selectedPlayerId ||
             a.userId === selectedPlayerId
         )
         const isTargetHunter = targetRole?.role === 'MONSTER_HUNTER'
-        
+
         if (isTargetHunter) {
             // Chain Hunter shot
             setHunterCanShoot({
@@ -1250,7 +1388,7 @@ export default function RoomPage() {
         } else {
             setHunterCanShoot(null)
         }
-        
+
         setSelectedPlayerId(null)
     }
 
@@ -1281,11 +1419,17 @@ export default function RoomPage() {
         // Night phase started
         const handleNightPhaseStarted = (data) => {
             console.log('🌙 Night phase started:', data)
+            const day = data.payload?.day || 1
+            // First night (day 1) ALWAYS starts with CUPID, other nights start with BODYGUARD
+            const firstStep = day === 1 ? 'CUPID' : 'BODYGUARD'
+            
+            console.log('🎯 Night step check:', { day, firstStep })
+            
             setGameState(prev => ({
                 ...prev,
                 phase: 'NIGHT',
-                day: data.payload?.day || prev.day,
-                currentStep: 'BODYGUARD' // First step
+                day: day,
+                currentStep: firstStep
             }))
             setBittenPlayer(null)
             setNightResult(null)
@@ -1309,14 +1453,14 @@ export default function RoomPage() {
             console.log('🌙 Night result received:', data)
             const deaths = data.payload?.deaths || []
             const saved = data.payload?.saved || []
-            
+
             setNightResult({
                 deaths,
                 saved,
                 protected: data.payload?.protected || [],
                 message: data.payload?.message
             })
-            
+
             // Generate narrative for GM to read aloud
             let narrativeMessage = ''
             if (deaths.length === 0) {
@@ -1325,12 +1469,12 @@ export default function RoomPage() {
                 const names = deaths.map(d => d.username).join(' và ')
                 narrativeMessage = `Đêm qua, ${names} đã chết. Làng mất đi ${deaths.length} linh hồn.`
             }
-            
+
             setNarrative({
                 deaths,
                 message: narrativeMessage
             })
-            
+
             // Night steps complete, show transition panel
             setGameState(prev => ({ ...prev, currentStep: null }))
         }
@@ -1424,7 +1568,19 @@ export default function RoomPage() {
         // Lovers selected notification
         const handleLoversSelected = (data) => {
             console.log('💘 Lovers selected:', data)
-            // Could show notification to the lovers
+            const { lover1, lover2 } = data.payload || {}
+            
+            // Only show notification if current player is one of the lovers
+            const myPlayerId = playersList.find(p => p.userId === userId)?.id
+            const isLover = myPlayerId && (
+                lover1?.playerId === myPlayerId || 
+                lover2?.playerId === myPlayerId
+            )
+            
+            if (isLover) {
+                // Show notification modal only for the 2 lovers
+                setMyLoverInfo(data.payload)
+            }
         }
 
         // Vote recorded
@@ -1589,34 +1745,34 @@ export default function RoomPage() {
                                     const role = getPlayerRole(player)
                                     const elder = isElder(player)
                                     const playerId = getPlayerKey(player)
-                                    const isSelected = isGMMode && selectedPlayerId === playerId
+                                    const isSelected = (isGMMode || hunterCanShoot) && selectedPlayerId === playerId
                                     const nightStatus = getPlayerNightStatus(player)
                                     const isDead = isPlayerDead(player)
+                                    const canSelect = (isGMMode || hunterCanShoot) && !isDead && !elder
 
                                     return (
                                         <div
                                             key={player.userId || player.id || index}
                                             onClick={() => !isDead && handlePlayerSelect(player)}
-                                            className={`group relative flex flex-col p-1 bg-[#0a0808]/90 border ${
-                                                isDead ? 'border-[#3a3a3a]/50 opacity-60' :
+                                            className={`group relative flex flex-col p-1 bg-[#0a0808]/90 border ${isDead ? 'border-[#3a3a3a]/50 opacity-60' :
                                                 isSelected ? 'border-[#8b0000] shadow-[0_0_25px_rgba(139,0,0,0.4)] ring-2 ring-[#8b0000]/50' :
-                                                elder ? 'border-[#c9a227]/40 shadow-[0_0_20px_rgba(201,162,39,0.1)]' :
-                                                status === 'prepared' ? 'border-[#8b7355]/40' : 'border-[#8b7355]/30'
-                                                } shadow-2xl transition-all duration-500 ${!isDead ? 'hover:border-[#c9a227]/50 hover:-translate-y-1' : ''} ${isGMMode && !isDead ? 'cursor-pointer' : ''}`}
+                                                    elder ? 'border-[#c9a227]/40 shadow-[0_0_20px_rgba(201,162,39,0.1)]' :
+                                                        status === 'prepared' ? 'border-[#8b7355]/40' : 'border-[#8b7355]/30'
+                                                } shadow-2xl transition-all duration-500 ${!isDead ? 'hover:border-[#c9a227]/50 hover:-translate-y-1' : ''} ${canSelect ? 'cursor-pointer' : ''}`}
                                         >
                                             {/* Corner accents */}
                                             <CornerAccent className="absolute top-0 left-0 w-3 h-3 text-[#8b7355]/30" position="top-left" />
                                             <CornerAccent className="absolute top-0 right-0 w-3 h-3 text-[#8b7355]/30" position="top-right" />
                                             <CornerAccent className="absolute bottom-0 left-0 w-3 h-3 text-[#8b7355]/30" position="bottom-left" />
                                             <CornerAccent className="absolute bottom-0 right-0 w-3 h-3 text-[#8b7355]/30" position="bottom-right" />
-                                            
+
                                             {/* Dead indicator */}
                                             {isDead && (
                                                 <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-20 bg-[#1a0808] px-3 py-0.5 border border-[#8b0000]/40 shadow-md">
                                                     <span className="text-[9px] font-heading text-[#8b0000] uppercase tracking-widest">Đã Chết</span>
                                                 </div>
                                             )}
-                                            
+
                                             {elder && !isDead && (
                                                 <div className="absolute -top-2 left-1/2 -translate-x-1/2 z-20 bg-[#0a0808] px-3 py-0.5 border border-[#c9a227]/40 shadow-md">
                                                     <span className="text-[9px] font-heading text-[#c9a227] uppercase tracking-widest">Quản Trò</span>
@@ -1629,14 +1785,14 @@ export default function RoomPage() {
                                                     src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${player.userId}`}
                                                 />
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black/40"></div>
-                                                
+
                                                 {/* Dead overlay with skull */}
                                                 {isDead && (
                                                     <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                                                         <RuneSkullDead className="w-16 h-16 text-[#8b0000]/60" />
                                                     </div>
                                                 )}
-                                                
+
                                                 {!isDead && (
                                                     <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-700">
                                                         {role ? (
@@ -1648,27 +1804,51 @@ export default function RoomPage() {
                                                 )}
                                                 {status === 'prepared' && !isDead && (
                                                     <div className="absolute top-2 right-2">
-                                                        <RuneCheck 
+                                                        <RuneCheck
                                                             className="w-5 h-5 text-[#6b8e6b]/80 drop-shadow-md"
                                                             title="Sẵn Sàng"
                                                         />
                                                     </div>
                                                 )}
                                                 {/* GM Selection Indicator */}
-                                                {isSelected && !isDead && (
+                                                {isSelected && !isDead && currentNightStep !== 'CUPID' && (
                                                     <div className="absolute inset-0 bg-[#8b0000]/20 flex items-center justify-center">
                                                         <RuneTarget className="w-16 h-16 text-[#8b0000]/60 animate-pulse" />
                                                     </div>
                                                 )}
+
+                                                {/* CUPID Lovers Selection Indicator */}
+                                                {currentNightStep === 'CUPID' && selectedLovers.includes(playerId) && !isDead && (
+                                                    <div className="absolute inset-0 bg-[#ff69b4]/20 flex items-center justify-center">
+                                                        <RuneHeart className="w-16 h-16 text-[#ff69b4]/80 animate-pulse" />
+                                                    </div>
+                                                )}
+
+                                                {/* Hunter Target Mode Indicator */}
+                                                {hunterCanShoot && !isDead && !elder && canSelect && !isSelected && (
+                                                    <div className="absolute inset-0 border-2 border-dashed border-[#c9a227]/40 animate-pulse pointer-events-none"></div>
+                                                )}
                                             </div>
                                             <div className="p-3 text-center bg-gradient-to-t from-[#0a0808] to-[#151210] border-t border-[#8b7355]/20 relative">
                                                 <div className="flex items-center justify-center gap-1.5">
-                                                    <p className={`font-heading text-sm tracking-wide truncate ${
-                                                        isDead ? 'text-[#6a5a5a] line-through' :
+                                                    <p className={`font-heading text-sm tracking-wide truncate ${isDead ? 'text-[#6a5a5a] line-through' :
                                                         elder ? 'text-[#c9a227]' : 'text-[#d4c4a8]'
                                                         } ${!isDead ? 'group-hover:text-white' : ''} transition-colors`}>
                                                         {player.username}
                                                     </p>
+                                                    {/* Edit name button - only for current player */}
+                                                    {!isDead && !gameStarted && (player.userId === currentUserId || player.id === currentPlayerId) && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                setShowEditNameModal(true)
+                                                            }}
+                                                            className="ml-1 p-1 hover:bg-[#8b7355]/20 rounded transition-colors"
+                                                            title="Chỉnh sửa tên"
+                                                        >
+                                                            <Edit2 className="w-3.5 h-3.5 text-[#8b7355]/60 hover:text-[#c9a227]" />
+                                                        </button>
+                                                    )}
                                                     {/* GM-only Night Status Badges */}
                                                     {isGMMode && !isDead && (
                                                         <div className="flex items-center gap-1 ml-1">
@@ -1747,7 +1927,7 @@ export default function RoomPage() {
                                 <div className="mt-6 relative">
                                     {/* Mystical glow effect */}
                                     <div className="absolute -inset-2 bg-[#1a0a20]/50 blur-xl rounded-lg"></div>
-                                    
+
                                     <div className="relative bg-gradient-to-b from-[#0a0808] to-[#0d0a12] border border-[#4a3060]/50 shadow-[0_0_30px_rgba(74,48,96,0.2)] overflow-hidden">
                                         {/* Corner rune decorations */}
                                         <div className="absolute top-0 left-0 w-8 h-8 border-l-2 border-t-2 border-[#6b4d8a]/40"></div>
@@ -1764,9 +1944,10 @@ export default function RoomPage() {
                                                     </div>
                                                     <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#8b0000] rounded-full border border-[#5a0000] flex items-center justify-center">
                                                         <span className="text-[8px] text-white font-bold">
-                                                            {currentNightStep === 'BODYGUARD' ? '1' : 
-                                                             currentNightStep === 'WEREWOLF' ? '2' : 
-                                                             currentNightStep === 'SEER' ? '3' : '4'}
+                                                            {currentNightStep === 'CUPID' ? '1' :
+                                                                currentNightStep === 'BODYGUARD' ? '2' :
+                                                                    currentNightStep === 'WEREWOLF' ? '3' :
+                                                                        currentNightStep === 'SEER' ? '4' : '5'}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -1814,6 +1995,48 @@ export default function RoomPage() {
                                                 )
                                             })()}
 
+                                            {/* CUPID Step - Select 2 lovers */}
+                                            {currentNightStep === 'CUPID' && (
+                                                <>
+                                                    {/* Lovers selection info */}
+                                                    <div className="bg-[#2a0a1a]/60 border border-[#ff69b4]/30 px-4 py-3 mb-5">
+                                                        <p className="text-[#ffb6c1] text-sm flex items-center gap-2">
+                                                            <RuneHeart className="w-4 h-4 text-[#ff69b4]" />
+                                                            <span>Đã chọn {selectedLovers.length}/2 người chơi</span>
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Show selected lovers */}
+                                                    {selectedLovers.length > 0 && (
+                                                        <div className="bg-[#1a0a15]/60 border border-[#ff69b4]/20 p-4 mb-5">
+                                                            <p className="text-[#8b7355] text-xs uppercase tracking-wider mb-3">Người Đã Chọn:</p>
+                                                            <div className="space-y-2">
+                                                                {selectedLovers.map((loverId, index) => {
+                                                                    const lover = players.find(p => (p.userId || p.id) === loverId)
+                                                                    return lover ? (
+                                                                        <div key={loverId} className="flex items-center gap-3 text-[#ffb6c1]">
+                                                                            <RuneHeart className="w-4 h-4 text-[#ff69b4]" />
+                                                                            <span className="font-heading">{lover.username}</span>
+                                                                            {index === 0 && selectedLovers.length === 2 && <span className="text-[#ff69b4] mx-2">💘</span>}
+                                                                        </div>
+                                                                    ) : null
+                                                                })}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Instruction to select from player grid */}
+                                                    {selectedLovers.length < 2 && (
+                                                        <div className="bg-[#2a0a1a]/40 border border-[#ff69b4]/30 px-4 py-3 mb-5">
+                                                            <p className="text-[#ffb6c1] text-sm flex items-center gap-2">
+                                                                <RuneHand className="w-4 h-4" />
+                                                                <span>Chọn {2 - selectedLovers.length} người chơi từ danh sách bên trái</span>
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
+
                                             {/* Witch Step - Special UI */}
                                             {currentNightStep === 'WITCH' && (
                                                 <>
@@ -1840,17 +2063,15 @@ export default function RoomPage() {
                                                         <button
                                                             onClick={() => setWitchAction('HEAL')}
                                                             disabled={witchPotions.saveUsed || !bittenPlayer}
-                                                            className={`w-full p-4 border transition-all duration-300 flex items-center gap-4 ${
-                                                                witchAction === 'HEAL'
-                                                                    ? 'bg-[#0a200a]/80 border-[#4ade80]/60 shadow-[0_0_15px_rgba(74,222,128,0.2)]'
-                                                                    : witchPotions.saveUsed || !bittenPlayer
-                                                                        ? 'bg-[#0a0808]/40 border-[#4a3060]/20 opacity-50 cursor-not-allowed'
-                                                                        : 'bg-[#0a0808]/60 border-[#4a3060]/30 hover:border-[#4ade80]/40 hover:bg-[#0a200a]/40'
-                                                            }`}
+                                                            className={`w-full p-4 border transition-all duration-300 flex items-center gap-4 ${witchAction === 'HEAL'
+                                                                ? 'bg-[#0a200a]/80 border-[#4ade80]/60 shadow-[0_0_15px_rgba(74,222,128,0.2)]'
+                                                                : witchPotions.saveUsed || !bittenPlayer
+                                                                    ? 'bg-[#0a0808]/40 border-[#4a3060]/20 opacity-50 cursor-not-allowed'
+                                                                    : 'bg-[#0a0808]/60 border-[#4a3060]/30 hover:border-[#4ade80]/40 hover:bg-[#0a200a]/40'
+                                                                }`}
                                                         >
-                                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                                                witchAction === 'HEAL' ? 'bg-[#4ade80]/20' : 'bg-[#1a0a20]/60'
-                                                            }`}>
+                                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${witchAction === 'HEAL' ? 'bg-[#4ade80]/20' : 'bg-[#1a0a20]/60'
+                                                                }`}>
                                                                 <RuneHealPotion className={`w-5 h-5 ${witchAction === 'HEAL' ? 'text-[#4ade80]' : 'text-[#6b4d8a]'}`} />
                                                             </div>
                                                             <div className="text-left flex-1">
@@ -1868,17 +2089,15 @@ export default function RoomPage() {
                                                         <button
                                                             onClick={() => setWitchAction('POISON')}
                                                             disabled={witchPotions.poisonUsed}
-                                                            className={`w-full p-4 border transition-all duration-300 flex items-center gap-4 ${
-                                                                witchAction === 'POISON'
-                                                                    ? 'bg-[#200a20]/80 border-[#9d7bc9]/60 shadow-[0_0_15px_rgba(157,123,201,0.2)]'
-                                                                    : witchPotions.poisonUsed
-                                                                        ? 'bg-[#0a0808]/40 border-[#4a3060]/20 opacity-50 cursor-not-allowed'
-                                                                        : 'bg-[#0a0808]/60 border-[#4a3060]/30 hover:border-[#9d7bc9]/40 hover:bg-[#200a20]/40'
-                                                            }`}
+                                                            className={`w-full p-4 border transition-all duration-300 flex items-center gap-4 ${witchAction === 'POISON'
+                                                                ? 'bg-[#200a20]/80 border-[#9d7bc9]/60 shadow-[0_0_15px_rgba(157,123,201,0.2)]'
+                                                                : witchPotions.poisonUsed
+                                                                    ? 'bg-[#0a0808]/40 border-[#4a3060]/20 opacity-50 cursor-not-allowed'
+                                                                    : 'bg-[#0a0808]/60 border-[#4a3060]/30 hover:border-[#9d7bc9]/40 hover:bg-[#200a20]/40'
+                                                                }`}
                                                         >
-                                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                                                witchAction === 'POISON' ? 'bg-[#9d7bc9]/20' : 'bg-[#1a0a20]/60'
-                                                            }`}>
+                                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${witchAction === 'POISON' ? 'bg-[#9d7bc9]/20' : 'bg-[#1a0a20]/60'
+                                                                }`}>
                                                                 <RunePoison className={`w-5 h-5 ${witchAction === 'POISON' ? 'text-[#9d7bc9]' : 'text-[#6b4d8a]'}`} />
                                                             </div>
                                                             <div className="text-left flex-1">
@@ -1895,15 +2114,13 @@ export default function RoomPage() {
                                                         {/* Do Nothing */}
                                                         <button
                                                             onClick={() => { setWitchAction('NOTHING'); setSelectedPlayerId(null); }}
-                                                            className={`w-full p-4 border transition-all duration-300 flex items-center gap-4 ${
-                                                                witchAction === 'NOTHING'
-                                                                    ? 'bg-[#1a1a1a]/80 border-[#8b7355]/60 shadow-[0_0_15px_rgba(139,115,85,0.2)]'
-                                                                    : 'bg-[#0a0808]/60 border-[#4a3060]/30 hover:border-[#8b7355]/40 hover:bg-[#1a1a1a]/40'
-                                                            }`}
+                                                            className={`w-full p-4 border transition-all duration-300 flex items-center gap-4 ${witchAction === 'NOTHING'
+                                                                ? 'bg-[#1a1a1a]/80 border-[#8b7355]/60 shadow-[0_0_15px_rgba(139,115,85,0.2)]'
+                                                                : 'bg-[#0a0808]/60 border-[#4a3060]/30 hover:border-[#8b7355]/40 hover:bg-[#1a1a1a]/40'
+                                                                }`}
                                                         >
-                                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                                                witchAction === 'NOTHING' ? 'bg-[#8b7355]/20' : 'bg-[#1a0a20]/60'
-                                                            }`}>
+                                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${witchAction === 'NOTHING' ? 'bg-[#8b7355]/20' : 'bg-[#1a0a20]/60'
+                                                                }`}>
                                                                 <RuneSleep className={`w-5 h-5 ${witchAction === 'NOTHING' ? 'text-[#8b7355]' : 'text-[#6b4d8a]'}`} />
                                                             </div>
                                                             <div className="text-left flex-1">
@@ -1943,10 +2160,9 @@ export default function RoomPage() {
                                             {/* Confirmation button */}
                                             <button
                                                 onClick={handleNightStepConfirm}
-                                                disabled={currentNightStep === 'WITCH' && !witchAction}
-                                                className={`w-full h-14 bg-[#1a0a20] border border-[#6b4d8a]/50 hover:border-[#9d7bc9]/70 text-[#d4c4a8] font-heading tracking-[0.15em] uppercase shadow-[0_0_20px_rgba(107,77,138,0.15)] transition-all duration-500 hover:shadow-[0_0_25px_rgba(107,77,138,0.3)] flex items-center justify-center gap-3 group relative overflow-hidden ${
-                                                    currentNightStep === 'WITCH' && !witchAction ? 'opacity-50 cursor-not-allowed' : ''
-                                                }`}
+                                                disabled={(currentNightStep === 'WITCH' && !witchAction) || (currentNightStep === 'CUPID' && selectedLovers.length !== 2)}
+                                                className={`w-full h-14 bg-[#1a0a20] border border-[#6b4d8a]/50 hover:border-[#9d7bc9]/70 text-[#d4c4a8] font-heading tracking-[0.15em] uppercase shadow-[0_0_20px_rgba(107,77,138,0.15)] transition-all duration-500 hover:shadow-[0_0_25px_rgba(107,77,138,0.3)] flex items-center justify-center gap-3 group relative overflow-hidden ${((currentNightStep === 'WITCH' && !witchAction) || (currentNightStep === 'CUPID' && selectedLovers.length !== 2)) ? 'opacity-50 cursor-not-allowed' : ''
+                                                    }`}
                                             >
                                                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#6b4d8a]/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
                                                 <RuneConfirm className="w-5 h-5 text-[#9d7bc9] z-10" />
@@ -1965,7 +2181,7 @@ export default function RoomPage() {
                                 <div className="mt-6 relative">
                                     {/* Dawn glow effect */}
                                     <div className="absolute -inset-2 bg-[#2a1a0a]/50 blur-xl rounded-lg"></div>
-                                    
+
                                     <div className="relative bg-gradient-to-b from-[#0a0808] to-[#12100a] border border-[#c9a227]/40 shadow-[0_0_30px_rgba(201,162,39,0.15)] overflow-hidden">
                                         {/* Corner decorations */}
                                         <div className="absolute top-0 left-0 w-8 h-8 border-l-2 border-t-2 border-[#c9a227]/30"></div>
@@ -1997,7 +2213,7 @@ export default function RoomPage() {
                                                 </div>
                                             ) : (
                                                 <p className="text-[#a89d88] font-serif italic text-sm leading-relaxed mb-5">
-                                                    Tất cả nghi thức đêm đã hoàn tất. Bình minh đang ló dạng trên làng. 
+                                                    Tất cả nghi thức đêm đã hoàn tất. Bình minh đang ló dạng trên làng.
                                                     Hãy công bố kết quả đêm qua cho dân làng.
                                                 </p>
                                             )}
@@ -2024,7 +2240,7 @@ export default function RoomPage() {
                                 <div className="mt-6 relative">
                                     {/* Daylight glow effect */}
                                     <div className="absolute -inset-2 bg-[#c9a227]/10 blur-xl rounded-lg"></div>
-                                    
+
                                     <div className="relative bg-gradient-to-b from-[#12100a] to-[#0a0808] border border-[#c9a227]/30 shadow-[0_0_30px_rgba(201,162,39,0.1)] overflow-hidden">
                                         {/* Corner decorations */}
                                         <div className="absolute top-0 left-0 w-8 h-8 border-l-2 border-t-2 border-[#c9a227]/25"></div>
@@ -2067,11 +2283,10 @@ export default function RoomPage() {
                                             <button
                                                 onClick={handleInitiateExecution}
                                                 disabled={!selectedPlayerId}
-                                                className={`w-full h-14 bg-[#1a0808] border font-heading tracking-[0.15em] uppercase transition-all duration-500 flex items-center justify-center gap-3 group relative overflow-hidden ${
-                                                    selectedPlayerId 
-                                                        ? 'border-[#8b0000]/50 hover:border-[#8b0000]/80 text-[#d4c4a8] shadow-[0_0_20px_rgba(139,0,0,0.1)] hover:shadow-[0_0_25px_rgba(139,0,0,0.25)]'
-                                                        : 'border-[#4a3a3a]/30 text-[#6a5a5a] cursor-not-allowed opacity-60'
-                                                }`}
+                                                className={`w-full h-14 bg-[#1a0808] border font-heading tracking-[0.15em] uppercase transition-all duration-500 flex items-center justify-center gap-3 group relative overflow-hidden ${selectedPlayerId
+                                                    ? 'border-[#8b0000]/50 hover:border-[#8b0000]/80 text-[#d4c4a8] shadow-[0_0_20px_rgba(139,0,0,0.1)] hover:shadow-[0_0_25px_rgba(139,0,0,0.25)]'
+                                                    : 'border-[#4a3a3a]/30 text-[#6a5a5a] cursor-not-allowed opacity-60'
+                                                    }`}
                                             >
                                                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#8b0000]/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
                                                 <RuneExecute className="w-5 h-5 text-[#8b0000] z-10" />
@@ -2115,7 +2330,7 @@ export default function RoomPage() {
                                 <div className="absolute inset-0 opacity-5 pointer-events-none" style={{
                                     backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E")`
                                 }} />
-                                
+
                                 <div className="flex justify-center my-4 relative z-10">
                                     <div className="text-center">
                                         <RuneChurch className="w-6 h-6 text-[#8b7355]/40 mx-auto mb-2" />
@@ -2177,6 +2392,14 @@ export default function RoomPage() {
                 availableRoles={availableRoles}
             />
 
+            {/* Edit Name Modal */}
+            <EditNameModal
+                isOpen={showEditNameModal}
+                onClose={() => setShowEditNameModal(false)}
+                currentName={currentDisplayname}
+                onSave={handleSaveNewName}
+            />
+
             {/* Role Reveal Card - Medieval tarot card style reveal */}
             <RoleRevealCard
                 roleId={myRole?.role}
@@ -2190,25 +2413,23 @@ export default function RoomPage() {
             {seerResult && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     {/* Dark mystical backdrop */}
-                    <div 
+                    <div
                         className="absolute inset-0 bg-black/90 backdrop-blur-sm"
                         onClick={handleSeerResultDismiss}
                     />
-                    
+
                     {/* Result card */}
                     <div className="relative max-w-lg w-full animate-fade-in">
                         {/* Mystical glow based on faction */}
-                        <div className={`absolute -inset-4 blur-2xl rounded-full opacity-50 ${
-                            seerResult.faction === 'EVIL' 
-                                ? 'bg-[#8b0000]' 
-                                : 'bg-[#2d5a2d]'
-                        }`}></div>
-                        
-                        <div className={`relative bg-gradient-to-b from-[#0a0808] to-[#0d0a08] border-2 ${
-                            seerResult.faction === 'EVIL'
-                                ? 'border-[#8b0000]/60 shadow-[0_0_50px_rgba(139,0,0,0.4)]'
-                                : 'border-[#2d5a2d]/60 shadow-[0_0_50px_rgba(45,90,45,0.4)]'
-                        } p-8 text-center`}>
+                        <div className={`absolute -inset-4 blur-2xl rounded-full opacity-50 ${seerResult.faction === 'EVIL'
+                            ? 'bg-[#8b0000]'
+                            : 'bg-[#2d5a2d]'
+                            }`}></div>
+
+                        <div className={`relative bg-gradient-to-b from-[#0a0808] to-[#0d0a08] border-2 ${seerResult.faction === 'EVIL'
+                            ? 'border-[#8b0000]/60 shadow-[0_0_50px_rgba(139,0,0,0.4)]'
+                            : 'border-[#2d5a2d]/60 shadow-[0_0_50px_rgba(45,90,45,0.4)]'
+                            } p-8 text-center`}>
                             {/* Corner runes */}
                             <div className="absolute top-2 left-2 w-6 h-6 border-l-2 border-t-2 border-current opacity-40"></div>
                             <div className="absolute top-2 right-2 w-6 h-6 border-r-2 border-t-2 border-current opacity-40"></div>
@@ -2217,9 +2438,8 @@ export default function RoomPage() {
 
                             {/* Header */}
                             <div className="mb-6">
-                                <RuneSeerEye className={`w-16 h-16 mx-auto mb-4 ${
-                                    seerResult.faction === 'EVIL' ? 'text-[#8b0000]' : 'text-[#4ade80]'
-                                }`} />
+                                <RuneSeerEye className={`w-16 h-16 mx-auto mb-4 ${seerResult.faction === 'EVIL' ? 'text-[#8b0000]' : 'text-[#4ade80]'
+                                    }`} />
                                 <p className="text-[#8b7355] text-sm uppercase tracking-[0.3em] font-bold">Thị Kiến Tiên Tri</p>
                             </div>
 
@@ -2230,23 +2450,20 @@ export default function RoomPage() {
                             </div>
 
                             {/* Faction result - LARGE and OBVIOUS */}
-                            <div className={`py-8 px-6 mb-8 border-y ${
-                                seerResult.faction === 'EVIL'
-                                    ? 'border-[#8b0000]/40 bg-[#200808]/60'
-                                    : 'border-[#2d5a2d]/40 bg-[#082008]/60'
-                            }`}>
-                                <p className={`font-heading text-6xl md:text-7xl tracking-widest uppercase ${
-                                    seerResult.faction === 'EVIL'
-                                        ? 'text-[#ff4444] drop-shadow-[0_0_20px_rgba(255,68,68,0.5)]'
-                                        : 'text-[#4ade80] drop-shadow-[0_0_20px_rgba(74,222,128,0.5)]'
+                            <div className={`py-8 px-6 mb-8 border-y ${seerResult.faction === 'EVIL'
+                                ? 'border-[#8b0000]/40 bg-[#200808]/60'
+                                : 'border-[#2d5a2d]/40 bg-[#082008]/60'
                                 }`}>
+                                <p className={`font-heading text-6xl md:text-7xl tracking-widest uppercase ${seerResult.faction === 'EVIL'
+                                    ? 'text-[#ff4444] drop-shadow-[0_0_20px_rgba(255,68,68,0.5)]'
+                                    : 'text-[#4ade80] drop-shadow-[0_0_20px_rgba(74,222,128,0.5)]'
+                                    }`}>
                                     {seerResult.faction === 'EVIL' ? 'PHE ÁC' : 'PHE THIỆN'}
                                 </p>
-                                <p className={`mt-4 text-lg font-serif italic ${
-                                    seerResult.faction === 'EVIL' ? 'text-[#d4a8a8]' : 'text-[#a8d4a8]'
-                                }`}>
-                                    {seerResult.faction === 'EVIL' 
-                                        ? 'Bóng tối ngự trị trong linh hồn này...' 
+                                <p className={`mt-4 text-lg font-serif italic ${seerResult.faction === 'EVIL' ? 'text-[#d4a8a8]' : 'text-[#a8d4a8]'
+                                    }`}>
+                                    {seerResult.faction === 'EVIL'
+                                        ? 'Bóng tối ngự trị trong linh hồn này...'
                                         : 'Ánh sáng tỏa ra từ linh hồn này...'}
                                 </p>
                             </div>
@@ -2254,11 +2471,10 @@ export default function RoomPage() {
                             {/* Dismiss button */}
                             <button
                                 onClick={handleSeerResultDismiss}
-                                className={`w-full h-14 border font-heading tracking-[0.15em] uppercase transition-all duration-500 flex items-center justify-center gap-3 ${
-                                    seerResult.faction === 'EVIL'
-                                        ? 'bg-[#200808] border-[#8b0000]/50 hover:border-[#8b0000] text-[#d4c4a8] hover:shadow-[0_0_20px_rgba(139,0,0,0.3)]'
-                                        : 'bg-[#082008] border-[#2d5a2d]/50 hover:border-[#4ade80] text-[#d4c4a8] hover:shadow-[0_0_20px_rgba(74,222,128,0.3)]'
-                                }`}
+                                className={`w-full h-14 border font-heading tracking-[0.15em] uppercase transition-all duration-500 flex items-center justify-center gap-3 ${seerResult.faction === 'EVIL'
+                                    ? 'bg-[#200808] border-[#8b0000]/50 hover:border-[#8b0000] text-[#d4c4a8] hover:shadow-[0_0_20px_rgba(139,0,0,0.3)]'
+                                    : 'bg-[#082008] border-[#2d5a2d]/50 hover:border-[#4ade80] text-[#d4c4a8] hover:shadow-[0_0_20px_rgba(74,222,128,0.3)]'
+                                    }`}
                             >
                                 <RuneConfirm className="w-5 h-5" />
                                 <span>Đã Hiểu - Tiếp Tục</span>
@@ -2272,16 +2488,16 @@ export default function RoomPage() {
             {narrative && isHost && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     {/* Dawn backdrop */}
-                    <div 
+                    <div
                         className="absolute inset-0 bg-gradient-to-b from-[#1a1008]/95 to-black/95 backdrop-blur-sm"
                         onClick={handleDismissNarrative}
                     />
-                    
+
                     {/* Narrative card */}
                     <div className="relative max-w-2xl w-full">
                         {/* Dawn glow */}
                         <div className="absolute -inset-4 bg-[#c9a227]/10 blur-2xl rounded-full opacity-50"></div>
-                        
+
                         <div className="relative bg-gradient-to-b from-[#12100a] to-[#0a0808] border-2 border-[#c9a227]/40 shadow-[0_0_50px_rgba(201,162,39,0.2)] p-8">
                             {/* Corner decorations */}
                             <div className="absolute top-2 left-2 w-6 h-6 border-l-2 border-t-2 border-[#c9a227]/40"></div>
@@ -2344,16 +2560,16 @@ export default function RoomPage() {
             {executionPending && isHost && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     {/* Dark backdrop */}
-                    <div 
+                    <div
                         className="absolute inset-0 bg-black/90 backdrop-blur-sm"
                         onClick={handleCancelExecution}
                     />
-                    
+
                     {/* Confirmation card */}
                     <div className="relative max-w-md w-full">
                         {/* Blood red glow */}
                         <div className="absolute -inset-4 bg-[#8b0000]/20 blur-2xl rounded-full opacity-60"></div>
-                        
+
                         <div className="relative bg-gradient-to-b from-[#0a0808] to-[#120808] border-2 border-[#8b0000]/50 shadow-[0_0_50px_rgba(139,0,0,0.3)] p-8">
                             {/* Corner decorations */}
                             <div className="absolute top-2 left-2 w-6 h-6 border-l-2 border-t-2 border-[#8b0000]/40"></div>
@@ -2406,12 +2622,12 @@ export default function RoomPage() {
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     {/* Dark mystical backdrop */}
                     <div className="absolute inset-0 bg-gradient-to-b from-[#0a1008]/95 to-black/95 backdrop-blur-sm" />
-                    
+
                     {/* Revenge card */}
                     <div className="relative max-w-lg w-full">
                         {/* Hunter's golden glow */}
                         <div className="absolute -inset-4 bg-[#c9a227]/15 blur-2xl rounded-full opacity-60"></div>
-                        
+
                         <div className="relative bg-gradient-to-b from-[#0a0808] to-[#0d0a08] border-2 border-[#c9a227]/50 shadow-[0_0_50px_rgba(201,162,39,0.25)] p-8">
                             {/* Corner decorations */}
                             <div className="absolute top-2 left-2 w-6 h-6 border-l-2 border-t-2 border-[#c9a227]/40"></div>
@@ -2424,6 +2640,7 @@ export default function RoomPage() {
                                 <RuneHunterBow className="w-16 h-16 mx-auto mb-4 text-[#c9a227]" />
                                 <p className="text-[#c9a227]/70 text-sm uppercase tracking-[0.3em] font-bold">Phát Súng Cuối Cùng</p>
                                 <h2 className="font-heading text-2xl text-[#d4c4a8] tracking-wide mt-2">Thợ Săn Trả Thù</h2>
+                                <p className="text-[#8b7355]/80 text-xs mt-2 italic">★ Quản Trò chọn hộ Thợ Săn ★</p>
                             </div>
 
                             {/* Hunter info */}
@@ -2433,15 +2650,91 @@ export default function RoomPage() {
                             </div>
 
                             {/* Instruction */}
-                            <div className="bg-[#0a0808]/60 border border-[#8b7355]/20 p-4 mb-5">
-                                <p className="text-[#a89d88] font-serif italic text-sm leading-relaxed text-center">
-                                    Hỏi Thợ Săn: "Trước khi chết, bạn muốn bắn ai?"
-                                    <br />
-                                    <span className="text-[#c9a227]">Chọn một người chơi từ danh sách bên trái.</span>
+                            <div className="bg-[#0a0808]/60 border border-[#c9a227]/30 p-4 mb-5">
+                                <p className="text-[#d4c4a8] text-sm text-center mb-2">
+                                    Hỏi Thợ Săn: <span className="text-[#c9a227] italic">"Trước khi chết, bạn muốn bắn ai?"</span>
+                                </p>
+                                <p className="text-[#8b7355] text-xs text-center italic">
+                                    Chọn mục tiêu theo lời Thợ Săn ⬇
                                 </p>
                             </div>
 
-                            {/* Selected target */}
+                            {/* Player selection list */}
+                            <div className="bg-[#0a0808]/60 border border-[#8b7355]/30 p-4 mb-5 max-h-64 overflow-y-auto">
+                                <p className="text-[#c9a227] text-xs uppercase tracking-wider mb-3 text-center">Danh Sách Mục Tiêu</p>
+                                <div className="space-y-2">
+                                    {players
+                                        .filter(p => {
+                                            const playerId = getPlayerKey(p)
+                                            const isDead = isPlayerDead(p)
+                                            const isHost = isElder(p)
+                                            const isHunter = playerId === hunterCanShoot?.hunterId
+                                            return !isDead && !isHost && !isHunter
+                                        })
+                                        .map(player => {
+                                            const playerId = getPlayerKey(player)
+                                            const isSelected = selectedPlayerId === playerId
+
+                                            return (
+                                                <button
+                                                    key={playerId}
+                                                    onClick={() => setSelectedPlayerId(playerId)}
+                                                    className={`w-full px-4 py-3 border transition-all duration-300 text-left flex items-center gap-3 ${isSelected
+                                                            ? 'bg-[#8b0000]/20 border-[#8b0000]/60 shadow-[0_0_10px_rgba(139,0,0,0.3)]'
+                                                            : 'bg-[#1a150a]/40 border-[#8b7355]/30 hover:border-[#c9a227]/50 hover:bg-[#1a150a]/60'
+                                                        }`}
+                                                >
+                                                    {/* Selection indicator */}
+                                                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${isSelected
+                                                            ? 'border-[#8b0000] bg-[#8b0000]'
+                                                            : 'border-[#8b7355]/50'
+                                                        }`}>
+                                                        {isSelected && (
+                                                            <RuneTarget className="w-3 h-3 text-white" />
+                                                        )}
+                                                    </div>
+
+                                                    {/* Player avatar */}
+                                                    <div className="w-10 h-10 rounded-full overflow-hidden border border-[#8b7355]/30 flex-shrink-0">
+                                                        <img
+                                                            src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${player.userId || player.id}`}
+                                                            alt={player.username}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    </div>
+
+                                                    {/* Player name */}
+                                                    <span className={`font-heading tracking-wide flex-1 ${isSelected ? 'text-[#d4c4a8]' : 'text-[#a89d88]'
+                                                        }`}>
+                                                        {player.username}
+                                                    </span>
+
+                                                    {/* Selected badge */}
+                                                    {isSelected && (
+                                                        <span className="text-[#8b0000] text-xs uppercase tracking-wider font-bold">
+                                                            ✓ Đã chọn
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            )
+                                        })}
+                                </div>
+
+                                {/* Empty state */}
+                                {players.filter(p => {
+                                    const playerId = getPlayerKey(p)
+                                    const isDead = isPlayerDead(p)
+                                    const isHost = isElder(p)
+                                    const isHunter = playerId === hunterCanShoot?.hunterId
+                                    return !isDead && !isHost && !isHunter
+                                }).length === 0 && (
+                                        <p className="text-[#8b7355] text-sm text-center py-4 italic">
+                                            Không có mục tiêu khả dụng
+                                        </p>
+                                    )}
+                            </div>
+
+                            {/* Selected target summary */}
                             {selectedPlayerId && (
                                 <div className="bg-[#200a0a]/60 border border-[#8b0000]/30 px-4 py-3 mb-5">
                                     <p className="text-[#d4a8a8] text-sm flex items-center justify-center gap-2">
@@ -2464,11 +2757,10 @@ export default function RoomPage() {
                                 <button
                                     onClick={handleHunterRevengeConfirm}
                                     disabled={!selectedPlayerId}
-                                    className={`flex-1 h-12 border font-heading tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-2 ${
-                                        selectedPlayerId
-                                            ? 'bg-[#1a150a] border-[#c9a227]/60 hover:border-[#c9a227] text-[#d4c4a8] hover:shadow-[0_0_15px_rgba(201,162,39,0.3)]'
-                                            : 'bg-[#0a0808] border-[#4a4a3a]/30 text-[#6a6a5a] cursor-not-allowed opacity-60'
-                                    }`}
+                                    className={`flex-1 h-12 border font-heading tracking-wider uppercase transition-all duration-300 flex items-center justify-center gap-2 ${selectedPlayerId
+                                        ? 'bg-[#1a150a] border-[#c9a227]/60 hover:border-[#c9a227] text-[#d4c4a8] hover:shadow-[0_0_15px_rgba(201,162,39,0.3)]'
+                                        : 'bg-[#0a0808] border-[#4a4a3a]/30 text-[#6a6a5a] cursor-not-allowed opacity-60'
+                                        }`}
                                 >
                                     <RuneHunterBow className="w-4 h-4 text-[#c9a227]" />
                                     <span>Bắn</span>
@@ -2484,37 +2776,32 @@ export default function RoomPage() {
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                     {/* Dark backdrop */}
                     <div className="absolute inset-0 bg-black/95 backdrop-blur-sm" />
-                    
+
                     {/* Game Over card */}
                     <div className="relative max-w-lg w-full">
                         {/* Victory glow */}
-                        <div className={`absolute -inset-4 blur-2xl rounded-full opacity-50 ${
-                            gameOver.winner === 'VILLAGER' ? 'bg-[#4ade80]' : 
+                        <div className={`absolute -inset-4 blur-2xl rounded-full opacity-50 ${gameOver.winner === 'VILLAGER' ? 'bg-[#4ade80]' :
                             gameOver.winner === 'WEREWOLF' ? 'bg-[#8b0000]' : 'bg-[#c9a227]'
-                        }`}></div>
-                        
-                        <div className={`relative bg-gradient-to-b from-[#0a0808] to-[#0d0a08] border-2 shadow-[0_0_50px_rgba(0,0,0,0.5)] p-8 ${
-                            gameOver.winner === 'VILLAGER' ? 'border-[#4ade80]/50' : 
+                            }`}></div>
+
+                        <div className={`relative bg-gradient-to-b from-[#0a0808] to-[#0d0a08] border-2 shadow-[0_0_50px_rgba(0,0,0,0.5)] p-8 ${gameOver.winner === 'VILLAGER' ? 'border-[#4ade80]/50' :
                             gameOver.winner === 'WEREWOLF' ? 'border-[#8b0000]/50' : 'border-[#c9a227]/50'
-                        }`}>
+                            }`}>
                             {/* Header */}
                             <div className="text-center mb-8">
-                                <RuneSkull className={`w-20 h-20 mx-auto mb-4 ${
-                                    gameOver.winner === 'VILLAGER' ? 'text-[#4ade80]' : 
+                                <RuneSkull className={`w-20 h-20 mx-auto mb-4 ${gameOver.winner === 'VILLAGER' ? 'text-[#4ade80]' :
                                     gameOver.winner === 'WEREWOLF' ? 'text-[#8b0000]' : 'text-[#c9a227]'
-                                }`} />
+                                    }`} />
                                 <h2 className="font-heading text-4xl text-[#d4c4a8] tracking-wide">KẾT THÚC</h2>
                             </div>
 
                             {/* Winner message */}
-                            <div className={`p-6 mb-6 text-center border ${
-                                gameOver.winner === 'VILLAGER' ? 'bg-[#082008]/60 border-[#4ade80]/30' : 
+                            <div className={`p-6 mb-6 text-center border ${gameOver.winner === 'VILLAGER' ? 'bg-[#082008]/60 border-[#4ade80]/30' :
                                 gameOver.winner === 'WEREWOLF' ? 'bg-[#200808]/60 border-[#8b0000]/30' : 'bg-[#1a150a]/60 border-[#c9a227]/30'
-                            }`}>
-                                <p className={`font-heading text-3xl tracking-wide ${
-                                    gameOver.winner === 'VILLAGER' ? 'text-[#4ade80]' : 
-                                    gameOver.winner === 'WEREWOLF' ? 'text-[#ff4444]' : 'text-[#c9a227]'
                                 }`}>
+                                <p className={`font-heading text-3xl tracking-wide ${gameOver.winner === 'VILLAGER' ? 'text-[#4ade80]' :
+                                    gameOver.winner === 'WEREWOLF' ? 'text-[#ff4444]' : 'text-[#c9a227]'
+                                    }`}>
                                     {gameOver.message}
                                 </p>
                             </div>
@@ -2530,6 +2817,66 @@ export default function RoomPage() {
                     </div>
                 </div>
             )}
+
+            {/* Lover Notification Modal - For players who are selected as lovers */}
+            {myLoverInfo && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    {/* Romantic pink backdrop */}
+                    <div
+                        className="absolute inset-0 bg-gradient-to-b from-[#2a0a1a]/95 to-black/95 backdrop-blur-sm"
+                        onClick={() => setMyLoverInfo(null)}
+                    />
+
+                    {/* Lover card */}
+                    <div className="relative max-w-md w-full animate-fade-in">
+                        {/* Pink romantic glow */}
+                        <div className="absolute -inset-4 bg-[#ff69b4]/20 blur-2xl rounded-full opacity-70"></div>
+
+                        <div className="relative bg-gradient-to-b from-[#1a0a15] to-[#0a0808] border-2 border-[#ff69b4]/60 shadow-[0_0_50px_rgba(255,105,180,0.3)] p-8 text-center">
+                            {/* Corner decorations */}
+                            <div className="absolute top-2 left-2 w-6 h-6 border-l-2 border-t-2 border-[#ff69b4]/50"></div>
+                            <div className="absolute top-2 right-2 w-6 h-6 border-r-2 border-t-2 border-[#ff69b4]/50"></div>
+                            <div className="absolute bottom-2 left-2 w-6 h-6 border-l-2 border-b-2 border-[#ff69b4]/50"></div>
+                            <div className="absolute bottom-2 right-2 w-6 h-6 border-r-2 border-b-2 border-[#ff69b4]/50"></div>
+
+                            {/* Header */}
+                            <div className="mb-6">
+                                <RuneHeart className="w-20 h-20 mx-auto mb-4 text-[#ff69b4]" />
+                                <p className="text-[#ff69b4]/70 text-sm uppercase tracking-[0.3em] font-bold">Duyên Phận Đã Định</p>
+                                <h2 className="font-heading text-3xl text-[#ffb6c1] tracking-wide mt-2">Bạn Là Người Yêu</h2>
+                            </div>
+
+                            {/* Lover info */}
+                            <div className="bg-[#2a0a1a]/60 border border-[#ff69b4]/30 p-6 mb-6">
+                                <p className="text-[#8b7355] text-xs uppercase tracking-wider mb-2">Người Yêu Của Bạn</p>
+                                <p className="font-heading text-4xl text-[#ffb6c1] tracking-wide mb-4">
+                                    {myLoverInfo.yourLover?.username || 'Unknown'}
+                                </p>
+                                <p className="text-[#ffb6c1]/80 text-sm font-serif italic leading-relaxed">
+                                    {myLoverInfo.message || 'Cupid đã chọn bạn làm cặp đôi.'}
+                                </p>
+                            </div>
+
+                            {/* Love bond explanation */}
+                            <div className="bg-[#1a0a15]/60 border border-[#ff69b4]/20 p-4 mb-6">
+                                <p className="text-[#d4c4a8]/80 text-sm font-serif italic leading-relaxed">
+                                    💘 Hai bạn sống chết có nhau. Nếu một người chết, người kia sẽ tự sát theo. 
+                                    Hai bạn thắng cùng nhau bất kể phe nào.
+                                </p>
+                            </div>
+
+                            {/* Dismiss button */}
+                            <button
+                                onClick={() => setMyLoverInfo(null)}
+                                className="w-full h-14 bg-[#2a0a1a] border border-[#ff69b4]/50 hover:border-[#ff69b4]/80 text-[#ffb6c1] font-heading tracking-[0.15em] uppercase transition-all duration-500 hover:shadow-[0_0_20px_rgba(255,105,180,0.3)] flex items-center justify-center gap-3"
+                            >
+                                <RuneHeart className="w-5 h-5 text-[#ff69b4]" />
+                                <span>Đã Hiểu - Bảo Vệ Người Yêu</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
@@ -2539,75 +2886,75 @@ export default function RoomPage() {
 // ============================================
 
 function RuneEyeClosed({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      {/* Closed eye */}
-      <path d="M3 12 Q12 18 21 12" />
-      {/* Eyelashes */}
-      <path d="M6 14 L5 16" strokeWidth="1" />
-      <path d="M12 16 L12 18" strokeWidth="1" />
-      <path d="M18 14 L19 16" strokeWidth="1" />
-      {/* Strike through */}
-      <path d="M4 4 L20 20" strokeWidth="1" opacity="0.5" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            {/* Closed eye */}
+            <path d="M3 12 Q12 18 21 12" />
+            {/* Eyelashes */}
+            <path d="M6 14 L5 16" strokeWidth="1" />
+            <path d="M12 16 L12 18" strokeWidth="1" />
+            <path d="M18 14 L19 16" strokeWidth="1" />
+            {/* Strike through */}
+            <path d="M4 4 L20 20" strokeWidth="1" opacity="0.5" />
+        </svg>
+    )
 }
 
 function RuneGrave({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      {/* Tombstone shape */}
-      <path d="M6 22 L6 8 Q6 4 12 4 Q18 4 18 8 L18 22" />
-      {/* Cross on tombstone */}
-      <path d="M12 8 L12 16 M9 11 L15 11" strokeWidth="1" opacity="0.6" />
-      {/* Ground line */}
-      <path d="M4 22 L20 22" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            {/* Tombstone shape */}
+            <path d="M6 22 L6 8 Q6 4 12 4 Q18 4 18 8 L18 22" />
+            {/* Cross on tombstone */}
+            <path d="M12 8 L12 16 M9 11 L15 11" strokeWidth="1" opacity="0.6" />
+            {/* Ground line */}
+            <path d="M4 22 L20 22" />
+        </svg>
+    )
 }
 
 function RuneChronicle({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      {/* Open book/scroll */}
-      <path d="M4 4 L4 20 Q8 18 12 20 Q16 18 20 20 L20 4 Q16 6 12 4 Q8 6 4 4 Z" />
-      {/* Center binding */}
-      <path d="M12 4 L12 20" />
-      {/* Text lines */}
-      <path d="M6 8 L10 8 M6 11 L9 11 M6 14 L10 14" strokeWidth="1" opacity="0.5" />
-      <path d="M14 8 L18 8 M15 11 L18 11 M14 14 L18 14" strokeWidth="1" opacity="0.5" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            {/* Open book/scroll */}
+            <path d="M4 4 L4 20 Q8 18 12 20 Q16 18 20 20 L20 4 Q16 6 12 4 Q8 6 4 4 Z" />
+            {/* Center binding */}
+            <path d="M12 4 L12 20" />
+            {/* Text lines */}
+            <path d="M6 8 L10 8 M6 11 L9 11 M6 14 L10 14" strokeWidth="1" opacity="0.5" />
+            <path d="M14 8 L18 8 M15 11 L18 11 M14 14 L18 14" strokeWidth="1" opacity="0.5" />
+        </svg>
+    )
 }
 
 function RuneChurch({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      {/* Church building */}
-      <path d="M4 22 L4 12 L12 6 L20 12 L20 22 Z" />
-      {/* Steeple */}
-      <path d="M12 6 L12 2" />
-      <path d="M10 4 L14 4" strokeWidth="1" />
-      {/* Door */}
-      <path d="M9 22 L9 16 Q12 14 15 16 L15 22" />
-      {/* Window */}
-      <circle cx="12" cy="11" r="2" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            {/* Church building */}
+            <path d="M4 22 L4 12 L12 6 L20 12 L20 22 Z" />
+            {/* Steeple */}
+            <path d="M12 6 L12 2" />
+            <path d="M10 4 L14 4" strokeWidth="1" />
+            {/* Door */}
+            <path d="M9 22 L9 16 Q12 14 15 16 L15 22" />
+            {/* Window */}
+            <circle cx="12" cy="11" r="2" />
+        </svg>
+    )
 }
 
 function RuneQuill({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      {/* Feather quill */}
-      <path d="M20 4 Q16 4 12 8 L4 16 L4 20 L8 20 L16 12 Q20 8 20 4 Z" />
-      {/* Feather details */}
-      <path d="M14 10 L18 6" strokeWidth="1" opacity="0.5" />
-      <path d="M12 12 L16 8" strokeWidth="1" opacity="0.5" />
-      {/* Ink drop */}
-      <circle cx="6" cy="18" r="1" fill="currentColor" opacity="0.3" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            {/* Feather quill */}
+            <path d="M20 4 Q16 4 12 8 L4 16 L4 20 L8 20 L16 12 Q20 8 20 4 Z" />
+            {/* Feather details */}
+            <path d="M14 10 L18 6" strokeWidth="1" opacity="0.5" />
+            <path d="M12 12 L16 8" strokeWidth="1" opacity="0.5" />
+            {/* Ink drop */}
+            <circle cx="6" cy="18" r="1" fill="currentColor" opacity="0.3" />
+        </svg>
+    )
 }
 
 // ============================================
@@ -2615,89 +2962,89 @@ function RuneQuill({ className }) {
 // ============================================
 
 function RuneTarget({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      {/* Outer mystical circle with runes */}
-      <circle cx="12" cy="12" r="10" strokeDasharray="3 2" />
-      {/* Inner circle */}
-      <circle cx="12" cy="12" r="6" />
-      {/* Center eye */}
-      <circle cx="12" cy="12" r="2" fill="currentColor" opacity="0.5" />
-      {/* Cardinal rune marks */}
-      <path d="M12 2 L12 5" />
-      <path d="M12 19 L12 22" />
-      <path d="M2 12 L5 12" />
-      <path d="M19 12 L22 12" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            {/* Outer mystical circle with runes */}
+            <circle cx="12" cy="12" r="10" strokeDasharray="3 2" />
+            {/* Inner circle */}
+            <circle cx="12" cy="12" r="6" />
+            {/* Center eye */}
+            <circle cx="12" cy="12" r="2" fill="currentColor" opacity="0.5" />
+            {/* Cardinal rune marks */}
+            <path d="M12 2 L12 5" />
+            <path d="M12 19 L12 22" />
+            <path d="M2 12 L5 12" />
+            <path d="M19 12 L22 12" />
+        </svg>
+    )
 }
 
 function RuneShield({ className, title }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-label={title}>
-      <title>{title}</title>
-      {/* Ancient shield shape */}
-      <path d="M12 2 L4 6 L4 12 Q4 18 12 22 Q20 18 20 12 L20 6 Z" />
-      {/* Protection rune - ward symbol */}
-      <path d="M12 7 L12 15" strokeWidth="1.5" />
-      <path d="M9 10 L15 10" strokeWidth="1.5" />
-      <path d="M8 13 L10 11 M16 13 L14 11" strokeWidth="1" opacity="0.6" />
-      {/* Corner ward marks */}
-      <circle cx="12" cy="18" r="1" fill="currentColor" opacity="0.4" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-label={title}>
+            <title>{title}</title>
+            {/* Ancient shield shape */}
+            <path d="M12 2 L4 6 L4 12 Q4 18 12 22 Q20 18 20 12 L20 6 Z" />
+            {/* Protection rune - ward symbol */}
+            <path d="M12 7 L12 15" strokeWidth="1.5" />
+            <path d="M9 10 L15 10" strokeWidth="1.5" />
+            <path d="M8 13 L10 11 M16 13 L14 11" strokeWidth="1" opacity="0.6" />
+            {/* Corner ward marks */}
+            <circle cx="12" cy="18" r="1" fill="currentColor" opacity="0.4" />
+        </svg>
+    )
 }
 
 function RuneFang({ className, title }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-label={title}>
-      <title>{title}</title>
-      {/* Wolf fang / bite mark - mystical style */}
-      <path d="M6 4 Q8 8 6 14 L8 12 L10 16 L12 10 L14 16 L16 12 L18 14 Q16 8 18 4" />
-      {/* Blood drops - ancient symbol */}
-      <path d="M8 18 Q8 20 10 20 Q10 18 8 18" fill="currentColor" opacity="0.5" />
-      <path d="M14 17 Q14 19 16 19 Q16 17 14 17" fill="currentColor" opacity="0.5" />
-      {/* Curse marks */}
-      <path d="M4 6 L6 8 M18 8 L20 6" strokeWidth="1" opacity="0.4" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-label={title}>
+            <title>{title}</title>
+            {/* Wolf fang / bite mark - mystical style */}
+            <path d="M6 4 Q8 8 6 14 L8 12 L10 16 L12 10 L14 16 L16 12 L18 14 Q16 8 18 4" />
+            {/* Blood drops - ancient symbol */}
+            <path d="M8 18 Q8 20 10 20 Q10 18 8 18" fill="currentColor" opacity="0.5" />
+            <path d="M14 17 Q14 19 16 19 Q16 17 14 17" fill="currentColor" opacity="0.5" />
+            {/* Curse marks */}
+            <path d="M4 6 L6 8 M18 8 L20 6" strokeWidth="1" opacity="0.4" />
+        </svg>
+    )
 }
 
 function RunePoison({ className, title }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-label={title}>
-      <title>{title}</title>
-      {/* Poison vial / chalice */}
-      <path d="M8 4 L8 8 Q4 12 6 18 Q8 22 12 22 Q16 22 18 18 Q20 12 16 8 L16 4" />
-      <path d="M8 4 L16 4" />
-      {/* Skull symbol inside - death rune */}
-      <circle cx="12" cy="13" r="3" />
-      <path d="M10 12 L10 13 M14 12 L14 13" strokeWidth="1" />
-      <path d="M11 15 L13 15" strokeWidth="1" />
-      {/* Poison bubbles */}
-      <circle cx="9" cy="18" r="1" opacity="0.4" />
-      <circle cx="15" cy="17" r="0.8" opacity="0.4" />
-      {/* Vapor wisps */}
-      <path d="M10 2 Q11 0 12 2 Q13 0 14 2" strokeWidth="1" opacity="0.5" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-label={title}>
+            <title>{title}</title>
+            {/* Poison vial / chalice */}
+            <path d="M8 4 L8 8 Q4 12 6 18 Q8 22 12 22 Q16 22 18 18 Q20 12 16 8 L16 4" />
+            <path d="M8 4 L16 4" />
+            {/* Skull symbol inside - death rune */}
+            <circle cx="12" cy="13" r="3" />
+            <path d="M10 12 L10 13 M14 12 L14 13" strokeWidth="1" />
+            <path d="M11 15 L13 15" strokeWidth="1" />
+            {/* Poison bubbles */}
+            <circle cx="9" cy="18" r="1" opacity="0.4" />
+            <circle cx="15" cy="17" r="0.8" opacity="0.4" />
+            {/* Vapor wisps */}
+            <path d="M10 2 Q11 0 12 2 Q13 0 14 2" strokeWidth="1" opacity="0.5" />
+        </svg>
+    )
 }
 
 function RuneHeal({ className, title }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-label={title}>
-      <title>{title}</title>
-      {/* Life/healing rune - ancient ankh-inspired */}
-      <path d="M12 8 Q8 8 8 5 Q8 2 12 2 Q16 2 16 5 Q16 8 12 8" />
-      <path d="M12 8 L12 22" />
-      <path d="M8 12 L16 12" />
-      {/* Healing energy rays */}
-      <path d="M6 16 L8 14 M18 16 L16 14" strokeWidth="1" opacity="0.5" />
-      <path d="M6 20 L9 18 M18 20 L15 18" strokeWidth="1" opacity="0.5" />
-      {/* Life spark */}
-      <circle cx="12" cy="5" r="1.5" fill="currentColor" opacity="0.3" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-label={title}>
+            <title>{title}</title>
+            {/* Life/healing rune - ancient ankh-inspired */}
+            <path d="M12 8 Q8 8 8 5 Q8 2 12 2 Q16 2 16 5 Q16 8 12 8" />
+            <path d="M12 8 L12 22" />
+            <path d="M8 12 L16 12" />
+            {/* Healing energy rays */}
+            <path d="M6 16 L8 14 M18 16 L16 14" strokeWidth="1" opacity="0.5" />
+            <path d="M6 20 L9 18 M18 20 L15 18" strokeWidth="1" opacity="0.5" />
+            {/* Life spark */}
+            <circle cx="12" cy="5" r="1.5" fill="currentColor" opacity="0.3" />
+        </svg>
+    )
 }
 
 // ============================================
@@ -2705,201 +3052,214 @@ function RuneHeal({ className, title }) {
 // ============================================
 
 function RuneNightMoon({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      {/* Crescent moon */}
-      <path d="M20 12 Q20 6 14 4 Q16 8 16 12 Q16 16 14 20 Q20 18 20 12" />
-      {/* Stars */}
-      <path d="M6 6 L7 8 L6 10 L5 8 Z" fill="currentColor" opacity="0.4" />
-      <path d="M9 3 L9.5 4.5 L9 6 L8.5 4.5 Z" fill="currentColor" opacity="0.3" />
-      <path d="M4 12 L5 13.5 L4 15 L3 13.5 Z" fill="currentColor" opacity="0.3" />
-      {/* Mystical rays */}
-      <path d="M8 18 L6 20" strokeWidth="1" opacity="0.4" />
-      <path d="M10 20 L9 22" strokeWidth="1" opacity="0.3" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            {/* Crescent moon */}
+            <path d="M20 12 Q20 6 14 4 Q16 8 16 12 Q16 16 14 20 Q20 18 20 12" />
+            {/* Stars */}
+            <path d="M6 6 L7 8 L6 10 L5 8 Z" fill="currentColor" opacity="0.4" />
+            <path d="M9 3 L9.5 4.5 L9 6 L8.5 4.5 Z" fill="currentColor" opacity="0.3" />
+            <path d="M4 12 L5 13.5 L4 15 L3 13.5 Z" fill="currentColor" opacity="0.3" />
+            {/* Mystical rays */}
+            <path d="M8 18 L6 20" strokeWidth="1" opacity="0.4" />
+            <path d="M10 20 L9 22" strokeWidth="1" opacity="0.3" />
+        </svg>
+    )
 }
 
 function RuneRitual({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      {/* Ritual circle */}
-      <circle cx="12" cy="12" r="9" strokeDasharray="2 2" />
-      {/* Inner pentagram hints */}
-      <path d="M12 5 L14 10 L19 10 L15 14 L17 19 L12 16 L7 19 L9 14 L5 10 L10 10 Z" strokeWidth="1" opacity="0.5" />
-      {/* Center eye */}
-      <circle cx="12" cy="12" r="2" />
-      <circle cx="12" cy="12" r="0.8" fill="currentColor" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            {/* Ritual circle */}
+            <circle cx="12" cy="12" r="9" strokeDasharray="2 2" />
+            {/* Inner pentagram hints */}
+            <path d="M12 5 L14 10 L19 10 L15 14 L17 19 L12 16 L7 19 L9 14 L5 10 L10 10 Z" strokeWidth="1" opacity="0.5" />
+            {/* Center eye */}
+            <circle cx="12" cy="12" r="2" />
+            <circle cx="12" cy="12" r="0.8" fill="currentColor" />
+        </svg>
+    )
 }
 
 function RuneHand({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      {/* Mystical pointing hand */}
-      <path d="M8 14 L8 8 Q8 6 10 6 L10 12" />
-      <path d="M10 12 L10 5 Q10 3 12 3 L12 12" />
-      <path d="M12 12 L12 5 Q12 3 14 3 L14 12" />
-      <path d="M14 12 L14 6 Q14 4 16 4 L16 12" />
-      {/* Palm */}
-      <path d="M8 14 Q6 16 6 18 Q6 22 12 22 Q18 22 18 18 L18 12 L16 12" />
-      {/* Eye in palm - mystical symbol */}
-      <circle cx="12" cy="17" r="2" strokeWidth="1" opacity="0.5" />
-      <circle cx="12" cy="17" r="0.5" fill="currentColor" opacity="0.5" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            {/* Mystical pointing hand */}
+            <path d="M8 14 L8 8 Q8 6 10 6 L10 12" />
+            <path d="M10 12 L10 5 Q10 3 12 3 L12 12" />
+            <path d="M12 12 L12 5 Q12 3 14 3 L14 12" />
+            <path d="M14 12 L14 6 Q14 4 16 4 L16 12" />
+            {/* Palm */}
+            <path d="M8 14 Q6 16 6 18 Q6 22 12 22 Q18 22 18 18 L18 12 L16 12" />
+            {/* Eye in palm - mystical symbol */}
+            <circle cx="12" cy="17" r="2" strokeWidth="1" opacity="0.5" />
+            <circle cx="12" cy="17" r="0.5" fill="currentColor" opacity="0.5" />
+        </svg>
+    )
 }
 
 function RuneConfirm({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      {/* Mystical seal / confirmation rune */}
-      <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="12" r="6" strokeDasharray="3 2" />
-      {/* Ancient checkmark / approval symbol */}
-      <path d="M8 12 L11 15 L16 9" strokeWidth="2" />
-      {/* Corner rune marks */}
-      <path d="M12 3 L12 5" strokeWidth="1" />
-      <path d="M12 19 L12 21" strokeWidth="1" />
-      <path d="M3 12 L5 12" strokeWidth="1" />
-      <path d="M19 12 L21 12" strokeWidth="1" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            {/* Mystical seal / confirmation rune */}
+            <circle cx="12" cy="12" r="9" />
+            <circle cx="12" cy="12" r="6" strokeDasharray="3 2" />
+            {/* Ancient checkmark / approval symbol */}
+            <path d="M8 12 L11 15 L16 9" strokeWidth="2" />
+            {/* Corner rune marks */}
+            <path d="M12 3 L12 5" strokeWidth="1" />
+            <path d="M12 19 L12 21" strokeWidth="1" />
+            <path d="M3 12 L5 12" strokeWidth="1" />
+            <path d="M19 12 L21 12" strokeWidth="1" />
+        </svg>
+    )
 }
 
 function RuneSeerEye({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      {/* All-seeing eye - mystical divination symbol */}
-      <path d="M2 12 Q12 4 22 12 Q12 20 2 12" />
-      {/* Iris */}
-      <circle cx="12" cy="12" r="4" />
-      {/* Pupil */}
-      <circle cx="12" cy="12" r="2" fill="currentColor" />
-      {/* Inner light */}
-      <circle cx="13" cy="11" r="0.8" fill="white" opacity="0.6" />
-      {/* Mystical rays above */}
-      <path d="M12 2 L12 5" strokeWidth="1" />
-      <path d="M8 3 L9 5.5" strokeWidth="1" opacity="0.6" />
-      <path d="M16 3 L15 5.5" strokeWidth="1" opacity="0.6" />
-      {/* Mystical rays below */}
-      <path d="M12 19 L12 22" strokeWidth="1" />
-      <path d="M8 21 L9 18.5" strokeWidth="1" opacity="0.6" />
-      <path d="M16 21 L15 18.5" strokeWidth="1" opacity="0.6" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            {/* All-seeing eye - mystical divination symbol */}
+            <path d="M2 12 Q12 4 22 12 Q12 20 2 12" />
+            {/* Iris */}
+            <circle cx="12" cy="12" r="4" />
+            {/* Pupil */}
+            <circle cx="12" cy="12" r="2" fill="currentColor" />
+            {/* Inner light */}
+            <circle cx="13" cy="11" r="0.8" fill="white" opacity="0.6" />
+            {/* Mystical rays above */}
+            <path d="M12 2 L12 5" strokeWidth="1" />
+            <path d="M8 3 L9 5.5" strokeWidth="1" opacity="0.6" />
+            <path d="M16 3 L15 5.5" strokeWidth="1" opacity="0.6" />
+            {/* Mystical rays below */}
+            <path d="M12 19 L12 22" strokeWidth="1" />
+            <path d="M8 21 L9 18.5" strokeWidth="1" opacity="0.6" />
+            <path d="M16 21 L15 18.5" strokeWidth="1" opacity="0.6" />
+        </svg>
+    )
 }
 
 function RuneHealPotion({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      {/* Potion bottle */}
-      <path d="M9 3 L9 7 Q5 10 5 15 Q5 20 12 20 Q19 20 19 15 Q19 10 15 7 L15 3" />
-      <path d="M9 3 L15 3" />
-      {/* Liquid level */}
-      <path d="M7 13 Q12 11 17 13 L17 15 Q17 18 12 18 Q7 18 7 15 Z" fill="currentColor" opacity="0.3" />
-      {/* Cross/plus symbol - healing */}
-      <path d="M12 11 L12 16 M10 13.5 L14 13.5" strokeWidth="1.5" />
-      {/* Sparkles */}
-      <path d="M7 6 L8 7 M17 6 L16 7" strokeWidth="1" opacity="0.5" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            {/* Potion bottle */}
+            <path d="M9 3 L9 7 Q5 10 5 15 Q5 20 12 20 Q19 20 19 15 Q19 10 15 7 L15 3" />
+            <path d="M9 3 L15 3" />
+            {/* Liquid level */}
+            <path d="M7 13 Q12 11 17 13 L17 15 Q17 18 12 18 Q7 18 7 15 Z" fill="currentColor" opacity="0.3" />
+            {/* Cross/plus symbol - healing */}
+            <path d="M12 11 L12 16 M10 13.5 L14 13.5" strokeWidth="1.5" />
+            {/* Sparkles */}
+            <path d="M7 6 L8 7 M17 6 L16 7" strokeWidth="1" opacity="0.5" />
+        </svg>
+    )
 }
 
 function RuneSleep({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      {/* Closed eyes - sleeping */}
-      <path d="M4 10 Q8 13 12 10" />
-      <path d="M12 10 Q16 13 20 10" />
-      {/* Zzz symbols */}
-      <path d="M16 4 L19 4 L16 7 L19 7" strokeWidth="1" />
-      <path d="M18 8 L20 8 L18 10 L20 10" strokeWidth="1" opacity="0.7" />
-      {/* Moon crescent */}
-      <path d="M6 16 Q4 18 6 20 Q10 20 8 16 Q6 14 6 16" fill="currentColor" opacity="0.3" />
-      {/* Stars */}
-      <circle cx="14" cy="18" r="0.8" fill="currentColor" opacity="0.4" />
-      <circle cx="18" cy="16" r="0.5" fill="currentColor" opacity="0.3" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            {/* Closed eyes - sleeping */}
+            <path d="M4 10 Q8 13 12 10" />
+            <path d="M12 10 Q16 13 20 10" />
+            {/* Zzz symbols */}
+            <path d="M16 4 L19 4 L16 7 L19 7" strokeWidth="1" />
+            <path d="M18 8 L20 8 L18 10 L20 10" strokeWidth="1" opacity="0.7" />
+            {/* Moon crescent */}
+            <path d="M6 16 Q4 18 6 20 Q10 20 8 16 Q6 14 6 16" fill="currentColor" opacity="0.3" />
+            {/* Stars */}
+            <circle cx="14" cy="18" r="0.8" fill="currentColor" opacity="0.4" />
+            <circle cx="18" cy="16" r="0.5" fill="currentColor" opacity="0.3" />
+        </svg>
+    )
 }
 
 function RuneSunrise({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      {/* Horizon line */}
-      <path d="M2 16 L22 16" />
-      {/* Rising sun */}
-      <path d="M6 16 Q6 10 12 10 Q18 10 18 16" />
-      {/* Sun rays */}
-      <path d="M12 6 L12 8" strokeWidth="1.5" />
-      <path d="M7 8 L8.5 9.5" strokeWidth="1" />
-      <path d="M17 8 L15.5 9.5" strokeWidth="1" />
-      <path d="M4 12 L6 12" strokeWidth="1" />
-      <path d="M18 12 L20 12" strokeWidth="1" />
-      {/* Ground details */}
-      <path d="M4 19 L8 19 M10 19 L14 19 M16 19 L20 19" strokeWidth="1" opacity="0.4" />
-      {/* Light glow */}
-      <circle cx="12" cy="13" r="2" fill="currentColor" opacity="0.2" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            {/* Horizon line */}
+            <path d="M2 16 L22 16" />
+            {/* Rising sun */}
+            <path d="M6 16 Q6 10 12 10 Q18 10 18 16" />
+            {/* Sun rays */}
+            <path d="M12 6 L12 8" strokeWidth="1.5" />
+            <path d="M7 8 L8.5 9.5" strokeWidth="1" />
+            <path d="M17 8 L15.5 9.5" strokeWidth="1" />
+            <path d="M4 12 L6 12" strokeWidth="1" />
+            <path d="M18 12 L20 12" strokeWidth="1" />
+            {/* Ground details */}
+            <path d="M4 19 L8 19 M10 19 L14 19 M16 19 L20 19" strokeWidth="1" opacity="0.4" />
+            {/* Light glow */}
+            <circle cx="12" cy="13" r="2" fill="currentColor" opacity="0.2" />
+        </svg>
+    )
 }
 
 function RuneSkullDead({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      {/* Skull shape */}
-      <path d="M6 10 Q6 4 12 4 Q18 4 18 10 L18 14 Q18 16 16 16 L16 18 L14 18 L14 16 L10 16 L10 18 L8 18 L8 16 Q6 16 6 14 Z" />
-      {/* Eye sockets */}
-      <circle cx="9" cy="10" r="2" />
-      <circle cx="15" cy="10" r="2" />
-      {/* Nose */}
-      <path d="M12 12 L11 14 L13 14 Z" fill="currentColor" opacity="0.5" />
-      {/* Teeth */}
-      <path d="M9 16 L9 18 M11 16 L11 18 M13 16 L13 18 M15 16 L15 18" strokeWidth="1" opacity="0.6" />
-      {/* X eyes for dead */}
-      <path d="M8 9 L10 11 M10 9 L8 11" strokeWidth="1" />
-      <path d="M14 9 L16 11 M16 9 L14 11" strokeWidth="1" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            {/* Skull shape */}
+            <path d="M6 10 Q6 4 12 4 Q18 4 18 10 L18 14 Q18 16 16 16 L16 18 L14 18 L14 16 L10 16 L10 18 L8 18 L8 16 Q6 16 6 14 Z" />
+            {/* Eye sockets */}
+            <circle cx="9" cy="10" r="2" />
+            <circle cx="15" cy="10" r="2" />
+            {/* Nose */}
+            <path d="M12 12 L11 14 L13 14 Z" fill="currentColor" opacity="0.5" />
+            {/* Teeth */}
+            <path d="M9 16 L9 18 M11 16 L11 18 M13 16 L13 18 M15 16 L15 18" strokeWidth="1" opacity="0.6" />
+            {/* X eyes for dead */}
+            <path d="M8 9 L10 11 M10 9 L8 11" strokeWidth="1" />
+            <path d="M14 9 L16 11 M16 9 L14 11" strokeWidth="1" />
+        </svg>
+    )
 }
 
 function RuneExecute({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      {/* Executioner's axe */}
-      <path d="M6 4 L6 20" strokeWidth="2" />
-      {/* Axe head */}
-      <path d="M6 6 Q14 4 16 8 Q18 12 14 14 Q10 16 6 14" fill="currentColor" opacity="0.2" />
-      <path d="M6 6 Q14 4 16 8 Q18 12 14 14 Q10 16 6 14" />
-      {/* Blade edge */}
-      <path d="M8 7 Q12 6 14 9 Q15 11 13 13" strokeWidth="1" opacity="0.6" />
-      {/* Blood drops */}
-      <path d="M16 16 Q16 18 18 18 Q18 16 16 16" fill="currentColor" opacity="0.4" />
-      <path d="M18 19 Q18 21 20 21 Q20 19 18 19" fill="currentColor" opacity="0.3" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            {/* Executioner's axe */}
+            <path d="M6 4 L6 20" strokeWidth="2" />
+            {/* Axe head */}
+            <path d="M6 6 Q14 4 16 8 Q18 12 14 14 Q10 16 6 14" fill="currentColor" opacity="0.2" />
+            <path d="M6 6 Q14 4 16 8 Q18 12 14 14 Q10 16 6 14" />
+            {/* Blade edge */}
+            <path d="M8 7 Q12 6 14 9 Q15 11 13 13" strokeWidth="1" opacity="0.6" />
+            {/* Blood drops */}
+            <path d="M16 16 Q16 18 18 18 Q18 16 16 16" fill="currentColor" opacity="0.4" />
+            <path d="M18 19 Q18 21 20 21 Q20 19 18 19" fill="currentColor" opacity="0.3" />
+        </svg>
+    )
 }
 
 function RuneHunterBow({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-      {/* Bow curve */}
-      <path d="M4 4 Q2 12 4 20" strokeWidth="2" />
-      {/* Bow string */}
-      <path d="M4 4 L4 20" strokeWidth="1" strokeDasharray="2 1" />
-      {/* Arrow shaft */}
-      <path d="M6 12 L20 12" />
-      {/* Arrow head */}
-      <path d="M18 10 L22 12 L18 14" fill="currentColor" opacity="0.4" />
-      <path d="M18 10 L22 12 L18 14" />
-      {/* Arrow fletching */}
-      <path d="M6 10 L8 12 L6 14" strokeWidth="1" />
-      <path d="M8 11 L10 12 L8 13" strokeWidth="1" opacity="0.6" />
-      {/* Decorative runes on bow */}
-      <circle cx="4" cy="8" r="0.8" fill="currentColor" opacity="0.4" />
-      <circle cx="4" cy="16" r="0.8" fill="currentColor" opacity="0.4" />
-    </svg>
-  )
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            {/* Bow curve */}
+            <path d="M4 4 Q2 12 4 20" strokeWidth="2" />
+            {/* Bow string */}
+            <path d="M4 4 L4 20" strokeWidth="1" strokeDasharray="2 1" />
+            {/* Arrow shaft */}
+            <path d="M6 12 L20 12" />
+            {/* Arrow head */}
+            <path d="M18 10 L22 12 L18 14" fill="currentColor" opacity="0.4" />
+            <path d="M18 10 L22 12 L18 14" />
+            {/* Arrow fletching */}
+            <path d="M6 10 L8 12 L6 14" strokeWidth="1" />
+            <path d="M8 11 L10 12 L8 13" strokeWidth="1" opacity="0.6" />
+            {/* Decorative runes on bow */}
+            <circle cx="4" cy="8" r="0.8" fill="currentColor" opacity="0.4" />
+            <circle cx="4" cy="16" r="0.8" fill="currentColor" opacity="0.4" />
+        </svg>
+    )
+}
+
+function RuneHeart({ className }) {
+    return (
+        <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            {/* Heart shape */}
+            <path d="M12 21 Q4 14 4 9 Q4 5 7 5 Q10 5 12 8 Q14 5 17 5 Q20 5 20 9 Q20 14 12 21 Z" fill="currentColor" opacity="0.3" />
+            <path d="M12 21 Q4 14 4 9 Q4 5 7 5 Q10 5 12 8 Q14 5 17 5 Q20 5 20 9 Q20 14 12 21" />
+            {/* Inner light sparkles */}
+            <path d="M10 11 L10.5 12.5 L10 14 L9.5 12.5 Z" fill="white" opacity="0.4" strokeWidth="0.5" />
+            <path d="M14 9 L14.5 10.5 L14 12 L13.5 10.5 Z" fill="white" opacity="0.3" strokeWidth="0.5" />
+        </svg>
+    )
 }
