@@ -29,9 +29,9 @@ COPY --from=builder /app/target/*.jar app.jar
 # Copy database schema files
 COPY db ./db
 
-# Copy entrypoint script
+# Copy entrypoint script and fix line endings
 COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh && chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Expose the application port
 EXPOSE 8086

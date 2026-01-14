@@ -54,13 +54,25 @@ function socketAuthMiddleware(socket, next) {
   const tokenFromQuery = handshake.query && handshake.query.token;
   const token = extractBearerToken(tokenFromAuth || tokenFromHeader || tokenFromQuery);
   const payload = verifyToken(token);
-  if (!payload?.id) {  // Changed from userId to id (match auth-service JWT payload)
-    return next(new Error('Unauthorized'));
+
+  // Nếu có JWT hợp lệ -> dùng userId từ token
+  if (payload?.id) {
+    socket.data.userId = payload.id;  // Map id to userId for backward compatibility
+    socket.data.username = payload.username;
+    socket.data.tokenPayload = payload;
+    return next();
   }
-  socket.data.userId = payload.id;  // Map id to userId for backward compatibility
-  socket.data.username = payload.username;
-  socket.data.tokenPayload = payload;
-  return next();
+
+  // Cho phép guest: lấy guestId từ auth payload
+  const guestId = handshake.auth && handshake.auth.guestId;
+  if (guestId) {
+    socket.data.userId = guestId;
+    socket.data.username = guestId;
+    socket.data.tokenPayload = null;
+    return next();
+  }
+
+  return next(new Error('Unauthorized'));
 }
 
 module.exports = {
