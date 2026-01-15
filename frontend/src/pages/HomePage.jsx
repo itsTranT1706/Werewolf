@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Home Page - The Village Gate
  * 
  * Entry point after the intro ritual.

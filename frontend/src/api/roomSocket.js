@@ -33,14 +33,6 @@ export function getRoomSocket() {
             ? 'http://localhost:8082' 
             : `${window.location.protocol}//${window.location.hostname}:8082`)
 
-    // Tạo socket connection
-    // Room service không yêu cầu auth, có thể kết nối trực tiếp
-    roomSocket = io(roomSocketUrl, {
-        transports: ['websocket', 'polling'], // Ưu tiên WebSocket, fallback polling
-        reconnection: true,  // Tự động reconnect nếu mất kết nối
-        reconnectionDelay: 1000,  // Đợi 1s trước khi reconnect
-        reconnectionAttempts: 5  // Thử tối đa 5 lần
-    })
 
     // Event: Khi kết nối thành công
     roomSocket.on('connect', () => {
