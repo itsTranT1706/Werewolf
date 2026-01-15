@@ -27,7 +27,11 @@ export function getRoomSocket() {
     }
 
     // URL của Room Service (WebSocket endpoint)
-    const roomSocketUrl = import.meta.env.VITE_ROOM_SOCKET_URL || 'http://localhost:8082'
+    // Tự động detect server URL từ window.location khi deploy production
+    const roomSocketUrl = import.meta.env.VITE_ROOM_SOCKET_URL || 
+        (window.location.hostname === 'localhost' 
+            ? 'http://localhost:8082' 
+            : `${window.location.protocol}//${window.location.hostname}:8082`)
 
     // Tạo socket connection
     // Room service không yêu cầu auth, có thể kết nối trực tiếp

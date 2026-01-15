@@ -30,7 +30,11 @@ export function getSocket() {
     const guestId = !token ? localStorage.getItem('guest_user_id') || localStorage.getItem('guestId') : null
 
     // URL của API Gateway (WebSocket endpoint)
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || 'http://localhost:8080'
+    // Tự động detect server URL từ window.location khi deploy production
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || 
+        (window.location.hostname === 'localhost' 
+            ? 'http://localhost:8080' 
+            : `${window.location.protocol}//${window.location.hostname}:8080`)
 
     // Tạo socket connection
     socket = io(socketUrl, {
