@@ -1,18 +1,29 @@
 #!/bin/sh
 set -e
 
-echo "🔄 Checking database connection..."
+echo "🔄 Checking database connection (pg_isready)..."
 
-# Wait for database to be ready
-until npx prisma db execute --stdin <<EOF 2>/dev/null
-SELECT 1;
-EOF
+# Wait for Postgres to accept connections (REAL readiness)
+until pg_isready -h database -p 5432 -U postgres > /dev/null 2>&1
 do
-  echo "⏳ Waiting for database to be ready..."
+  echo "⏳ Waiting for Postgres to accept connections..."
   sleep 2
 done
 
-echo "✅ Database is ready"
+echo "✅ Postgres is accepting connections"
+
+echo "🔄 Verifying Prisma connectivity..."
+
+# Extra safety: wait until Prisma can open a real connection
+until npx prisma db execute --stdin <<EOF > /dev/null 2>&1
+SELECT 1;
+EOF
+do
+  echo "⏳ Waiting for Prisma to connect..."
+  sleep 2
+done
+
+echo "✅ Prisma connection verified"
 
 # Check if the users table exists
 TABLE_EXISTS=$(npx prisma db execute --stdin <<EOF | grep -c "users" || true
@@ -37,4 +48,3 @@ fi
 
 echo "🚀 Starting Auth Service..."
 exec node src/index.js
-

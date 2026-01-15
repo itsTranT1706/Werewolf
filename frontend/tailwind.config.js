@@ -19,8 +19,11 @@ export default {
         'night-blue': '#0a0a1a',
       },
       fontFamily: {
-        'medieval': ['MedievalSharp', 'Georgia', 'serif'],
-        'fantasy': ['Cormorant Garamond', 'Times New Roman', 'serif'],
+        'medieval': ['Cormorant Garamond', 'Noto Serif', 'Georgia', 'serif'],
+        'fantasy': ['Cormorant Garamond', 'Noto Serif', 'Times New Roman', 'serif'],
+        'heading': ['Cormorant Garamond', 'Noto Serif', 'Georgia', 'serif'],
+        'display': ['Cormorant Garamond', 'Noto Serif', 'Georgia', 'serif'],
+        'ui': ['Inter', 'Segoe UI', 'system-ui', '-apple-system', 'Helvetica Neue', 'Arial', 'sans-serif'],
       },
       backgroundImage: {
         'wood-texture': "url('/assets/textures/wood-panel.png')",

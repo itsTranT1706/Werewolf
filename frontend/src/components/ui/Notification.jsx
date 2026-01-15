@@ -1,11 +1,12 @@
 /**
- * Fantasy Notification System
+ * Fantasy Notification System - Dark Medieval Theme
  * 
- * Medieval-themed toast notifications using react-hot-toast.
- * Feels like in-game system messages, not web popups.
+ * Ancient scroll-style toast notifications.
+ * Feels like receiving messages from the spirit realm.
  */
 
 import { Toaster, toast } from 'react-hot-toast'
+import { RuneCheck, RuneClose, RuneWarning, RuneScroll, CornerAccent } from './AncientIcons'
 
 /**
  * Notification Provider - Add to App root
@@ -34,28 +35,32 @@ export function NotificationProvider() {
  */
 const NOTIFICATION_TYPES = {
   success: {
-    icon: <SuccessIcon />,
-    borderColor: 'rgba(34, 197, 94, 0.6)',
-    glowColor: 'rgba(34, 197, 94, 0.2)',
-    iconBg: 'rgba(34, 197, 94, 0.2)',
+    icon: <RuneCheck className="w-5 h-5" />,
+    borderColor: 'rgba(34, 120, 60, 0.6)',
+    glowColor: 'rgba(34, 120, 60, 0.15)',
+    iconColor: '#4a8a5a',
+    accentColor: 'rgba(34, 120, 60, 0.4)',
   },
   error: {
-    icon: <ErrorIcon />,
-    borderColor: 'rgba(239, 68, 68, 0.6)',
-    glowColor: 'rgba(239, 68, 68, 0.2)',
-    iconBg: 'rgba(239, 68, 68, 0.2)',
+    icon: <RuneClose className="w-5 h-5" />,
+    borderColor: 'rgba(139, 0, 0, 0.6)',
+    glowColor: 'rgba(139, 0, 0, 0.15)',
+    iconColor: '#8b4040',
+    accentColor: 'rgba(139, 0, 0, 0.4)',
   },
   warning: {
-    icon: <WarningIcon />,
-    borderColor: 'rgba(234, 179, 8, 0.6)',
-    glowColor: 'rgba(234, 179, 8, 0.2)',
-    iconBg: 'rgba(234, 179, 8, 0.2)',
+    icon: <RuneWarning className="w-5 h-5" />,
+    borderColor: 'rgba(139, 115, 85, 0.6)',
+    glowColor: 'rgba(139, 115, 85, 0.15)',
+    iconColor: '#8b7355',
+    accentColor: 'rgba(139, 115, 85, 0.4)',
   },
   info: {
-    icon: <InfoIcon />,
-    borderColor: 'rgba(59, 130, 246, 0.6)',
-    glowColor: 'rgba(59, 130, 246, 0.2)',
-    iconBg: 'rgba(59, 130, 246, 0.2)',
+    icon: <RuneScroll className="w-5 h-5" />,
+    borderColor: 'rgba(80, 100, 120, 0.6)',
+    glowColor: 'rgba(80, 100, 120, 0.15)',
+    iconColor: '#6a7a8a',
+    accentColor: 'rgba(80, 100, 120, 0.4)',
   },
 }
 
@@ -72,29 +77,29 @@ function FantasyToast({ type, title, message, visible }) {
         ${visible ? 'translate-y-0 opacity-100' : '-translate-y-2 opacity-0'}
       `}
     >
-      {/* Main container - parchment/wood panel style */}
+      {/* Main container */}
       <div
-        className="relative flex items-start gap-3 px-4 py-3 min-w-[280px]"
+        className="relative flex items-start gap-4 px-5 py-4 min-w-[280px]"
         style={{
-          background: 'linear-gradient(180deg, rgba(30,22,15,0.97) 0%, rgba(20,15,10,0.98) 100%)',
+          background: 'linear-gradient(180deg, rgba(20,16,12,0.98) 0%, rgba(15,12,10,0.99) 100%)',
           border: `2px solid ${config.borderColor}`,
           boxShadow: `
             0 0 20px ${config.glowColor},
-            0 4px 20px rgba(0,0,0,0.5),
-            inset 0 1px 0 rgba(255,255,255,0.05)
+            0 8px 24px rgba(0,0,0,0.5),
+            inset 0 1px 0 rgba(255,255,255,0.03)
           `,
         }}
       >
         {/* Left accent bar */}
         <div 
-          className="absolute left-0 top-2 bottom-2 w-1"
-          style={{ background: config.borderColor }}
+          className="absolute left-0 top-3 bottom-3 w-0.5"
+          style={{ background: config.accentColor }}
         />
 
         {/* Icon */}
         <div 
-          className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded"
-          style={{ background: config.iconBg }}
+          className="flex-shrink-0 w-8 h-8 flex items-center justify-center"
+          style={{ color: config.iconColor }}
         >
           {config.icon}
         </div>
@@ -104,24 +109,32 @@ function FantasyToast({ type, title, message, visible }) {
           {title && (
             <p 
               className="font-medieval text-sm tracking-wide"
-              style={{ color: '#d4b896' }}
+              style={{ color: '#a89070' }}
             >
               {title}
             </p>
           )}
           <p 
-            className="font-fantasy text-sm"
-            style={{ color: 'rgba(212, 184, 150, 0.8)' }}
+            className="font-fantasy text-sm mt-0.5"
+            style={{ color: '#8a7a6a' }}
           >
             {message}
           </p>
         </div>
 
         {/* Corner accents */}
-        <div className="absolute top-0 left-0 w-2 h-2 border-t border-l" style={{ borderColor: config.borderColor }} />
-        <div className="absolute top-0 right-0 w-2 h-2 border-t border-r" style={{ borderColor: config.borderColor }} />
-        <div className="absolute bottom-0 left-0 w-2 h-2 border-b border-l" style={{ borderColor: config.borderColor }} />
-        <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r" style={{ borderColor: config.borderColor }} />
+        <div className="absolute top-1 left-1 text-current opacity-30" style={{ color: config.iconColor }}>
+          <CornerAccent className="w-2 h-2" position="top-left" />
+        </div>
+        <div className="absolute top-1 right-1 text-current opacity-30" style={{ color: config.iconColor }}>
+          <CornerAccent className="w-2 h-2" position="top-right" />
+        </div>
+        <div className="absolute bottom-1 left-1 text-current opacity-30" style={{ color: config.iconColor }}>
+          <CornerAccent className="w-2 h-2" position="bottom-left" />
+        </div>
+        <div className="absolute bottom-1 right-1 text-current opacity-30" style={{ color: config.iconColor }}>
+          <CornerAccent className="w-2 h-2" position="bottom-right" />
+        </div>
       </div>
     </div>
   )
@@ -129,12 +142,6 @@ function FantasyToast({ type, title, message, visible }) {
 
 /**
  * Centralized notification helper
- * 
- * Usage:
- *   notify.success('Profile updated!')
- *   notify.error('Login failed', 'Invalid credentials')
- *   notify.warning('Session expiring soon')
- *   notify.info('A new day has begun')
  */
 export const notify = {
   success: (message, title = 'Thành Công') => {
@@ -164,7 +171,7 @@ export const notify = {
   // Game-specific notifications
   gameEvent: (message) => {
     toast.custom((t) => (
-      <FantasyToast type="info" title="⚔ Sự Kiện" message={message} visible={t.visible} />
+      <FantasyToast type="info" title="Sự Kiện" message={message} visible={t.visible} />
     ))
   },
 
@@ -172,7 +179,7 @@ export const notify = {
     toast.custom((t) => (
       <FantasyToast 
         type="warning" 
-        title="☽ Chuyển Pha" 
+        title="Chuyển Pha" 
         message={`${phase} đã bắt đầu...`} 
         visible={t.visible} 
       />
@@ -183,48 +190,14 @@ export const notify = {
     toast.custom((t) => (
       <FantasyToast 
         type="error" 
-        title="☠ Tử Vong" 
+        title="Tử Vong" 
         message={`${playerName} đã bị loại`} 
         visible={t.visible} 
       />
     ), { duration: 6000 })
   },
 
-  // Dismiss all
   dismiss: () => toast.dismiss(),
-}
-
-// Fantasy-themed icons
-function SuccessIcon() {
-  return (
-    <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-    </svg>
-  )
-}
-
-function ErrorIcon() {
-  return (
-    <svg className="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M12 2C6.47 2 2 6.47 2 12s4.47 10 10 10 10-4.47 10-10S17.53 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z"/>
-    </svg>
-  )
-}
-
-function WarningIcon() {
-  return (
-    <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
-    </svg>
-  )
-}
-
-function InfoIcon() {
-  return (
-    <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
-    </svg>
-  )
 }
 
 export default notify

@@ -1,190 +1,254 @@
 /**
- * Shared Icons - Reusable SVG icons for the application
+ * Shared Icons - Ancient Mystical SVG Icons
  * 
- * Import: import { WolfIcon, MailIcon, ... } from '@/components/ui/Icons'
+ * Hand-crafted icons for the dark medieval fantasy theme.
+ * Every icon feels etched in stone or infused with dark magic.
+ * 
+ * Import: import { WolfIcon, RuneUser, ... } from '@/components/ui/Icons'
  */
 
+// Re-export all ancient icons
+export * from './AncientIcons'
+
 // ============================================
-// Character & Profile Icons
+// CHARACTER & PROFILE ICONS
 // ============================================
 
-export function WolfIcon({ className }) {
+export function WolfIcon({ className = "w-6 h-6" }) {
   return (
-    <svg className={className} viewBox="0 0 64 64" fill="currentColor">
-      <path d="M32 4c-2 0-4 1-6 3l-4 6-8-2c-2 0-3 1-3 3l2 10-6 8c-1 2 0 4 2 5l8 4v12c0 2 1 4 3 5l10 4c1 0 2 0 4-1l10-4c2-1 3-3 3-5V41l8-4c2-1 3-3 2-5l-6-8 2-10c0-2-1-3-3-3l-8 2-4-6c-2-2-4-3-6-3zm-8 24a3 3 0 110 6 3 3 0 010-6zm16 0a3 3 0 110 6 3 3 0 010-6zm-8 10c2 0 4 2 4 4h-8c0-2 2-4 4-4z"/>
+    <svg className={className} viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2">
+      {/* Wolf head silhouette */}
+      <path d="M32 8 L24 18 L16 14 L20 26 L12 32 L20 38 L16 50 L24 46 L32 56 L40 46 L48 50 L44 38 L52 32 L44 26 L48 14 L40 18 Z" />
+      {/* Eyes */}
+      <circle cx="26" cy="30" r="3" fill="currentColor" />
+      <circle cx="38" cy="30" r="3" fill="currentColor" />
+      {/* Snout */}
+      <path d="M28 40 L32 44 L36 40" />
+      {/* Inner mystical circle */}
+      <circle cx="32" cy="32" r="16" strokeDasharray="4 3" opacity="0.3" />
     </svg>
   )
 }
 
-export function CharacterIcon({ className }) {
+export function CharacterIcon({ className = "w-5 h-5" }) {
   return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      {/* Hooded figure */}
+      <path d="M12 3 L8 8 L8 12 L10 14 L10 18 L8 21 L16 21 L14 18 L14 14 L16 12 L16 8 Z" />
+      <circle cx="12" cy="10" r="2" fill="currentColor" opacity="0.4" />
+      <path d="M12 6 L12 8" strokeWidth="2" />
     </svg>
   )
 }
 
-export function UserIcon({ className }) {
+export function UserIcon({ className = "w-5 h-5" }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-    </svg>
-  )
-}
-
-// ============================================
-// Auth & Security Icons
-// ============================================
-
-export function LockIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-    </svg>
-  )
-}
-
-export function ShieldIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M12 3 L8 8 L8 12 L10 14 L10 18 L8 21 L16 21 L14 18 L14 14 L16 12 L16 8 Z" />
+      <circle cx="12" cy="10" r="2" fill="currentColor" opacity="0.3" />
+      <path d="M12 6 L12 8" strokeWidth="2" />
     </svg>
   )
 }
 
 // ============================================
-// Communication Icons
+// AUTH & SECURITY ICONS
 // ============================================
 
-export function MailIcon({ className }) {
+export function LockIcon({ className = "w-5 h-5" }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M6 11 L6 8 Q6 3 12 3 Q18 3 18 8 L18 11" />
+      <rect x="4" y="11" width="16" height="10" rx="1" />
+      <circle cx="12" cy="15" r="2" />
+      <path d="M12 17 L12 19" strokeWidth="2" />
     </svg>
   )
 }
 
-// ============================================
-// Document & UI Icons
-// ============================================
-
-export function ScrollIcon({ className }) {
+export function ShieldIcon({ className = "w-5 h-5" }) {
   return (
-    <svg className={className} viewBox="0 0 64 64" fill="currentColor">
-      <path d="M12 8c-2 0-4 2-4 4v40c0 2 2 4 4 4h4V12H12zm8 0v48h28c2 0 4-2 4-4V12c0-2-2-4-4-4H20zm4 8h20v4H24v-4zm0 8h20v4H24v-4zm0 8h16v4H24v-4z"/>
-    </svg>
-  )
-}
-
-export function QuillIcon({ className }) {
-  return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-      <path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z"/>
-    </svg>
-  )
-}
-
-export function ImageIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M12 2 L4 6 L4 12 Q4 18 12 22 Q20 18 20 12 L20 6 Z" />
+      <path d="M12 8 L12 16 M8 12 L16 12" strokeWidth="1" opacity="0.6" />
+      <circle cx="12" cy="12" r="2" fill="currentColor" opacity="0.2" />
     </svg>
   )
 }
 
 // ============================================
-// Action Icons
+// COMMUNICATION ICONS
 // ============================================
 
-export function ArrowLeftIcon({ className }) {
+export function MailIcon({ className = "w-5 h-5" }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-    </svg>
-  )
-}
-
-export function ExitIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-    </svg>
-  )
-}
-
-export function CheckIcon({ className }) {
-  return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M3 7 L12 13 L21 7" />
+      <rect x="3" y="5" width="18" height="14" rx="1" />
+      <circle cx="12" cy="14" r="3" fill="currentColor" opacity="0.2" />
+      <path d="M10 14 L14 14 M12 12 L12 16" strokeWidth="1" />
     </svg>
   )
 }
 
 // ============================================
-// Time & Date Icons
+// DOCUMENT & UI ICONS
 // ============================================
 
-export function CalendarIcon({ className }) {
+export function ScrollIcon({ className = "w-5 h-5" }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M6 4 Q4 4 4 6 L4 18 Q4 20 6 20 L18 20 Q20 20 20 18 L20 6 Q20 4 18 4 Z" />
+      <path d="M4 6 Q6 6 6 4" />
+      <path d="M20 18 Q18 18 18 20" />
+      <path d="M8 9 L16 9 M8 12 L14 12 M8 15 L12 15" strokeWidth="1" opacity="0.5" />
     </svg>
   )
 }
 
-export function ClockIcon({ className }) {
+export function QuillIcon({ className = "w-5 h-5" }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M20 4 Q16 4 12 8 L4 16 L4 20 L8 20 L16 12 Q20 8 20 4 Z" />
+      <path d="M14 10 L18 6" strokeWidth="1" opacity="0.5" />
+      <circle cx="6" cy="18" r="1" fill="currentColor" opacity="0.3" />
     </svg>
   )
 }
 
-// ============================================
-// Game Stats Icons
-// ============================================
-
-export function SwordsIcon({ className }) {
+export function ImageIcon({ className = "w-5 h-5" }) {
   return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-      <path d="M6.92 5H5L14 14l-1.5 1.5 1.5 1.5 1.5-1.5L17 17l-3 3-1.5-1.5L11 20l-3-3 1.5-1.5L8 14l1.5-1.5L8 11l3-3-1.5-1.5L11 5l3 3-1.5 1.5L14 11l-1.5 1.5L14 14l5-5V5h-1.92l-5 5L6.92 5z"/>
-    </svg>
-  )
-}
-
-export function TrophyIcon({ className }) {
-  return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-      <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/>
-    </svg>
-  )
-}
-
-export function SkullIcon({ className }) {
-  return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-      <path d="M12 2C6.48 2 2 6.48 2 12v8h4v-2h2v2h8v-2h2v2h4v-8c0-5.52-4.48-10-10-10zM8 14c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm8 0c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2z"/>
-    </svg>
-  )
-}
-
-export function StarIcon({ className }) {
-  return (
-    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="3" y="3" width="18" height="18" rx="1" />
+      <circle cx="8" cy="8" r="2" />
+      <path d="M21 15 L16 10 L8 18" />
+      <path d="M14 18 L11 15 L3 21" opacity="0.5" />
     </svg>
   )
 }
 
 // ============================================
-// Loading & Status Icons
+// ACTION ICONS
 // ============================================
 
-export function LoadingSpinner({ className = "w-4 h-4" }) {
+export function ArrowLeftIcon({ className = "w-5 h-5" }) {
   return (
-    <svg className={`animate-spin ${className}`} fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M10 6 L4 12 L10 18" />
+      <path d="M4 12 L20 12" />
+      <path d="M14 10 L14 14" strokeWidth="1" opacity="0.4" />
+      <path d="M17 10 L17 14" strokeWidth="1" opacity="0.4" />
+    </svg>
+  )
+}
+
+export function ExitIcon({ className = "w-5 h-5" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M9 3 L9 21 L4 21 L4 3 Z" />
+      <path d="M14 12 L20 12" />
+      <path d="M17 9 L20 12 L17 15" />
+      <path d="M9 10 L12 10 M9 14 L12 14" strokeWidth="1" opacity="0.5" />
+    </svg>
+  )
+}
+
+export function CheckIcon({ className = "w-5 h-5" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M8 12 L11 15 L16 9" strokeWidth="2" />
+    </svg>
+  )
+}
+
+// ============================================
+// TIME & DATE ICONS
+// ============================================
+
+export function CalendarIcon({ className = "w-5 h-5" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="3" y="5" width="18" height="16" rx="1" />
+      <path d="M8 3 L8 7 M16 3 L16 7" />
+      <path d="M3 10 L21 10" />
+      <path d="M8 14 L8 14.01 M12 14 L12 14.01 M16 14 L16 14.01" strokeWidth="2" />
+    </svg>
+  )
+}
+
+export function ClockIcon({ className = "w-5 h-5" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 6 L12 12 L16 14" />
+      <circle cx="12" cy="12" r="2" fill="currentColor" opacity="0.2" />
+    </svg>
+  )
+}
+
+// ============================================
+// GAME STATS ICONS
+// ============================================
+
+export function SwordsIcon({ className = "w-5 h-5" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      {/* Crossed swords */}
+      <path d="M4 4 L14 14 M14 4 L4 14" strokeWidth="2" />
+      <path d="M2 6 L6 2 M18 2 L22 6" />
+      <path d="M2 18 L6 22 M18 22 L22 18" />
+      {/* Hilts */}
+      <path d="M8 8 L6 10 M16 8 L18 10" strokeWidth="1" />
+    </svg>
+  )
+}
+
+export function TrophyIcon({ className = "w-5 h-5" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      {/* Cup */}
+      <path d="M6 4 L6 10 Q6 14 12 14 Q18 14 18 10 L18 4 Z" />
+      {/* Handles */}
+      <path d="M6 6 Q2 6 2 10 Q2 12 6 12" />
+      <path d="M18 6 Q22 6 22 10 Q22 12 18 12" />
+      {/* Base */}
+      <path d="M12 14 L12 18 M8 18 L16 18 L16 20 L8 20 Z" />
+      {/* Star */}
+      <path d="M12 7 L13 9 L15 9 L13.5 10.5 L14 12 L12 11 L10 12 L10.5 10.5 L9 9 L11 9 Z" fill="currentColor" opacity="0.3" />
+    </svg>
+  )
+}
+
+export function SkullIcon({ className = "w-5 h-5" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M12 2 Q4 4 4 12 L4 16 L8 16 L8 20 L10 20 L10 16 L14 16 L14 20 L16 20 L16 16 L20 16 L20 12 Q20 4 12 2 Z" />
+      <circle cx="9" cy="10" r="2" />
+      <circle cx="15" cy="10" r="2" />
+      <path d="M12 12 L11 15 L13 15 Z" fill="currentColor" opacity="0.3" />
+    </svg>
+  )
+}
+
+export function StarIcon({ className = "w-5 h-5" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M12 2 L14.5 9 L22 9 L16 13.5 L18 21 L12 16.5 L6 21 L8 13.5 L2 9 L9.5 9 Z" />
+      <circle cx="12" cy="12" r="3" fill="currentColor" opacity="0.2" />
+    </svg>
+  )
+}
+
+// ============================================
+// LOADING & STATUS ICONS
+// ============================================
+
+export function LoadingSpinner({ className = "w-5 h-5" }) {
+  return (
+    <svg className={`animate-spin ${className}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <circle cx="12" cy="12" r="9" strokeDasharray="20 40" />
+      <path d="M12 6 L12 9 M12 15 L12 18 M6 12 L9 12 M15 12 L18 12" strokeWidth="1" opacity="0.4" />
     </svg>
   )
 }

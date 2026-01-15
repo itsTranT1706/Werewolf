@@ -1,11 +1,14 @@
 /**
  * Rank Panel - Right sidebar displaying player rank
  * 
- * Fantasy parchment scroll style with:
- * - Aged paper texture background
- * - Metallic rank emblem
+ * Dark medieval fantasy theme - Cursed rank emblem
+ * Ancient stone tablet style with:
+ * - Dark weathered texture background
+ * - Mystical rank emblem with glow
  * - Rank tier and LP display
  */
+
+import { CornerAccent } from '@/components/ui/AncientIcons'
 
 export default function RankPanel({ rank }) {
   // Default rank data if not provided
@@ -22,59 +25,48 @@ export default function RankPanel({ rank }) {
 
   return (
     <div className="relative w-full">
-      {/* Parchment scroll background */}
+      {/* Dark stone tablet background */}
       <div 
-        className="relative rounded-lg overflow-hidden"
+        className="relative overflow-hidden"
         style={{
           background: `
             linear-gradient(180deg, 
-              rgba(212, 184, 150, 0.95) 0%, 
-              rgba(194, 166, 132, 0.98) 20%,
-              rgba(180, 152, 118, 0.95) 80%,
-              rgba(168, 140, 106, 0.98) 100%
+              rgba(10,8,6,0.98) 0%, 
+              rgba(5,5,8,0.99) 50%,
+              rgba(8,6,4,0.98) 100%
             )
           `,
+          border: '1px solid rgba(139,115,85,0.3)',
           boxShadow: `
-            0 4px 20px rgba(0,0,0,0.4),
-            inset 0 0 60px rgba(139, 90, 43, 0.15),
-            inset 0 2px 0 rgba(255,255,255,0.3)
+            0 4px 30px rgba(0,0,0,0.6),
+            inset 0 0 60px rgba(0,0,0,0.4),
+            inset 0 1px 0 rgba(139,115,85,0.1)
           `,
         }}
       >
-        {/* Paper texture overlay */}
+        {/* Weathered texture overlay */}
         <div 
-          className="absolute inset-0 opacity-30 pointer-events-none"
+          className="absolute inset-0 opacity-10 pointer-events-none"
           style={{
             backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E")`,
           }}
         />
 
-        {/* Worn edges effect */}
+        {/* Mystical glow effect */}
         <div 
           className="absolute inset-0 pointer-events-none"
           style={{
             background: `
-              radial-gradient(ellipse at top left, rgba(139, 90, 43, 0.2) 0%, transparent 50%),
-              radial-gradient(ellipse at bottom right, rgba(139, 90, 43, 0.25) 0%, transparent 50%),
-              radial-gradient(ellipse at top right, rgba(139, 90, 43, 0.15) 0%, transparent 40%)
+              radial-gradient(ellipse at center, ${tierConfig.glowColor}15 0%, transparent 60%)
             `,
           }}
         />
 
-        {/* Decorative border frame */}
-        <div 
-          className="absolute inset-2 pointer-events-none rounded"
-          style={{
-            border: '2px solid rgba(139, 90, 43, 0.3)',
-            boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.1)',
-          }}
-        />
-
-        {/* Corner ornaments */}
-        <CornerOrnament position="top-left" />
-        <CornerOrnament position="top-right" />
-        <CornerOrnament position="bottom-left" />
-        <CornerOrnament position="bottom-right" />
+        {/* Corner accents */}
+        <CornerAccent className="absolute top-3 left-3 w-5 h-5 text-[#8b7355]/40" position="top-left" />
+        <CornerAccent className="absolute top-3 right-3 w-5 h-5 text-[#8b7355]/40" position="top-right" />
+        <CornerAccent className="absolute bottom-3 left-3 w-5 h-5 text-[#8b7355]/40" position="bottom-left" />
+        <CornerAccent className="absolute bottom-3 right-3 w-5 h-5 text-[#8b7355]/40" position="bottom-right" />
 
         {/* Content */}
         <div className="relative z-10 p-6">
@@ -83,19 +75,17 @@ export default function RankPanel({ rank }) {
             <h3 
               className="font-medieval text-2xl tracking-wider"
               style={{
-                color: '#4a3728',
-                textShadow: '0 1px 0 rgba(255,255,255,0.3)',
+                color: '#c9a227',
+                textShadow: '0 0 20px rgba(201,162,39,0.3), 0 2px 4px rgba(0,0,0,0.8)',
               }}
             >
               Xếp Hạng
             </h3>
-            {/* Decorative dots */}
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <div className="w-1 h-1 rounded-full bg-amber-800/40" />
-              <div className="w-8 h-px bg-gradient-to-r from-transparent via-amber-800/40 to-transparent" />
-              <DiamondIcon className="w-3 h-3 text-amber-800/50" />
-              <div className="w-8 h-px bg-gradient-to-r from-transparent via-amber-800/40 to-transparent" />
-              <div className="w-1 h-1 rounded-full bg-amber-800/40" />
+            {/* Decorative rune line */}
+            <div className="flex items-center justify-center gap-2 mt-3">
+              <div className="w-8 h-px bg-gradient-to-r from-transparent to-[#8b7355]/40" />
+              <RuneDiamondIcon className="w-3 h-3 text-[#8b7355]/60" />
+              <div className="w-8 h-px bg-gradient-to-l from-transparent to-[#8b7355]/40" />
             </div>
           </div>
 
@@ -108,8 +98,8 @@ export default function RankPanel({ rank }) {
           <div className="text-center space-y-2">
             {/* Mode */}
             <p 
-              className="font-fantasy text-xs uppercase tracking-widest"
-              style={{ color: '#6b5344' }}
+              className="font-fantasy text-xs uppercase tracking-[0.2em]"
+              style={{ color: '#6a5a4a' }}
             >
               {rankData.mode}
             </p>
@@ -119,7 +109,7 @@ export default function RankPanel({ rank }) {
               className="font-medieval text-xl tracking-wide"
               style={{ 
                 color: tierConfig.textColor,
-                textShadow: `0 0 10px ${tierConfig.glowColor}`,
+                textShadow: `0 0 15px ${tierConfig.glowColor}`,
               }}
             >
               {rankData.tier} {rankData.division}
@@ -130,17 +120,17 @@ export default function RankPanel({ rank }) {
               <div className="flex items-center justify-center gap-1">
                 <span 
                   className="font-fantasy text-lg font-semibold"
-                  style={{ color: '#4a3728' }}
+                  style={{ color: '#d4c4a8' }}
                 >
                   {rankData.lp}
                 </span>
                 <span 
                   className="font-fantasy text-sm"
-                  style={{ color: '#6b5344' }}
+                  style={{ color: '#6a5a4a' }}
                 >
                   LP
                 </span>
-                <ArrowUpIcon className="w-3 h-3 text-green-700 ml-1" />
+                <RuneArrowUpIcon className="w-3 h-3 text-[#6b8e6b] ml-1" />
               </div>
             )}
           </div>
@@ -148,32 +138,32 @@ export default function RankPanel({ rank }) {
           {/* Win/Loss Stats */}
           {rankData.tier !== 'Unranked' && (rankData.wins > 0 || rankData.losses > 0) && (
             <>
-              <div className="my-4 h-px bg-gradient-to-r from-transparent via-amber-800/30 to-transparent" />
+              <div className="my-5 h-px bg-gradient-to-r from-transparent via-[#8b7355]/30 to-transparent" />
               
               <div className="flex justify-center gap-6 text-center">
                 <div>
-                  <p className="font-medieval text-lg" style={{ color: '#2d5a3d' }}>
+                  <p className="font-medieval text-lg" style={{ color: '#6b8e6b' }}>
                     {rankData.wins}
                   </p>
-                  <p className="font-fantasy text-xs uppercase" style={{ color: '#6b5344' }}>
+                  <p className="font-fantasy text-xs uppercase tracking-wider" style={{ color: '#6a5a4a' }}>
                     Thắng
                   </p>
                 </div>
-                <div className="w-px bg-amber-800/20" />
+                <div className="w-px bg-[#8b7355]/20" />
                 <div>
-                  <p className="font-medieval text-lg" style={{ color: '#8b3a3a' }}>
+                  <p className="font-medieval text-lg" style={{ color: '#8b4444' }}>
                     {rankData.losses}
                   </p>
-                  <p className="font-fantasy text-xs uppercase" style={{ color: '#6b5344' }}>
+                  <p className="font-fantasy text-xs uppercase tracking-wider" style={{ color: '#6a5a4a' }}>
                     Thua
                   </p>
                 </div>
-                <div className="w-px bg-amber-800/20" />
+                <div className="w-px bg-[#8b7355]/20" />
                 <div>
-                  <p className="font-medieval text-lg" style={{ color: '#4a3728' }}>
+                  <p className="font-medieval text-lg" style={{ color: '#d4c4a8' }}>
                     {calculateWinRate(rankData.wins, rankData.losses)}%
                   </p>
-                  <p className="font-fantasy text-xs uppercase" style={{ color: '#6b5344' }}>
+                  <p className="font-fantasy text-xs uppercase tracking-wider" style={{ color: '#6a5a4a' }}>
                     Tỉ Lệ Thắng
                   </p>
                 </div>
@@ -181,11 +171,11 @@ export default function RankPanel({ rank }) {
             </>
           )}
 
-          {/* Medieval pattern decoration */}
+          {/* Medieval rune pattern decoration */}
           <div 
             className="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-20 pointer-events-none"
           >
-            <MedievalPattern />
+            <MedievalRunePattern />
           </div>
         </div>
       </div>
@@ -194,45 +184,45 @@ export default function RankPanel({ rank }) {
 }
 
 /**
- * Rank Emblem - Metallic badge with tier-based styling
+ * Rank Emblem - Mystical badge with tier-based styling
  */
 function RankEmblem({ tier, config }) {
   return (
     <div className="relative">
-      {/* Outer glow */}
+      {/* Outer mystical glow */}
       <div 
-        className="absolute -inset-4 rounded-full opacity-50"
+        className="absolute -inset-6 rounded-full opacity-40"
         style={{
           background: `radial-gradient(circle, ${config.glowColor} 0%, transparent 70%)`,
-          filter: 'blur(8px)',
+          filter: 'blur(12px)',
         }}
       />
 
-      {/* Emblem container */}
+      {/* Emblem container - Dark stone style */}
       <div 
         className="relative w-28 h-28 rounded-full flex items-center justify-center"
         style={{
           background: `
             radial-gradient(circle at 30% 30%, 
-              ${config.highlightColor} 0%, 
+              ${config.highlightColor}40 0%, 
               ${config.primaryColor} 40%, 
               ${config.shadowColor} 100%
             )
           `,
           boxShadow: `
-            0 4px 20px ${config.glowColor},
-            inset 0 2px 4px rgba(255,255,255,0.3),
-            inset 0 -2px 4px rgba(0,0,0,0.3)
+            0 4px 25px ${config.glowColor},
+            inset 0 2px 4px rgba(255,255,255,0.15),
+            inset 0 -2px 4px rgba(0,0,0,0.4)
           `,
-          border: `3px solid ${config.borderColor}`,
+          border: `2px solid ${config.borderColor}`,
         }}
       >
-        {/* Inner ring */}
+        {/* Inner ring - Runic circle */}
         <div 
-          className="absolute inset-2 rounded-full"
+          className="absolute inset-3 rounded-full"
           style={{
-            border: `2px solid ${config.innerBorderColor}`,
-            boxShadow: `inset 0 0 20px ${config.innerGlowColor}`,
+            border: `1px solid ${config.innerBorderColor}`,
+            boxShadow: `inset 0 0 25px ${config.innerGlowColor}`,
           }}
         />
 
@@ -241,28 +231,28 @@ function RankEmblem({ tier, config }) {
           <TierIcon tier={tier} config={config} />
         </div>
 
-        {/* Shine effect */}
+        {/* Mystical shine effect */}
         <div 
           className="absolute inset-0 rounded-full overflow-hidden pointer-events-none"
           style={{
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 50%, transparent 100%)',
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%, transparent 100%)',
           }}
         />
       </div>
 
-      {/* Decorative gems */}
+      {/* Decorative rune marks */}
       <div 
-        className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full"
+        className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full"
         style={{
           background: `radial-gradient(circle at 30% 30%, ${config.gemHighlight}, ${config.gemColor})`,
-          boxShadow: `0 0 6px ${config.gemColor}`,
+          boxShadow: `0 0 8px ${config.gemColor}`,
         }}
       />
       <div 
-        className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full"
+        className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full"
         style={{
           background: `radial-gradient(circle at 30% 30%, ${config.gemHighlight}, ${config.gemColor})`,
-          boxShadow: `0 0 6px ${config.gemColor}`,
+          boxShadow: `0 0 8px ${config.gemColor}`,
         }}
       />
     </div>
@@ -300,44 +290,39 @@ function TierIcon({ tier, config }) {
 }
 
 /**
- * Corner ornament for parchment
+ * Medieval rune decorative pattern
  */
-function CornerOrnament({ position }) {
-  const positionClasses = {
-    'top-left': 'top-3 left-3',
-    'top-right': 'top-3 right-3 rotate-90',
-    'bottom-left': 'bottom-3 left-3 -rotate-90',
-    'bottom-right': 'bottom-3 right-3 rotate-180',
-  }
-
+function MedievalRunePattern() {
   return (
-    <div className={`absolute w-6 h-6 ${positionClasses[position]} pointer-events-none opacity-40`}>
-      <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-        <path
-          d="M2 2 L10 2 L10 4 L4 4 L4 10 L2 10 Z"
-          fill="#6b4423"
-        />
-        <circle cx="6" cy="6" r="1.5" fill="#6b4423" />
-      </svg>
-    </div>
-  )
-}
-
-/**
- * Medieval decorative pattern
- */
-function MedievalPattern() {
-  return (
-    <svg width="120" height="30" viewBox="0 0 120 30" fill="none">
+    <svg width="120" height="30" viewBox="0 0 120 30" fill="none" stroke="#8b7355">
       <path
         d="M0 15 Q15 5 30 15 T60 15 T90 15 T120 15"
-        stroke="#6b4423"
         strokeWidth="1"
         fill="none"
       />
-      <circle cx="60" cy="15" r="3" fill="#6b4423" />
-      <circle cx="30" cy="15" r="2" fill="#6b4423" />
-      <circle cx="90" cy="15" r="2" fill="#6b4423" />
+      <circle cx="60" cy="15" r="3" fill="#8b7355" opacity="0.5" />
+      <circle cx="30" cy="15" r="2" fill="#8b7355" opacity="0.3" />
+      <circle cx="90" cy="15" r="2" fill="#8b7355" opacity="0.3" />
+      {/* Rune marks */}
+      <path d="M60 10 L60 20" strokeWidth="1" opacity="0.4" />
+      <path d="M55 15 L65 15" strokeWidth="1" opacity="0.4" />
+    </svg>
+  )
+}
+
+// Ancient Rune Icons
+function RuneDiamondIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2L2 12l10 10 10-10L12 2z" />
+    </svg>
+  )
+}
+
+function RuneArrowUpIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 19 L12 5 M7 10 L12 5 L17 10" />
     </svg>
   )
 }
@@ -486,7 +471,7 @@ function calculateWinRate(wins, losses) {
   return Math.round((wins / total) * 100)
 }
 
-// Icons
+// Icons - Dark theme versions
 function DiamondIcon({ className }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -497,8 +482,8 @@ function DiamondIcon({ className }) {
 
 function ArrowUpIcon({ className }) {
   return (
-    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-      <path d="M7 14l5-5 5 5H7z" />
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 19 L12 5 M7 10 L12 5 L17 10" />
     </svg>
   )
 }
