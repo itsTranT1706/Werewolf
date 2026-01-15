@@ -26,13 +26,20 @@ export function getRoomSocket() {
         return roomSocket
     }
 
-    // URL của Room Service (WebSocket endpoint)
-    // Tự động detect server URL từ window.location khi deploy production
-    const roomSocketUrl = import.meta.env.VITE_ROOM_SOCKET_URL || 
-        (window.location.hostname === 'localhost' 
-            ? 'http://localhost:8082' 
-            : `${window.location.protocol}//${window.location.hostname}:8082`)
+    // URL của API Gateway (WebSocket endpoint)
+    // API Gateway quản lý tất cả WebSocket connections, không phải Room Service
+    const roomSocketUrl = import.meta.env.VITE_ROOM_SOCKET_URL ||
+        (window.location.hostname === 'localhost'
+            ? 'http://localhost:8080'
+            : `${window.location.protocol}//${window.location.hostname}:8080`)
 
+    // Tạo kết nối socket
+    roomSocket = io(roomSocketUrl, {
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionDelay: 1000,
+        reconnectionAttempts: 5
+    })
 
     // Event: Khi kết nối thành công
     roomSocket.on('connect', () => {
