@@ -30,8 +30,8 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
         </Route>
 
-        {/* Game routes - Protected */}
-        <Route path="/game" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
+        {/* Game routes */}
+        <Route path="/game" element={<GamePage />} />
         <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
 
         {/* Room routes - Public */}

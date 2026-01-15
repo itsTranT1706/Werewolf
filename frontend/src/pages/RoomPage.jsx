@@ -982,14 +982,18 @@ export default function RoomPage() {
     }
 
     const handleLeaveRoom = async () => {
+        // Determine redirect destination based on authentication status
+        const token = localStorage.getItem('token')
+        const redirectPath = token ? '/game' : '/home'
+
         if (!roomId || !currentUserId) {
-            navigate('/game')
+            navigate(redirectPath)
             return
         }
 
         if (!roomSocket || !roomSocket.connected) {
-            // Nếu socket chưa kết nối, vẫn navigate về /game
-            navigate('/game')
+            // Nếu socket chưa kết nối, vẫn navigate
+            navigate(redirectPath)
             return
         }
 
@@ -1023,7 +1027,13 @@ export default function RoomPage() {
                 localStorage.removeItem(`room_${roomIdToClean}_host`)
                 localStorage.removeItem(`room_${roomIdToClean}_creator_userId`)
                 localStorage.removeItem(`room_${roomIdToClean}_playerId`)
-                navigate('/game')
+
+                // Anonymous user: also clean guest username
+                if (!token) {
+                    localStorage.removeItem('guestUsername')
+                }
+
+                navigate(redirectPath)
             }
 
             roomSocket.once('ROOM_LEFT', handleRoomLeft)
@@ -1061,7 +1071,13 @@ export default function RoomPage() {
                     localStorage.removeItem(`room_${roomIdToClean}_host`)
                     localStorage.removeItem(`room_${roomIdToClean}_creator_userId`)
                     localStorage.removeItem(`room_${roomIdToClean}_playerId`)
-                    navigate('/game')
+
+                    // Anonymous user: also clean guest username
+                    if (!token) {
+                        localStorage.removeItem('guestUsername')
+                    }
+
+                    navigate(redirectPath)
                     setLoading(false)
                 }
             }, 3000)
