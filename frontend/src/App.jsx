@@ -8,6 +8,7 @@ import GamePage from './pages/GamePage'
 import ProfilePage from './pages/ProfilePage'
 import RoomPage from './pages/RoomPage'
 import MatchChroniclePage from './pages/MatchChroniclePage'
+import ProtectedRoute from './components/ProtectedRoute'
 import { NotificationProvider } from '@/components/ui'
 import { useHomeAudio } from '@/hooks/useHomeAudio'
 
@@ -29,9 +30,11 @@ function App() {
           <Route path="/register" element={<RegisterPage />} />
         </Route>
 
-        {/* Game routes */}
-        <Route path="/game" element={<GamePage />} />
-        <Route path="/profile" element={<ProfilePage />} />
+        {/* Game routes - Protected */}
+        <Route path="/game" element={<ProtectedRoute><GamePage /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+
+        {/* Room routes - Public */}
         <Route path="/room/:roomId/chronicle" element={<MatchChroniclePage />} />
         <Route path="/room/:roomId" element={<RoomPage />} />
       </Routes>

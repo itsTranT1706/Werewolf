@@ -59,11 +59,11 @@ function ModeratorDisplay({ role, onClose }) {
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Dark backdrop */}
-            <div 
+            <div
                 className="absolute inset-0 bg-black/80 backdrop-blur-sm"
                 onClick={onClose}
             />
-            
+
             {/* Simple panel */}
             <div className="relative bg-gradient-to-b from-[#1a1510] to-[#0d0a07] border-2 border-gold/50 rounded-lg p-8 max-w-md text-center">
                 <div className="text-6xl mb-4">📋</div>
@@ -89,14 +89,14 @@ function ModeratorDisplay({ role, onClose }) {
  */
 function CardFrame({ children, factionColors }) {
     return (
-        <div 
+        <div
             className="relative"
             style={{
                 filter: `drop-shadow(0 0 20px ${factionColors.glow})`
             }}
         >
             {/* Outer frame - ancient wood/stone texture effect */}
-            <div 
+            <div
                 className="relative p-2 rounded-lg"
                 style={{
                     background: 'linear-gradient(135deg, #3d2914 0%, #1a0f08 50%, #2a1a0e 100%)',
@@ -112,9 +112,9 @@ function CardFrame({ children, factionColors }) {
                 <div className="absolute top-1 right-1 w-6 h-6 border-r-2 border-t-2 border-gold/40 rounded-tr" />
                 <div className="absolute bottom-1 left-1 w-6 h-6 border-l-2 border-b-2 border-gold/40 rounded-bl" />
                 <div className="absolute bottom-1 right-1 w-6 h-6 border-r-2 border-b-2 border-gold/40 rounded-br" />
-                
+
                 {/* Inner frame - parchment area */}
-                <div 
+                <div
                     className="relative rounded overflow-hidden"
                     style={{
                         background: 'linear-gradient(180deg, #2a1f15 0%, #1a1410 50%, #0f0a05 100%)',
@@ -135,11 +135,11 @@ function RoleImage({ roleId, roleName, factionColors }) {
     const [imageError, setImageError] = useState(false)
     const imagePath = getRoleImage(roleId)
     const icon = getRoleIcon(roleId)
-    
+
     if (!imagePath || imageError) {
         // Fallback to emoji icon
         return (
-            <div 
+            <div
                 className="w-full aspect-[3/4] flex items-center justify-center"
                 style={{
                     background: `radial-gradient(ellipse at center, ${factionColors.glow} 0%, transparent 70%)`
@@ -149,11 +149,11 @@ function RoleImage({ roleId, roleName, factionColors }) {
             </div>
         )
     }
-    
+
     return (
         <div className="relative w-full aspect-[3/4] overflow-hidden">
             {/* Vignette overlay */}
-            <div 
+            <div
                 className="absolute inset-0 z-10 pointer-events-none"
                 style={{
                     background: `
@@ -162,15 +162,15 @@ function RoleImage({ roleId, roleName, factionColors }) {
                     `
                 }}
             />
-            
+
             {/* Subtle glow behind image */}
-            <div 
+            <div
                 className="absolute inset-0"
                 style={{
                     background: `radial-gradient(ellipse at center, ${factionColors.glow} 0%, transparent 60%)`
                 }}
             />
-            
+
             {/* Role image - full height, positioned from near bottom */}
             <img
                 src={imagePath}
@@ -186,15 +186,15 @@ function RoleImage({ roleId, roleName, factionColors }) {
 /**
  * Main Role Reveal Card Component
  */
-export default function RoleRevealCard({ 
-    roleId, 
-    roleName, 
-    faction, 
-    isOpen, 
-    onClose 
+export default function RoleRevealCard({
+    roleId,
+    roleName,
+    faction,
+    isOpen,
+    onClose
 }) {
     const [isRevealing, setIsRevealing] = useState(false)
-    
+
     // Get role details
     const role = ROLES[roleId] || {
         id: roleId,
@@ -202,27 +202,22 @@ export default function RoleRevealCard({
         faction: faction || FACTION.NEUTRAL,
         description: 'Vai trò bí ẩn...'
     }
-    
+
     const factionColors = getFactionColors(role.faction)
-    
+
     // Trigger reveal animation on open
     useEffect(() => {
         if (isOpen) {
             setIsRevealing(true)
         }
     }, [isOpen])
-    
+
     if (!isOpen) return null
-    
-    // Special handling for Moderator
-    if (roleId === 'MODERATOR') {
-        return <ModeratorDisplay role={role} onClose={onClose} />
-    }
-    
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Dark ritual backdrop */}
-            <div 
+            <div
                 className="absolute inset-0 bg-black/90"
                 onClick={onClose}
                 style={{
@@ -231,23 +226,22 @@ export default function RoleRevealCard({
                     `
                 }}
             />
-            
+
             {/* Ambient particles/dust effect (static) */}
-            <div 
+            <div
                 className="absolute inset-0 opacity-20 pointer-events-none"
                 style={{
                     backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
                     mixBlendMode: 'overlay'
                 }}
             />
-            
+
             {/* Card container with reveal animation */}
-            <div 
-                className={`relative transition-all duration-700 ease-out ${
-                    isRevealing 
-                        ? 'opacity-100 scale-100 translate-y-0' 
+            <div
+                className={`relative transition-all duration-700 ease-out ${isRevealing
+                        ? 'opacity-100 scale-100 translate-y-0'
                         : 'opacity-0 scale-95 translate-y-8'
-                }`}
+                    }`}
             >
                 <CardFrame factionColors={factionColors}>
                     {/* Card content */}
@@ -262,16 +256,16 @@ export default function RoleRevealCard({
                                 <span className="text-gold/40">✦</span>
                             </div>
                         </div>
-                        
+
                         {/* Role image area */}
-                        <RoleImage 
-                            roleId={role.id} 
+                        <RoleImage
+                            roleId={role.id}
                             roleName={role.name}
                             factionColors={factionColors}
                         />
-                        
+
                         {/* Role name banner */}
-                        <div 
+                        <div
                             className={`py-1 px-4 text-center bg-gradient-to-b ${factionColors.bg}`}
                             style={{
                                 borderTop: `1px solid ${factionColors.border}40`,
@@ -279,13 +273,13 @@ export default function RoleRevealCard({
                             }}
                         >
                             <h2 className={`font-medieval text-2xl ${factionColors.text} tracking-wide`}>
-                                {role.name} 
+                                {role.name}
                             </h2>
                             <p className="font-fantasy text-xs text-parchment/50 mt-1">
                                 Phe {FACTION_NAMES[role.faction]}
                             </p>
                         </div>
-                        
+
                         {/* Bottom ornament & close button */}
                         <div className="p-4 border-t border-gold/20 flex flex-col items-center gap-3">
                             {/* <div className="flex items-center gap-2 text-gold/30">
@@ -293,7 +287,7 @@ export default function RoleRevealCard({
                                 <span>☽</span>
                                 <span>─────</span>
                             </div> */}
-                            
+
                             <button
                                 onClick={onClose}
                                 className={`
