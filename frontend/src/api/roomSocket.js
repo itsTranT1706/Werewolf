@@ -27,17 +27,11 @@ export function getRoomSocket() {
     }
 
     // URL của Room Service (WebSocket endpoint)
-   const roomSocketUrl = import.meta.env.VITE_ROOM_SOCKET_URL || window.location.origin
-const roomSocketPath = import.meta.env.VITE_ROOM_SOCKET_PATH || '/room-socket.io/socket.io'
-
-roomSocket = io(roomSocketUrl, {
-  path: roomSocketPath,
-  transports: ['polling', 'websocket'],
-  reconnection: true,
-  reconnectionDelay: 1000,
-  reconnectionAttempts: 5,
-  timeout: 20000,
-})
+    // Tự động detect server URL từ window.location khi deploy production
+    const roomSocketUrl = import.meta.env.VITE_ROOM_SOCKET_URL || 
+        (window.location.hostname === 'localhost' 
+            ? 'http://localhost:8082' 
+            : `${window.location.protocol}//${window.location.hostname}:8082`)
 
 
     // Event: Khi kết nối thành công

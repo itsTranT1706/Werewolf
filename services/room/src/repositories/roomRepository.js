@@ -230,6 +230,26 @@ class RoomRepository {
       data: updateData,
     });
   }
+
+  // Update player displayname
+  async updatePlayerDisplayname(roomId, playerId, displayname) {
+    const player = await this.prisma.roomPlayer.update({
+      where: { id: playerId },
+      data: { displayname },
+    });
+
+    // Get updated room with players
+    const room = await this.findById(roomId);
+
+    // Send Kafka event
+    await sendRoomEvent(this.kafkaProducer, 'PLAYER_NAME_UPDATED', {
+      roomId,
+      player,
+      room,
+    });
+
+    return { player, room };
+  }
 }
 
 module.exports = RoomRepository;

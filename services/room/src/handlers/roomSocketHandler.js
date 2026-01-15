@@ -415,7 +415,8 @@ class RoomSocketHandler {
 
       // Prepare players list for gameplay service
       const playersList = updatedRoom.players.map(p => ({
-        userId: p.userId,
+        playerId: p.id,           // Database ID (always exists)
+        userId: p.userId,         // Auth ID (can be null for guests) - kept for socket routing
         username: p.displayname,
         isHost: p.isHost
       }));
@@ -641,6 +642,72 @@ class RoomSocketHandler {
 
     } catch (error) {
       console.error('Get room info error:', error);
+      socket.emit('ERROR', { message: error.message });
+    }
+  }
+
+  // UPDATE_PLAYER_NAME event handler
+  async handleUpdatePlayerName(socket, data) {
+    try {
+      const { roomId, playerId, displayname } = data;
+
+      // Validate input
+      if (!displayname || typeof displayname !== 'string' || displayname.trim().length === 0) {
+        socket.emit('ERROR', { message: 'Display name is required' });
+        return;
+      }
+
+      if (displayname.length > 50) {
+        socket.emit('ERROR', { message: 'Display name must be less than 50 characters' });
+        return;
+      }
+
+      // Verify socket owns this player
+      if (socket.data.playerId !== playerId) {
+        socket.emit('ERROR', { message: 'You can only update your own name' });
+        return;
+      }
+
+      // Update player displayname
+      const result = await this.roomService.updatePlayerDisplayname(roomId, playerId, displayname.trim());
+
+      // Update socket data
+      socket.data.displayname = displayname.trim();
+
+      // Emit success to the player who updated
+      socket.emit('PLAYER_NAME_UPDATED', {
+        room: {
+          id: result.room.id,
+          code: result.room.code,
+          name: result.room.name,
+          maxPlayers: result.room.maxPlayers,
+          currentPlayers: result.room.currentPlayers,
+          status: result.room.status,
+          settings: result.room.settings,
+          players: result.room.players
+        },
+        player: result.player
+      });
+
+      // Notify all players in the room about the name change
+      socket.to(roomId).emit('PLAYER_NAME_UPDATED', {
+        room: {
+          id: result.room.id,
+          code: result.room.code,
+          name: result.room.name,
+          maxPlayers: result.room.maxPlayers,
+          currentPlayers: result.room.currentPlayers,
+          status: result.room.status,
+          settings: result.room.settings,
+          players: result.room.players
+        },
+        player: result.player
+      });
+
+      console.log(`Player ${playerId} updated name to: ${displayname.trim()} in room: ${roomId}`);
+
+    } catch (error) {
+      console.error('Update player name error:', error);
       socket.emit('ERROR', { message: error.message });
     }
   }

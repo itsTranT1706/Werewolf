@@ -298,6 +298,30 @@ class RoomService {
 
     return this.leaveRoom(roomId, playerId);
   }
+
+  // Update player displayname
+  async updatePlayerDisplayname(roomId, playerId, displayname) {
+    // Validate input
+    if (!displayname || displayname.trim().length === 0) {
+      throw new Error('Display name is required');
+    }
+
+    if (displayname.length > 50) {
+      throw new Error('Display name must be less than 50 characters');
+    }
+
+    // Check if room exists
+    const room = await this.getRoomById(roomId);
+
+    // Check if player exists in room
+    const player = room.players.find(p => p.id === playerId);
+    if (!player) {
+      throw new Error('Player not found in room');
+    }
+
+    // Update player displayname
+    return this.roomRepository.updatePlayerDisplayname(roomId, playerId, displayname.trim());
+  }
 }
 
 module.exports = RoomService;

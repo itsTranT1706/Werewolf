@@ -162,6 +162,7 @@ async function startServer() {
         socket.on('UPDATE_ROOM', (data) => socketHandler.handleUpdateRoom(socket, data))
         socket.on('KICK_PLAYER', (data) => socketHandler.handleKickPlayer(socket, data))
         socket.on('GET_ROOM_INFO', (data) => socketHandler.handleGetRoomInfo(socket, data))
+        socket.on('UPDATE_PLAYER_NAME', (data) => socketHandler.handleUpdatePlayerName(socket, data))
 
         socket.on('disconnect', () => {
             console.log('Client disconnected:', socket.id)

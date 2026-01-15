@@ -60,6 +60,11 @@ export const ROLES = {
         name: 'Thợ Săn Quái Thú',
         faction: 'VILLAGER'
     },
+    CUPID: {
+        id: 'CUPID',
+        name: 'Thần Tình Yêu',
+        faction: 'VILLAGER'
+    },
 
     // PHE MA SÓI
     TRAITOR: {

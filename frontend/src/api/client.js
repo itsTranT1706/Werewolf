@@ -14,7 +14,10 @@ import { getOrCreateGuestUserId } from '@/utils/guestUtils'
 
 // Configuration from environment
 // Use '/api/v1' for Vite proxy in development, or full URL in production
-const API_BASE_URL = import.meta.env.VITE_API_GATEWAY_URL || '/api/v1'
+const API_BASE_URL = import.meta.env.VITE_API_GATEWAY_URL || 
+    (window.location.hostname === 'localhost' 
+        ? '/api/v1' 
+        : `${window.location.protocol}//${window.location.hostname}:80/api/v1`)
 const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT) || 30000
 
 // Create axios instance with defaults

@@ -25,5 +25,6 @@ router.post('/:code/leave', (req, res) => req.roomController.leaveRoom(req, res)
 router.post('/:id/start', (req, res) => req.roomController.startGame(req, res));
 router.patch('/:id', (req, res) => req.roomController.updateRoom(req, res));
 router.post('/:id/kick/:playerId', (req, res) => req.roomController.kickPlayer(req, res));
+router.patch('/:id/players/:playerId', (req, res) => req.roomController.updatePlayerDisplayname(req, res));
 
 module.exports = router;
