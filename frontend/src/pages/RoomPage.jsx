@@ -134,6 +134,8 @@ export default function RoomPage() {
     const [gameStartTime, setGameStartTime] = useState(null)
     const [gameEndTime, setGameEndTime] = useState(null)
     const [executionPending, setExecutionPending] = useState(null) // { playerId, playerName } - Pending execution confirmation
+    const [discussionEndsAt, setDiscussionEndsAt] = useState(null) // ms timestamp for day discussion countdown
+    const [discussionSecondsLeft, setDiscussionSecondsLeft] = useState(null) // remaining seconds
 
     // Bitten player info from service (for Witch step)
     const [bittenPlayer, setBittenPlayer] = useState(null) // { playerId, playerName }
@@ -156,6 +158,41 @@ export default function RoomPage() {
         gameStateRef.current = gameState
     }, [gameState])
 
+    useEffect(() => {
+        if (!discussionEndsAt) {
+            setDiscussionSecondsLeft(null)
+            return
+        }
+
+        let timeoutId = null
+
+        const tick = () => {
+            const remainingSeconds = Math.max(0, Math.ceil((discussionEndsAt - Date.now()) / 1000))
+            setDiscussionSecondsLeft(remainingSeconds)
+            if (remainingSeconds > 0) {
+                timeoutId = setTimeout(tick, 1000)
+            }
+        }
+
+        tick()
+
+        return () => {
+            if (timeoutId) clearTimeout(timeoutId)
+        }
+    }, [discussionEndsAt])
+
+    useEffect(() => {
+        if (gameStatus !== 'DAY') {
+            setDiscussionEndsAt(null)
+        }
+    }, [gameStatus])
+
+    const formatCountdown = (totalSeconds) => {
+        const safeSeconds = Math.max(0, totalSeconds || 0)
+        const minutes = Math.floor(safeSeconds / 60)
+        const seconds = safeSeconds % 60
+        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+    }
     // CRITICAL: Reset ALL game state when roomId changes
     // This prevents state/refs from persisting when navigating between different rooms
     useEffect(() => {
@@ -1763,6 +1800,9 @@ export default function RoomPage() {
                 day: data.payload?.day || prev.day,
                 currentStep: null
             }))
+            const duration = data.payload?.duration || 120
+            const startedAt = data.ts || Date.now()
+            setDiscussionEndsAt(startedAt + duration * 1000)
             const dayNumber = data.payload?.day || gameStateRef.current.day || 1
             addChronicleEntries([
                 {
@@ -2086,6 +2126,20 @@ export default function RoomPage() {
                                     </div>
                                 </div>
                             </div>
+
+                            {gameStatus === 'DAY' && discussionSecondsLeft !== null && (
+                                <div className="mb-8">
+                                    <div className="bg-[#12100a]/80 border border-[#c9a227]/40 px-6 py-4 shadow-[0_0_20px_rgba(201,162,39,0.15)] flex flex-wrap items-center justify-between gap-4">
+                                        <div>
+                                            <p className="text-[10px] text-[#c9a227]/70 uppercase tracking-[0.3em] font-bold">Thao luan</p>
+                                            <p className="text-[#d4c4a8] font-serif italic text-sm">Dem nguoc thao luan ban ngay</p>
+                                        </div>
+                                        <div className="font-heading text-3xl text-[#c9a227] tracking-[0.2em]">
+                                            {formatCountdown(discussionSecondsLeft)}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Players Grid - Cursed souls gathering */}
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-6 mb-12">
