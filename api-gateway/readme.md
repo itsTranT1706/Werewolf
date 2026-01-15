@@ -1,5 +1,6 @@
 # API Gateway
 
+
 Express + Socket.IO gateway that authenticates with JWT and bridges client actions to Kafka.
 
 ## Setup & Run
