@@ -9,6 +9,8 @@ RUN apt-get update -y && apt-get install -y openssl
 # Copy package files
 COPY package*.json ./
 COPY prisma ./prisma/
+RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/apt/lists/*
+
 
 # Install dependencies
 RUN npm install
@@ -25,7 +27,9 @@ FROM node:18-slim
 WORKDIR /app
 
 # Install OpenSSL for Prisma
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+# Install OpenSSL + pg_isready
+RUN apt-get update -y && apt-get install -y openssl postgresql-client && rm -rf /var/lib/apt/lists/*
+
 
 # Copy package files
 COPY package*.json ./

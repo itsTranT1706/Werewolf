@@ -27,16 +27,18 @@ export function getRoomSocket() {
     }
 
     // URL của Room Service (WebSocket endpoint)
-    const roomSocketUrl = import.meta.env.VITE_ROOM_SOCKET_URL || 'http://localhost:8082'
+   const roomSocketUrl = import.meta.env.VITE_ROOM_SOCKET_URL || window.location.origin
+const roomSocketPath = import.meta.env.VITE_ROOM_SOCKET_PATH || '/room-socket.io/socket.io'
 
-    // Tạo socket connection
-    // Room service không yêu cầu auth, có thể kết nối trực tiếp
-    roomSocket = io(roomSocketUrl, {
-        transports: ['websocket', 'polling'], // Ưu tiên WebSocket, fallback polling
-        reconnection: true,  // Tự động reconnect nếu mất kết nối
-        reconnectionDelay: 1000,  // Đợi 1s trước khi reconnect
-        reconnectionAttempts: 5  // Thử tối đa 5 lần
-    })
+roomSocket = io(roomSocketUrl, {
+  path: roomSocketPath,
+  transports: ['polling', 'websocket'],
+  reconnection: true,
+  reconnectionDelay: 1000,
+  reconnectionAttempts: 5,
+  timeout: 20000,
+})
+
 
     // Event: Khi kết nối thành công
     roomSocket.on('connect', () => {

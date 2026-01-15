@@ -53,6 +53,21 @@ services:
 
   
     # Vai trò: Lưu trữ dữ liệu lâu dài (User Profile, Lịch sử trận đấu).
+  database:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: profile_service_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+   
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   room_database:
     # Room Service DB
     image: postgres:15
@@ -60,8 +75,7 @@ services:
       POSTGRES_DB: room_service_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    ports:
-      - "5433:5432" # Port khác để tránh conflict
+    
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -184,11 +198,11 @@ services:
     restart: unless-stopped
     environment:
       - PORT=8086
-      # - DB_HOST=database
-      # - DB_PORT=5432
-      # - DB_NAME=profile_service_db
-      # - DB_USERNAME=postgres
-      # - DB_PASSWORD=postgres
+      - DB_HOST=database
+      - DB_PORT=5432
+      - DB_NAME=profile_service_db
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
       - DATABASE_URL=postgresql://postgres:postgres@database:5432/profile_service_db?schema=public
     # Vai trò: Xử lý REST request cho Ranking, Stats, Avatar. Không cần Kafka cho các tác vụ Read.
 
