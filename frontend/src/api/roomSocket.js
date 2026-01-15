@@ -27,24 +27,7 @@ export function getRoomSocket() {
     }
 
     // URL của Room Service (WebSocket endpoint)
-    // Tự động detect server URL từ window.location khi deploy production
-    let roomSocketUrl
-    
-    // Ưu tiên env var nếu có
-    if (import.meta.env.VITE_ROOM_SOCKET_URL) {
-        roomSocketUrl = import.meta.env.VITE_ROOM_SOCKET_URL
-    } 
-    // Runtime detection - hoạt động cả khi không có env var
-    else if (typeof window !== 'undefined') {
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        roomSocketUrl = isLocal 
-            ? 'http://localhost:8082'
-            : `${window.location.protocol}//${window.location.hostname}:8082`
-    }
-    // Fallback
-    else {
-        roomSocketUrl = 'http://localhost:8082'
-    }
+    const roomSocketUrl = import.meta.env.VITE_ROOM_SOCKET_URL || 'http://localhost:8082'
 
 
     // Event: Khi kết nối thành công
