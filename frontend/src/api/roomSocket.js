@@ -28,10 +28,20 @@ export function getRoomSocket() {
 
     // URL của API Gateway (WebSocket endpoint)
     // API Gateway quản lý tất cả WebSocket connections, không phải Room Service
+    // const roomSocketUrl = import.meta.env.VITE_ROOM_SOCKET_URL ||
+    //     (window.location.hostname === 'localhost'
+    //         ? 'http://localhost:8080'
+    //         : `${window.location.protocol}//${window.location.hostname}:8080`)
+    const isLocalhost = window.location.hostname === 'localhost'
+
     const roomSocketUrl = import.meta.env.VITE_ROOM_SOCKET_URL ||
-        (window.location.hostname === 'localhost'
-            ? 'http://localhost:8080'
-            : `${window.location.protocol}//${window.location.hostname}:8080`)
+        (isLocalhost
+            ? 'http://localhost:8082'
+            : window.location.origin)
+    const roomSocket = import.meta.env.VITE_ROOM_SOCKET_URL
+        ? '/socket.io'
+        : (isLocalhost ? '/socket.io' : '/room-socket.io/socket.io')
+    console.log(roomSocketUrl);
 
     // Tạo kết nối socket
     roomSocket = io(roomSocketUrl, {
