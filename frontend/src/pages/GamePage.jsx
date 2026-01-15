@@ -113,11 +113,11 @@ export default function GamePage() {
     }
 
     if (!roomId.trim()) {
-      setRoomError('Vui l?ng nh?p m? ph?ng')
+      setRoomError('Vui lòng nhập mã phòng')
       return
     }
     if (roomId.length !== 4) {
-      setRoomError('M? ph?ng ph?i c? d?ng 4 ch? s?')
+      setRoomError('Mã phòng phải có 4 chữ số')
       return
     }
     setRoomError('')
@@ -144,9 +144,9 @@ export default function GamePage() {
     if (!joinLink) return
     try {
       await navigator.clipboard.writeText(joinLink)
-      notify.success('?? sao ch?p li?n k?t', 'Chia s?')
+      notify.success('Sao chép liên kết', 'Chia sẻ')
     } catch {
-      notify.error('Kh?ng th? sao ch?p', 'L?i')
+      notify.error('Không thể sao chép', 'Lỗi')
     }
   }
 
@@ -174,8 +174,9 @@ export default function GamePage() {
           </div>
         )}
 
-        <div className="w-full max-w-md">
-          <MedievalPanel className="w-full home-panel-frame" variant="altar">
+        <div className="w-full max-w-5xl flex flex-col items-center gap-8 lg:flex-row lg:items-start lg:justify-center">
+          <div className="w-full max-w-md">
+            <MedievalPanel className="w-full home-panel-frame" variant="altar">
             <div className="text-center mb-8">
               <div className="flex justify-center mb-4">
                 <div
@@ -250,67 +251,83 @@ export default function GamePage() {
                 </span>
               </MedievalButton>
             </div>
-          </MedievalPanel>
-        </div>
+            </MedievalPanel>
+          </div>
 
         {shareRoomCode && (
-          <div className="mt-10 flex justify-center">
-            <MedievalPanel className="w-full max-w-lg text-left">
-              <div className="flex items-center justify-between gap-4 mb-4">
+          <div className="w-full max-w-2xl">
+            <MedievalPanel className="w-full text-left">
+              <div className="flex flex-wrap items-center justify-between gap-4">
                 <div>
-                  <p className="font-fantasy text-xs uppercase tracking-[0.18em] text-[#f1d37c]">
+                  <p className="font-fantasy text-xs uppercase tracking-[0.24em] text-[#f1d37c]">
                     Mã phòng
                   </p>
-                  <p className="font-medieval text-3xl tracking-[0.18em] text-[#fff2d9]">
+                  <p className="font-medieval text-4xl tracking-[0.22em] text-[#fff2d9]">
                     {shareRoomCode || '----'}
                   </p>
                 </div>
-                <MedievalButton
-                  onClick={() => setShareOpen((prev) => !prev)}
-                  className="px-4"
-                  variant="secondary"
-                >
-                  <span className="flex items-center gap-2">
-                    <RuneShare className="w-4 h-4" />
-                    {shareOpen ? '?n' : 'Chia S?'}
-                  </span>
-                </MedievalButton>
               </div>
 
               {shareOpen && (
-                <div className="mt-4 grid gap-4 md:grid-cols-[180px_1fr] items-center">
-                  <div className="flex items-center justify-center">
-                    {qrUrl && (
-                      <img
-                        src={qrUrl}
-                        alt="Room QR"
-                        className="w-40 h-40 p-2"
-                        style={{
-                          background: 'rgba(0,0,0,0.4)',
-                          border: '1px solid rgba(139,115,85,0.3)',
-                        }}
-                      />
-                    )}
-                  </div>
-                  <div>
-                    <p className="font-fantasy text-sm mb-2 text-[#f1d37c]">
-                      Chia sẻ liên kết tham gia:
-                    </p>
-                    <a
-                      href={joinLink}
-                      className="block font-fantasy text-sm break-all underline theme-link"
+                <div className="mt-6 grid gap-6 md:grid-cols-[220px_1fr] items-center">
+                  <div className="relative flex items-center justify-center">
+                    <div
+                      className="absolute -inset-2 rounded-xl"
+                      style={{
+                        background:
+                          'radial-gradient(circle, rgba(201,162,39,0.2) 0%, rgba(0,0,0,0) 70%)',
+                      }}
+                    />
+                    <div
+                      className="relative p-3 rounded-xl"
+                      style={{
+                        background: 'linear-gradient(180deg, rgba(10,8,8,0.9), rgba(5,4,4,0.9))',
+                        border: '1px solid rgba(201,162,39,0.35)',
+                        boxShadow: '0 0 20px rgba(0,0,0,0.6)',
+                      }}
                     >
-                      {joinLink}
-                    </a>
-                    <div className="mt-4 flex gap-3">
+                      {qrUrl && (
+                        <img
+                          src={qrUrl}
+                          alt="Room QR"
+                          className="w-40 h-40"
+                          style={{ background: '#0b0a0a', border: '1px solid rgba(139,115,85,0.4)' }}
+                        />
+                      )}
+                      <p className="mt-3 text-xs text-center font-fantasy tracking-[0.18em] uppercase text-[#c9a227]">
+                        Scan to join
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="font-fantasy text-sm mb-2 text-[#f1d37c]">
+                        Chia sẻ liên kết:
+                      </p>
+                      <div
+                        className="px-4 py-3 rounded-lg"
+                        style={{
+                          background: 'rgba(0,0,0,0.35)',
+                          border: '1px solid rgba(139,115,85,0.25)',
+                        }}
+                      >
+                        <a
+                          href={joinLink}
+                          className="block font-fantasy text-sm break-all underline theme-link"
+                        >
+                          {joinLink}
+                        </a>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
                       <MedievalButton onClick={handleCopyLink} className="px-4" variant="secondary">
                         <span className="flex items-center gap-2">
                           <RuneCopy className="w-4 h-4" />
-                          Sao Chép
+                          Sao chép
                         </span>
                       </MedievalButton>
                       <MedievalButton onClick={handleEnterRoom} className="px-4">
-                        Vào Phòng
+                        Vào phòng
                       </MedievalButton>
                     </div>
                   </div>
@@ -319,6 +336,8 @@ export default function GamePage() {
             </MedievalPanel>
           </div>
         )}
+
+        </div>
       </div>
 
       <div className="absolute top-6 left-6 text-[#8b7355] opacity-20 pointer-events-none">
