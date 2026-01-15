@@ -22,7 +22,7 @@ export const FACTION_NAMES = {
 export const ROLE_IMAGES = {
     VILLAGER: '/assets/role-images/danthuong.png',
     BODYGUARD: '/assets/role-images/baove.png',
-    CUPID: '/assets/role-images/cupid.png',
+    CUPID: '/assets/role-images/cupid.jpg',
     WATCHMAN: '/assets/role-images/nguoicanhgac.png',
     SEER: '/assets/role-images/thayboi.png',
     DETECTIVE: '/assets/role-images/thamtu.png',
@@ -38,7 +38,7 @@ export const ROLE_IMAGES = {
     PROPHET_WOLF: '/assets/role-images/soitientri.png',
     FOOL: '/assets/role-images/thangngo.png',
     SERIAL_KILLER: '/assets/role-images/satnhan.png',
-    MODERATOR: null // Moderator không dùng card reveal
+    MODERATOR: '/assets/role-images/quantro.png' // Moderator không dùng card reveal
 }
 
 /**
