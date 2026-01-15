@@ -193,6 +193,47 @@ export default function RoomPage() {
         const seconds = safeSeconds % 60
         return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
     }
+    // CRITICAL: Reset ALL game state when roomId changes
+    // This prevents state/refs from persisting when navigating between different rooms
+    useEffect(() => {
+        console.log(`🔄 RoomId changed to: ${roomId}, resetting all game state`)
+
+        // Reset all game-related state
+        setGameState({
+            phase: 'LOBBY',
+            day: 0,
+            currentStep: null,
+            alivePlayers: [],
+            deadPlayers: [],
+            witchSkills: { saveUsed: false, poisonUsed: false },
+            pendingAction: null,
+        })
+        setGameStarted(false)
+        setMyRole(null)
+        setRoleAssignment(null)
+        setRoleSetup(null)
+        roleSetupRef.current = null
+        setSelectedLovers([])
+        setLoversInfo(null)
+        setMyLoverInfo(null)
+        setSelectedPlayerId(null)
+        setWitchAction(null)
+        setWitchHealedThisNight(false)
+        setSeerResult(null)
+        setNightResult(null)
+        setNarrative(null)
+        setHunterCanShoot(null)
+        setVoteResult(null)
+        setGameOver(null)
+        setChronicleEvents([])
+        setGameStartTime(null)
+        setGameEndTime(null)
+        setExecutionPending(null)
+        setBittenPlayer(null)
+        chronicleIndexRef.current = 0
+
+        console.log(`✅ All game state reset for room: ${roomId}`)
+    }, [roomId])
 
     const getPlayerName = (player) =>
         player?.username || player?.displayname || player?.name || player?.playerName || 'M?Tt ng’?i ch’i'
@@ -648,10 +689,33 @@ export default function RoomPage() {
 
             // Transition to NIGHT phase with first step
             // This enables GM mode (isGMMode = isHost && gameStatus !== 'LOBBY')
-            // First night (day 1) ALWAYS starts with CUPID step
-            const firstStep = 'CUPID' // Day 1 always starts with CUPID
+            // Determine first step based on roleSetup (check which roles exist in game)
+            let firstStep = null
 
-            console.log('🎯 Initial night step (Day 1):', { firstStep })
+            const currentRoleSetup = roleSetupRef.current || {}
+
+            console.log('🔍 Pre-check:', { roleSetup: currentRoleSetup, hasCupid: !!(currentRoleSetup.CUPID && currentRoleSetup.CUPID > 0) })
+
+            // Check roles in order (only CUPID on day 1, then other roles)
+            if (currentRoleSetup.CUPID && currentRoleSetup.CUPID > 0) {
+                firstStep = 'CUPID'
+            } else if (currentRoleSetup.BODYGUARD && currentRoleSetup.BODYGUARD > 0) {
+                firstStep = 'BODYGUARD'
+            } else if (currentRoleSetup.WEREWOLF || currentRoleSetup.YOUNG_WOLF || currentRoleSetup.ALPHA_WOLF) {
+                // Werewolf always exists if game started
+                firstStep = 'WEREWOLF'
+            } else if (currentRoleSetup.SEER && currentRoleSetup.SEER > 0) {
+                firstStep = 'SEER'
+            } else if (currentRoleSetup.WITCH && currentRoleSetup.WITCH > 0) {
+                firstStep = 'WITCH'
+            }
+
+            console.log('🎯 Night step check:', { hasCupid: !!(currentRoleSetup.CUPID && currentRoleSetup.CUPID > 0), firstStep })
+            console.log('❓ Why CUPID?', {
+                "is day 1": true,
+                hasCupid: !!(currentRoleSetup.CUPID && currentRoleSetup.CUPID > 0),
+                result: firstStep
+            })
 
             setGameState(prev => ({
                 ...prev,
@@ -955,14 +1019,18 @@ export default function RoomPage() {
     }
 
     const handleLeaveRoom = async () => {
+        // Determine redirect destination based on authentication status
+        const token = localStorage.getItem('token')
+        const redirectPath = token ? '/game' : '/home'
+
         if (!roomId || !currentUserId) {
-            navigate('/game')
+            navigate(redirectPath)
             return
         }
 
         if (!roomSocket || !roomSocket.connected) {
-            // Nếu socket chưa kết nối, vẫn navigate về /game
-            navigate('/game')
+            // Nếu socket chưa kết nối, vẫn navigate
+            navigate(redirectPath)
             return
         }
 
@@ -990,13 +1058,19 @@ export default function RoomPage() {
                 setSelectedLovers([])
                 setLoversInfo(null)
                 setMyLoverInfo(null)
-                
+
                 // Dọn localStorage
                 const roomIdToClean = currentRoomId || roomId
                 localStorage.removeItem(`room_${roomIdToClean}_host`)
                 localStorage.removeItem(`room_${roomIdToClean}_creator_userId`)
                 localStorage.removeItem(`room_${roomIdToClean}_playerId`)
-                navigate('/game')
+
+                // Anonymous user: also clean guest username
+                if (!token) {
+                    localStorage.removeItem('guestUsername')
+                }
+
+                navigate(redirectPath)
             }
 
             roomSocket.once('ROOM_LEFT', handleRoomLeft)
@@ -1034,7 +1108,13 @@ export default function RoomPage() {
                     localStorage.removeItem(`room_${roomIdToClean}_host`)
                     localStorage.removeItem(`room_${roomIdToClean}_creator_userId`)
                     localStorage.removeItem(`room_${roomIdToClean}_playerId`)
-                    navigate('/game')
+
+                    // Anonymous user: also clean guest username
+                    if (!token) {
+                        localStorage.removeItem('guestUsername')
+                    }
+
+                    navigate(redirectPath)
                     setLoading(false)
                 }
             }, 3000)
@@ -1824,7 +1904,7 @@ export default function RoomPage() {
                 message: data.payload?.message,
                 allPlayers: data.payload?.allPlayers
             })
-            
+
             // Reset game state to LOBBY for next game
             setTimeout(() => {
                 setGameState({
