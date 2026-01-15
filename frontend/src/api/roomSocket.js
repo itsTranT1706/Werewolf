@@ -26,14 +26,12 @@ export function getRoomSocket() {
         return roomSocket
     }
 
-    // URL của API Gateway (WebSocket endpoint)
-    // API Gateway quản lý tất cả WebSocket connections, không phải Room Service
-    const isLocalhost = window.location.hostname === 'localhost'
-
+    // URL của Room Service (WebSocket endpoint)
+    // Tự động detect server URL từ window.location khi deploy production
     const roomSocketUrl = import.meta.env.VITE_ROOM_SOCKET_URL || window.location.origin;
     const roomSocketPath = import.meta.env.VITE_ROOM_SOCKET_PATH || '/room-socket.io/socket.io';
 
-    const roomSocket = io(roomSocketUrl, {
+    roomSocket = io(roomSocketUrl, {
         path: roomSocketPath,
         transports: ['polling', 'websocket'],
         reconnection: true,
@@ -41,7 +39,7 @@ export function getRoomSocket() {
         reconnectionAttempts: 5,
         timeout: 20000,
     });
-    
+
     // Event: Khi kết nối thành công
     roomSocket.on('connect', () => {
         console.log('✅ Room socket connected:', roomSocket.id)
